@@ -1,0 +1,47 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.sqlite3
+
+# Virtual environment
+.venv/
+env/
+ENV/
+venv/
+
+# Django stuff:
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# VSCode / JetBrains IDE
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.*
+
+# Node modules and frontend build
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.next/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# OS-specific
+*.swp
+*.swo
+
+# Package locks (optional)
+yarn.lock
+pnpm-lock.yaml
+
+.venv
