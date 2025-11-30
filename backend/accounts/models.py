@@ -7,7 +7,6 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 
 
 # --- Custom User Manager ---
-
 class UserManager(BaseUserManager):
     def create_user(self, email, full_name, password=None, **extra_fields):
         if not email:
@@ -53,7 +52,6 @@ class User(AbstractUser):
     )
 
     is_active = models.BooleanField(default=True)
-    is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "email"

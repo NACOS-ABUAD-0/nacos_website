@@ -2,29 +2,14 @@
 
 from datetime import timedelta
 from pathlib import Path
-import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m",
-)
+SECRET_KEY = 'django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m'
 
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", "on")
+DEBUG = True
 
-# Render provides RENDER_EXTERNAL_HOSTNAME, e.g. "your-service.onrender.com"
-RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
-ALLOWED_HOSTS = [
-    h
-    for h in [
-        RENDER_EXTERNAL_HOSTNAME,
-        "nacos-website-9g4v.onrender.com",
-        "localhost",
-        "127.0.0.1",
-    ]
-    if h
-]
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -38,10 +23,6 @@ INSTALLED_APPS = [
     'accounts',
     'projects',
     'resources',
-    'gallery',
-    'events',
-    'executives',
-    'inquiries',
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
@@ -121,24 +102,17 @@ SIMPLE_JWT = {
 }
 
 # 🔥 CRITICAL: CORS must allow credentials for cookies (even though you're using JWT)
-def _split_env_list(name, default_list):
-    raw = os.getenv(name)
-    if not raw:
-        return default_list
-    return [x.strip() for x in raw.split(",") if x.strip()]
-
-
-CORS_ALLOWED_ORIGINS = _split_env_list(
-    "CORS_ALLOWED_ORIGINS",
-    ["http://localhost:5173", "http://127.0.0.1:5173", "https://nacos-abuad0-website.vercel.app", ],
-)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings (for any cookie-based operations)
-CSRF_TRUSTED_ORIGINS = _split_env_list(
-    "CSRF_TRUSTED_ORIGINS",
-    ["http://localhost:5173", "http://127.0.0.1:5173", "https://nacos-abuad0-website.vercel.app", ],
-)
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -150,19 +124,3 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'
-
-# Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Change to SMTP server
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # Set in environment variable
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment variable
-DEFAULT_FROM_EMAIL = 'nacos@abuad.edu.ng'  # Change to actual email
-
-# Frontend URL for email verification links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nacos-abuad0-website.vercel.app")
-
-# For development, use console backend instead:
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

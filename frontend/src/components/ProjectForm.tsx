@@ -1,9 +1,10 @@
+// frontend/src/components/ProjectForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useSkills, useCreateProject, useUpdateProject } from '../lib/hooks/useProjects';
-import type { Project, Skill } from '../types';
+import type { Project } from '../types';
 
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
@@ -24,7 +25,7 @@ interface ProjectFormProps {
 export const ProjectForm: React.FC<ProjectFormProps> = ({
   project,
   onSubmit,
-  onCancel,
+  onCancel
 }) => {
   const { data: skills } = useSkills();
   const createMutation = useCreateProject();
@@ -41,20 +42,22 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     defaultValues: {
       title: project?.title || '',
       description: project?.description || '',
-      tag_ids: project?.tags?.map((tag: Skill) => tag.id) || [],
+      tag_ids: project?.tags?.map(tag => tag.id) || [],
       links: project?.links || {},
       images: project?.images || [],
     },
   });
 
-  const [linkInputs, setLinkInputs] = useState<{ key: string; value: string }[]>([]);
+  const [linkInputs, setLinkInputs] = useState<{key: string; value: string}[]>([]);
   const [imageInputs, setImageInputs] = useState<string[]>([]);
 
   useEffect(() => {
     if (project?.links) {
-      setLinkInputs(
-        Object.entries(project.links).map(([key, value]) => ({ key, value }))
-      );
+      const links = Object.entries(project.links).map(([key, value]) => ({
+        key,
+        value,
+      }));
+      setLinkInputs(links);
     }
     if (project?.images) {
       setImageInputs(project.images);
@@ -66,11 +69,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   const handleFormSubmit = (data: ProjectFormData) => {
     const formattedData = {
       ...data,
-      links: linkInputs.reduce<Record<string, string>>((acc, { key, value }) => {
+      links: linkInputs.reduce((acc, { key, value }) => {
         if (key && value) acc[key] = value;
         return acc;
-      }, {}),
-      images: imageInputs.filter((url: string) => url.trim() !== ''),
+      }, {} as Record<string, string>),
+      images: imageInputs.filter(url => url.trim() !== ''),
     };
 
     if (project) {
@@ -83,10 +86,13 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
-  const addLinkInput = () => setLinkInputs([...linkInputs, { key: '', value: '' }]);
+  const addLinkInput = () => {
+    setLinkInputs([...linkInputs, { key: '', value: '' }]);
+  };
 
-  const removeLinkInput = (index: number) =>
+  const removeLinkInput = (index: number) => {
     setLinkInputs(linkInputs.filter((_, i) => i !== index));
+  };
 
   const updateLinkInput = (index: number, field: 'key' | 'value', newValue: string) => {
     const updated = [...linkInputs];
@@ -94,10 +100,13 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     setLinkInputs(updated);
   };
 
-  const addImageInput = () => setImageInputs([...imageInputs, '']);
+  const addImageInput = () => {
+    setImageInputs([...imageInputs, '']);
+  };
 
-  const removeImageInput = (index: number) =>
+  const removeImageInput = (index: number) => {
     setImageInputs(imageInputs.filter((_, i) => i !== index));
+  };
 
   const updateImageInput = (index: number, newValue: string) => {
     const updated = [...imageInputs];
@@ -107,7 +116,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
 
   const toggleTag = (tagId: number) => {
     const newTags = selectedTags.includes(tagId)
-      ? selectedTags.filter((id: number) => id !== tagId)
+      ? selectedTags.filter(id => id !== tagId)
       : [...selectedTags, tagId];
     setValue('tag_ids', newTags);
   };
@@ -115,21 +124,22 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* GitHub-like header */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 bg-green-500 rounded-full" />
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
           <h2 className="text-xl font-semibold text-gray-900">
             {project ? 'Edit Project' : 'Create New Project'}
           </h2>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-600 mt-1">
           {project ? 'Update your project details' : 'Build something amazing with the community'}
         </p>
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-8">
-        {/* Title Field */}
+        {/* Title Field - GitHub inspired */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label htmlFor="title" className="block text-sm font-semibold text-gray-900">
@@ -140,7 +150,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           <input
             {...register('title')}
             type="text"
-            className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-sm placeholder-gray-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200 bg-white"
+            className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm placeholder-gray-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200 bg-white"
             placeholder="Enter project title..."
           />
           {errors.title && (
@@ -153,7 +163,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           )}
         </div>
 
-        {/* Description Field */}
+        {/* Description Field - GitHub inspired */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label htmlFor="description" className="block text-sm font-semibold text-gray-900">
@@ -164,7 +174,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           <textarea
             {...register('description')}
             rows={5}
-            className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-sm placeholder-gray-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200 bg-white font-mono"
+            className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm placeholder-gray-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200 bg-white font-mono"
             placeholder="Describe your project, technologies used, challenges overcome..."
           />
           {errors.description && (
@@ -177,21 +187,21 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           )}
         </div>
 
-        {/* Skills/Tags */}
+        {/* Skills/Tags Section - GitHub inspired tags */}
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-gray-900">
             Technologies & Skills
           </label>
-          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 min-h-16">
-            {skills?.map((skill: Skill) => (
+          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-16">
+            {skills?.map((skill) => (
               <button
                 key={skill.id}
                 type="button"
                 onClick={() => toggleTag(skill.id)}
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium border transition-all duration-200 ${
                   selectedTags.includes(skill.id)
-                    ? 'bg-green-500 text-white border-green-500 shadow-sm scale-105'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-green-300 hover:bg-green-50'
+                    ? 'bg-green-500 text-white border-green-500 shadow-sm transform scale-105'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-green-300 hover:bg-green-50'
                 }`}
               >
                 <span>{skill.name}</span>
@@ -208,10 +218,12 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Links Section */}
+        {/* Links Section - GitHub inspired */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">Project Links</label>
+            <label className="block text-sm font-semibold text-gray-900">
+              Project Links
+            </label>
             <span className="text-xs text-gray-500">GitHub, Demo, etc.</span>
           </div>
 
@@ -224,14 +236,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                     placeholder="Platform (github, demo, website)"
                     value={link.key}
                     onChange={(e) => updateLinkInput(index, 'key', e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
                   />
                   <input
                     type="url"
                     placeholder="https://..."
                     value={link.value}
                     onChange={(e) => updateLinkInput(index, 'value', e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
                   />
                 </div>
                 <button
@@ -245,6 +257,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                 </button>
               </div>
             ))}
+
             <button
               type="button"
               onClick={addLinkInput}
@@ -258,22 +271,24 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Images Section */}
+        {/* Images Section - GitHub inspired */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">Image URLs</label>
+            <label className="block text-sm font-semibold text-gray-900">
+              Image URLs
+            </label>
             <span className="text-xs text-gray-500">Screenshots, mockups</span>
           </div>
 
           <div className="space-y-3">
-            {imageInputs.map((url: string, index: number) => (
+            {imageInputs.map((url, index) => (
               <div key={index} className="flex gap-3">
                 <input
                   type="url"
                   placeholder="https://example.com/image.png"
                   value={url}
                   onChange={(e) => updateImageInput(index, e.target.value)}
-                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
                 />
                 <button
                   type="button"
@@ -286,6 +301,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                 </button>
               </div>
             ))}
+
             <button
               type="button"
               onClick={addImageInput}
@@ -299,13 +315,13 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - GitHub inspired */}
         <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-sm"
+              className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-sm"
             >
               Cancel
             </button>
@@ -313,11 +329,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-teal-600 rounded-lg hover:shadow-md hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-sm transform hover:scale-105"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 Saving...
               </>
             ) : project ? (

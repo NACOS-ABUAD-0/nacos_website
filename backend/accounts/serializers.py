@@ -1,5 +1,3 @@
-# backend/accounts/serializers.py
-
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
@@ -74,8 +72,8 @@ class LoginSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'full_name', 'matric_number', 'date_joined', 'is_email_verified', 'is_staff')
-        read_only_fields = ('id', 'email', 'date_joined', 'is_email_verified', 'is_staff')
+        fields = ('id', 'email', 'full_name', 'matric_number', 'date_joined')
+        read_only_fields = ('id', 'email', 'date_joined')
 
     def validate_matric_number(self, value):
         if value:
@@ -89,4 +87,4 @@ class ProfileSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "email", "full_name", "matric_number", 'is_staff')
+        fields = ("id", "email", "full_name")

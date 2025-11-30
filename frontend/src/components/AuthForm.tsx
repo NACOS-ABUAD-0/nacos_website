@@ -1,15 +1,14 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 interface AuthFormProps {
   type: "login" | "register";
   onSubmit: (data: any) => Promise<void>;
   isLoading: boolean;
-  onNotRegistered?: () => void;
-  onRegistered?: () => void;
 }
 
-export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, onNotRegistered, onRegistered }) => {
+export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading }) => {
   const [formData, setFormData] = useState({
     email: "",
     fullName: "",
@@ -48,28 +47,29 @@ export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, o
   };
 
   return (
-    <div className="flex items-center justify-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Subtle background pattern for premium feel */}
-      {/* <div className="absolute inset-0 opacity-5">
+      <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%230f766e' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3Ccircle cx='50' cy='50' r='2'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: '60px 60px'
         }}></div>
-      </div> */}
+      </div>
 
       {/* Floating decorative elements */}
-      {/* <div className="absolute top-20 left-10 w-8 h-8 bg-green-200 rounded-full opacity-20 animate-pulse"></div>
-      <div className="absolute bottom-32 right-12 w-6 h-6 bg-emerald-300 rounded-full opacity-30"></div> */}
+      <div className="absolute top-20 left-10 w-8 h-8 bg-green-200 rounded-full opacity-20 animate-pulse"></div>
+      <div className="absolute bottom-32 right-12 w-6 h-6 bg-emerald-300 rounded-full opacity-30"></div>
 
       <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Enhanced header section */}
         <div className="text-center">
-          {/* <div className="flex justify-center mb-6">
+          {/* Premium logo treatment */}
+          <div className="flex justify-center mb-6">
             <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-4 rounded-2xl shadow-lg transform hover:scale-105 transition-transform duration-300">
               <div className="flex items-center space-x-2">
                 <img
-                  className="h-8 w-8 text-white"
-                  src="/images/abuadLogo.png"
+                  className="h-8 w-8 text-white filter brightness-0 invert"
+                  src="/assets/abuad-logo.png"
                   alt="ABUAD Logo"
                 />
                 <img
@@ -79,7 +79,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, o
                 />
               </div>
             </div>
-          </div> */}
+          </div>
 
           {/* Enhanced typography */}
           <h2 className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">
@@ -94,20 +94,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, o
             {type === "login" ? (
               <>
                 New here?{" "}
-                <button
-                onClick={onNotRegistered}
-                 className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
+                <Link to="/register" className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
                   Create account
-                </button>
+                </Link>
               </>
             ) : (
               <>
                 Already have an account?{" "}
-                <button
-                onClick={onRegistered} 
-                className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
+                <Link to="/login" className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
                   Sign in
-                </button>
+                </Link>
               </>
             )}
           </p>
