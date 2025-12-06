@@ -9,8 +9,13 @@ export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleRegister = async (data: any) => {
-    await register(data.email, data.fullName, data.matricNumber || "", data.password, data.password2);
-    navigate('/dashboard');
+    try {
+      await register(data.email, data.fullName, data.matricNumber || "", data.password, data.password2);
+      // Navigate to verification page instead of dashboard
+      navigate('/verify-email');
+    } catch (error) {
+      // Error is already handled by AuthContext
+    }
   };
 
   return (

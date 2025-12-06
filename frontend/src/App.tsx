@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/login";
 import { RegisterPage } from "./pages/register";
 import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
+import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from './pages/homepage';
 
 // 🔥 Project imports
@@ -76,6 +77,14 @@ function AppRoutes() {
             <RegisterPage />
           </PublicRoute>
         }
+      />
+      <Route
+        path="/verify-email/:uid/:token"
+        element={<VerifyEmailPage />}
+      />
+      <Route
+        path="/verify-email"
+        element={<VerifyEmailPage />}
       />
 
       {/* Protected Routes */}
