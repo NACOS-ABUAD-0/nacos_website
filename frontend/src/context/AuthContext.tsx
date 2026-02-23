@@ -8,6 +8,7 @@ interface User {
   full_name: string;
   matric_number: string;
   date_joined: string;
+  is_email_verified: boolean;
 }
 
 interface AuthState {
@@ -28,6 +29,8 @@ interface AuthContextType extends AuthState {
   ) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  verifyEmail: (uid: string, token: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 type AuthAction =
@@ -215,8 +218,45 @@ const updateProfile = async (data: Partial<User>) => {
 };
 
 
+  const verifyEmail = async (uid: string, token: string) => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      const response = await authAPI.verifyEmail(uid, token);
+      dispatch({ type: "UPDATE_USER", payload: response.data.user });
+      toast.success("Email verified successfully!");
+    } catch (err: any) {
+      if (err.error) {
+        toast.error(err.error);
+      } else {
+        toast.error("Failed to verify email. Please try again.");
+      }
+      throw err;
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      await authAPI.resendVerification();
+      toast.success("Verification email sent! Please check your inbox.");
+    } catch (err: any) {
+      if (err.error) {
+        toast.error(err.error);
+      } else if (err.message) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to send verification email. Please try again.");
+      }
+      throw err;
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, updateProfile, verifyEmail, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );

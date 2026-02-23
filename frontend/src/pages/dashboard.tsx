@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { Mail, X } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, resendVerificationEmail, isLoading } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -29,6 +30,44 @@ export const DashboardPage: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
           <div className="space-y-8 pb-12">
+            {/* Email Verification Banner */}
+            {user && !user.is_email_verified && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 shadow-sm">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <Mail className="h-5 w-5 text-yellow-400" />
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-sm font-medium text-yellow-800">
+                      Please verify your email address
+                    </h3>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <p>
+                        We've sent a verification link to <strong>{user.email}</strong>. 
+                        Please check your inbox and click the link to verify your account.
+                      </p>
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-center gap-3">
+                        <Link
+                          to="/verify-email"
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-yellow-800 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                        >
+                          Verify Email
+                        </Link>
+                        <button
+                          onClick={resendVerificationEmail}
+                          disabled={isLoading}
+                          className="inline-flex items-center px-3 py-2 border border-yellow-300 text-sm leading-4 font-medium rounded-md text-yellow-800 bg-white hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? 'Sending...' : 'Resend Email'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* User info card - premium styling */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="p-6">

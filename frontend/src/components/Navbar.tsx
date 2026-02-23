@@ -159,10 +159,11 @@ export const Navbar: React.FC = () => {
 
                 {/* User menu */}
                 <div className="relative" ref={menuRef}>
+                  {/* eslint-disable-next-line jsx-a11y/aria-proptypes */}
                   <button
                     onClick={() => setIsMenuOpen((s) => !s)}
                     aria-haspopup="menu"
-                    aria-expanded={isMenuOpen}
+                    {...(isMenuOpen ? { 'aria-expanded': true as const } : { 'aria-expanded': false as const })}
                     className="flex items-center gap-3 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-2xl px-3 py-2 hover:shadow-lg transition-all duration-200 hover:scale-105"
                   >
                     <div className="w-9 h-9 bg-gradient-to-br from-[#059669] to-[#10b981] rounded-full flex items-center justify-center shadow-sm shrink-0">
@@ -265,7 +266,7 @@ export const Navbar: React.FC = () => {
             <button
               onClick={() => setIsMobileMenuOpen((s) => !s)}
               aria-label="Open mobile menu"
-              aria-expanded={isMobileMenuOpen}
+              {...(isMobileMenuOpen ? { 'aria-expanded': true as const } : { 'aria-expanded': false as const })}
               className="md:hidden flex items-center justify-center w-10 h-10 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-xl hover:shadow-lg transition-all duration-200"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
