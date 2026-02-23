@@ -5,3 +5,4 @@ django-filter
 Pillow
 django-cors-headers
 python-dotenv
+gunicorn
