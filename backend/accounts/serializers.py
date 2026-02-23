@@ -72,8 +72,8 @@ class LoginSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'full_name', 'matric_number', 'date_joined')
-        read_only_fields = ('id', 'email', 'date_joined')
+        fields = ('id', 'email', 'full_name', 'matric_number', 'date_joined', 'is_email_verified')
+        read_only_fields = ('id', 'email', 'date_joined', 'is_email_verified')
 
     def validate_matric_number(self, value):
         if value:

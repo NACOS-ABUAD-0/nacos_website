@@ -105,6 +105,12 @@ export const authAPI = {
 
   refreshToken: (refreshToken: string) =>
     api.post("/auth/token/refresh/", { refresh: refreshToken }), // ✅ Remove /api prefix
+
+  verifyEmail: (uid: string, token: string) =>
+    api.post("/auth/verify-email/", { uid, token }).catch(handleApiError),
+
+  resendVerification: () =>
+    api.post("/auth/resend-verification/").catch(handleApiError),
 };
 
 // ================== PROJECTS ==================
