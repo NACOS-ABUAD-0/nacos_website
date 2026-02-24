@@ -9,7 +9,11 @@ SECRET_KEY = 'django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://nacos-website-9g4v.onrender.com', '*']
+ALLOWED_HOSTS = [
+    'nacos-website-9g4v.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -105,6 +109,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://nacos-website-9g4v.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -112,6 +117,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://nacos-website-9g4v.onrender.com",
 ]
 
 LANGUAGE_CODE = 'en-us'
