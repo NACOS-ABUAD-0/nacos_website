@@ -14,6 +14,10 @@ def generate_verification_token(user):
 
 def send_verification_email(user, request=None):
     """Send email verification email to user"""
+    # If SMTP creds aren't configured (common on test deploys), skip sending to avoid timeouts.
+    if not getattr(settings, "EMAIL_HOST_USER", None) or not getattr(settings, "EMAIL_HOST_PASSWORD", None):
+        return False
+
     token = generate_verification_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
