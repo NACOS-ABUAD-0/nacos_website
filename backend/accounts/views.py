@@ -20,7 +20,11 @@ class RegisterView(APIView):
             user = serializer.save()
 
             # Send verification email
-            send_verification_email(user, request)
+            email_sent = False
+            try:
+                email_sent = send_verification_email(user, request)
+            except Exception:
+                pass
 
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
@@ -29,7 +33,11 @@ class RegisterView(APIView):
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user': ProfileSerializer(user).data,
-                'message': 'Registration successful! Please check your email to verify your account.'
+                'message': (
+                    'Registration successful! Please check your email to verify your account.'
+                    if email_sent
+                    else 'Registration successful! (Email verification is not configured on this server.)'
+                )
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
