@@ -1,6 +1,11 @@
 // frontend/src/App.tsx
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoginPage } from "./pages/login";
@@ -8,13 +13,14 @@ import { RegisterPage } from "./pages/register";
 import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
-import Homepage from './pages/homepage';
+import Homepage from "./pages/homepage";
+import Executives from "./components/Executives";
 
 // 🔥 Project imports
-import { ProjectsGallery } from './pages/ProjectsGallery';
-import { ProjectDetail } from './pages/project-detail';
-import { ProjectFormPage } from './pages/ProjectFormPage';
-import { ResourcesPage } from './pages/resources'; // ✅ Added ResourcesPage import
+import { ProjectsGallery } from "./pages/ProjectsGallery";
+import { ProjectDetail } from "./pages/project-detail";
+import { ProjectFormPage } from "./pages/ProjectFormPage";
+import { ResourcesPage } from "./pages/resources"; // ✅ Added ResourcesPage import
 
 // React Query
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -54,7 +60,11 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
+  return !isAuthenticated ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/dashboard" replace />
+  );
 };
 
 function AppRoutes() {
@@ -79,13 +89,15 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/verify-email/:uid/:token"
-        element={<VerifyEmailPage />}
+        path="/executives"
+        element={
+          <PublicRoute>
+            <Executives isHome={false} />
+          </PublicRoute>
+        }
       />
-      <Route
-        path="/verify-email"
-        element={<VerifyEmailPage />}
-      />
+      <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* Protected Routes */}
       <Route

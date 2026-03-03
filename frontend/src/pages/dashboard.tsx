@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Navbar } from '../components/Navbar';
+import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { Mail, X } from 'lucide-react';
 
