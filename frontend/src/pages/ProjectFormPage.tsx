@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ProjectForm } from '../components/ProjectForm';
-import { Navbar } from '../components/Navbar';
+import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { useProject } from '../lib/hooks/useProjects';
 

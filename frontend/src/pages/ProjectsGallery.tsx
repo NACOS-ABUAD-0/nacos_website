@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useProjects, useSkills } from '../lib/hooks/useProjects';
 import { ProjectCard } from '../components/ProjectCard';
-import { Navbar } from '../components/Navbar';
+import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';

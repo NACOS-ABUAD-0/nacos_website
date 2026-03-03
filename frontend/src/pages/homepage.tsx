@@ -1,19 +1,22 @@
 // src/pages/homepage.tsx
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Navbar } from '../components/Navbar';
-import { Footer } from '../components/Footer';
-import { Hero } from '../components/home/Hero';
-import { StatsStrip } from '../components/home/StatsStrip';
-import { Section } from '../components/home/Section';
+import React from "react";
+import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import { Footer } from "../components/Footer";
+import { Hero } from "../components/home/Hero";
+import { StatsStrip } from "../components/home/StatsStrip";
+import { Section } from "../components/home/Section";
+import About from "../components/AboutUs";
+import LearningResourceCta from "../components/LearningResourceCta";
+import Testimonials from "../components/Testimonials";
 import {
   HeroSkeleton,
   ProjectCardSkeleton,
   EventCardSkeleton,
   ExecutiveCardSkeleton,
   ResourceCardSkeleton,
-  GallerySkeleton
-} from '../components/home/Skeletons';
+  GallerySkeleton,
+} from "../components/home/Skeletons";
 import {
   useFeaturedProjects,
   useUpcomingEvents,
@@ -21,18 +24,21 @@ import {
   useLatestResources,
   useLatestGallery,
   usePublicStats,
-} from '../lib/hooks/useHomepage';
+} from "../lib/hooks/useHomepage";
 
 import type {
   ProjectItem,
   EventItem,
   Exec,
   ResourceItem,
-  GalleryItem
-} from '../lib/hooks/useHomepage';
+  GalleryItem,
+} from "../lib/hooks/useHomepage";
 
-import { useSEO } from '../lib/seo';
-import { useAuth } from '../context/AuthContext';
+import { useSEO } from "../lib/seo";
+import { useAuth } from "../context/AuthContext";
+import Facilities from "../components/Facilities";
+import Executives from "../components/Executives";
+import { Layout } from "../layouts/layout";
 
 /**
  * Premium Enhancements Summary:
@@ -50,224 +56,381 @@ const Homepage: React.FC = () => {
   const showProfileBanner = isAuthenticated && !user?.profile_complete;
 
   // Data fetching - unchanged
-  const { data: stats, isLoading: statsLoading, error: statsError } = usePublicStats();
-  const { data: projects, isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = useFeaturedProjects();
-  const { data: events, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useUpcomingEvents();
-  const { data: executives, isLoading: execsLoading, error: execsError, refetch: refetchExecs } = useExecutives();
-  const { data: resources, isLoading: resourcesLoading, error: resourcesError, refetch: refetchResources } = useLatestResources();
-  const { data: gallery, isLoading: galleryLoading, error: galleryError, refetch: refetchGallery } = useLatestGallery();
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = usePublicStats();
+  const {
+    data: projects,
+    isLoading: projectsLoading,
+    error: projectsError,
+    refetch: refetchProjects,
+  } = useFeaturedProjects();
+  const {
+    data: events,
+    isLoading: eventsLoading,
+    error: eventsError,
+    refetch: refetchEvents,
+  } = useUpcomingEvents();
+  const {
+    data: executives,
+    isLoading: execsLoading,
+    error: execsError,
+    refetch: refetchExecs,
+  } = useExecutives();
+  const {
+    data: resources,
+    isLoading: resourcesLoading,
+    error: resourcesError,
+    refetch: refetchResources,
+  } = useLatestResources();
+  const {
+    data: gallery,
+    isLoading: galleryLoading,
+    error: galleryError,
+    refetch: refetchGallery,
+  } = useLatestGallery();
+
+ interface Event {
+  id: string;
+  title: string;
+  theme: string;
+  organizer: string;
+  eventType: string;
+  tagline: string;
+  limits: number;
+  status: "Open" | "Closed" | "Upcoming"; // better than plain string
+  registration: {
+    startDate: string; // ISO format: YYYY-MM-DD
+    endDate: string;
+    isOpenToEveryone: boolean;
+    registrationLink: string;
+    qrCode: string;
+  };
+  contact: {
+    inquiries: string[];
+  };
+  media: {
+    poster: string;
+  };
+}
+
+ const event : Event[] = [
+  {
+    id: "devcon-2026",
+    title: "DEVCON 2026 Hackathon – Beyond the Boundaries",
+    theme: "Beyond the Boundaries",
+    organizer: "ACM ABUAD Chapter",
+    eventType: "Hackathon",
+    tagline: "Build, break barriers, and innovate beyond the conventional.",
+    limits: 404,
+    status: "Open",
+    registration: {
+      startDate: "2026-02-14",
+      endDate: "2026-02-28",
+      isOpenToEveryone: true,
+      registrationLink: "https://devcon2026.netlify.app/",
+      qrCode: "/images/devcon-qr.png",
+    },
+    contact: {
+      inquiries: ["09068640110", "09038231348"],
+    },
+    media: {
+      poster: "/events/dev.jpeg",
+    },
+  },
+];
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Navbar />
+    <Layout>
+      <div className="min-h-screen flex flex-col bg-white">
+        <main className="flex-grow">
+          {/* Hero Section - preserved exactly as provided */}
+          <Hero showProfileBanner={showProfileBanner} />
+          <About />
 
-      <main className="flex-grow">
-        {/* Hero Section - preserved exactly as provided */}
-        <Hero showProfileBanner={showProfileBanner} />
+          {/* Stats Strip - unchanged */}
+          {/* <StatsStrip stats={stats} isLoading={statsLoading} error={statsError} /> */}
 
-        {/* Stats Strip - unchanged */}
-        <StatsStrip stats={stats} isLoading={statsLoading} error={statsError} />
-
-        {/* Featured Projects Section */}
-        <Section
-          title="Featured Projects"
-          subtitle="Student-built applications and experiments showcasing innovation"
-          ctaText="View all projects"
-          ctaLink="/projects"
-          id="projects"
-        >
-          {projectsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[...Array(6)].map((_, i) => (
-                <ProjectCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : projectsError ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">Failed to load projects</p>
-              <button
-                onClick={() => refetchProjects()}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          ) : projects?.results?.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No featured projects yet</p>
-              {isAuthenticated && (
-                <Link
-                  to="/projects/new"
+          {/* Featured Projects Section */}
+          <Section
+            title="Featured Projects"
+            subtitle="Student-built applications and experiments showcasing innovation"
+            ctaText="View all projects"
+            ctaLink="/projects"
+            id="projects"
+          >
+            {projectsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[...Array(6)].map((_, i) => (
+                  <ProjectCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : projectsError ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-4">Failed to load projects</p>
+                <button
+                  onClick={() => refetchProjects()}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  Create First Project
-                </Link>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {projects?.results?.slice(0, 6).map((project: ProjectItem) => (
-                <div
-                  key={project.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-                >
-                  {/* Enhanced project cover with gradient overlay */}
-                  {project.cover_url ? (
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={project.cover_url}
-                        alt={project.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                      </svg>
-                    </div>
-                  )}
-
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{project.title}</h3>
-                    <p className="text-sm text-gray-600 mb-3">By {project.owner.full_name || 'Anonymous'}</p>
-
-                    {project.skills && project.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {project.skills.slice(0, 3).map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-100"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {project.skills.length > 3 && (
-                          <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full">
-                            +{project.skills.length - 3}
-                          </span>
-                        )}
+                  Try Again
+                </button>
+              </div>
+            ) : projects?.results?.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-4">No featured projects yet</p>
+                {isAuthenticated && (
+                  <Link
+                    to="/projects/new"
+                    className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Create First Project
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {projects?.results?.slice(0, 6).map((project: ProjectItem) => (
+                  <div
+                    key={project.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                  >
+                    {/* Enhanced project cover with gradient overlay */}
+                    {project.cover_url ? (
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={project.cover_url}
+                          alt={project.title}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                      </div>
+                    ) : (
+                      <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                        <svg
+                          className="w-12 h-12 text-gray-300"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                          />
+                        </svg>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between">
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
-                      >
-                        View Project
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
-                      <span className="text-xs text-gray-400">
-                        {project.updated_at ? new Date(project.updated_at).toLocaleDateString() : ''}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
+                    <div className="p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                        {project.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        By {project.owner.full_name || "Anonymous"}
+                      </p>
 
-        {/* Upcoming Events Section */}
-        <Section
-          title="Upcoming Events"
-          subtitle="Workshops, hackathons, and networking opportunities"
-          ctaText="See all events"
-          ctaLink="/events"
-          id="events"
-        >
-          {eventsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[...Array(3)].map((_, i) => (
-                <EventCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : eventsError ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">Failed to load events</p>
-              <button
-                onClick={() => refetchEvents()}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          ) : events?.results?.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No upcoming events scheduled</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {events?.results?.slice(0, 3).map((event: EventItem) => (
-                <div
-                  key={event.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-                >
-                  {event.cover ? (
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={event.cover}
-                        alt={event.title}
-                        className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                      <div className="absolute top-4 right-4">
-                        {event.is_remote ? (
-                          <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">Remote</span>
-                        ) : (
-                          <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">In-person</span>
-                        )}
+                      {project.skills && project.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {project.skills.slice(0, 3).map((skill, index) => (
+                            <span
+                              key={index}
+                              className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-100"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {project.skills.length > 3 && (
+                            <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full">
+                              +{project.skills.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <Link
+                          to={`/projects/${project.id}`}
+                          className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
+                        >
+                          View Project
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </Link>
+                        <span className="text-xs text-gray-400">
+                          {project.updated_at
+                            ? new Date(project.updated_at).toLocaleDateString()
+                            : ""}
+                        </span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="w-full h-40 bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{event.title}</h3>
-                    <div className="flex items-center text-sm text-gray-600 mb-3">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {new Date(event.start).toLocaleDateString()}
-                      {event.venue && (
-                        <>
-                          <svg className="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          {event.venue}
-                        </>
-                      )}
-                    </div>
-
-                    <Link
-                      to={`/events/${event.slug || event.id}`}
-                      className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
-                    >
-                      Learn More
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
+                ))}
+              </div>
+            )}
+          </Section>
 
-        {/* Executives Section */}
-        <Section
+          {/* Upcoming Events Section */}
+          <Section
+            title="Upcoming Events"
+            subtitle="Workshops, hackathons, and networking opportunities"
+            ctaText="See all events"
+            ctaLink="/events"
+            id="events"
+          >
+            {eventsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[...Array(3)].map((_, i) => (
+                  <EventCardSkeleton key={i} />
+                ))}
+              </div>
+            // ) : eventsError ? (
+            //   <div className="text-center py-12">
+            //     <p className="text-gray-500 mb-4">Failed to load events</p>
+            //     <button
+            //       onClick={() => refetchEvents()}
+            //       className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            //     >
+            //       Try Again
+            //     </button>
+            //   </div>
+            // ) : events?.results?.length === 0 ? (
+            //   <div className="text-center py-12">
+            //     <p className="text-gray-500">No upcoming events scheduled</p>
+            //   </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {event?.slice(0, 3).map((event) => (
+                  <div
+                    key={event.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                  >
+                    {event.media.poster ? (
+                      <div className="relative overflow-hidden w-full max-w-[500px] aspect-[426/463]">
+                        <img
+                          src={event.media.poster}
+                          alt={event.title}
+                          className="w-full h-full rounded-t-[10px] object-cover"
+                          loading="lazy"
+                        />
+                        {/* <div className="absolute top-4 right-4">
+                          {event.is_remote ? (
+                            <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                              Remote
+                            </span>
+                          ) : (
+                            <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                              In-person
+                            </span>
+                          )}
+                        </div> */}
+                      </div>
+                    ) : (
+                      <div className="w-full h-40 bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+                        <svg
+                          className="w-10 h-10 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
+                    <div className="p-6 bg-[#E8F4F8]">
+                      <h3 className="font-semibold text-xl md:text-2xl lg:text-[25px] leading-none tracking-normal text-black mb-4">
+                        Title: {event.title}
+                      </h3>
+                      <p className="font-medium text-[15px] leading-[24px] md:text-[16px] md:leading-[26px] lg:text-[17px] lg:leading-[27px] tracking-normal text-[#000000BF]">Theme: {event.theme}</p>
+                      <p className="font-medium text-[15px] leading-[24px] md:text-[16px] md:leading-[26px] lg:text-[17px] lg:leading-[27px] tracking-normal text-[#000000BF]">Status: {event.status}</p>
+                      <div className="flex items-center text-sm text-gray-600 mb-3">
+                        {/* <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg> */}
+                        {/* {new Date(event.start).toLocaleDateString()} */}
+                        {/* {event.title && (
+                          <>
+                            <svg
+                              className="w-4 h-4 mx-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                            {event.}
+                          </>
+                        )} */}
+                      </div>
+
+                      <Link
+                        to={`/events/${event.id}`}
+                        className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
+                      >
+                        Learn More
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {/* <Section
           title="Our Leadership"
           subtitle="Meet the team driving NACOS ABUAD forward"
           ctaText="View all executives"
@@ -301,7 +464,6 @@ const Homepage: React.FC = () => {
                       className="w-20 h-20 rounded-full object-cover mx-auto ring-2 ring-gray-100 group-hover:ring-green-200 transition-all duration-300"
                       loading="lazy"
                     />
-                    {/* Subtle background decoration */}
                     <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-50 to-blue-50 -z-10 transform scale-110 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-1">{exec.name}</h3>
@@ -310,10 +472,12 @@ const Homepage: React.FC = () => {
               ))}
             </div>
           )}
-        </Section>
+        </Section> */}
 
-        {/* Resources Section */}
-        <Section
+          <Executives isHome />
+          <Facilities />
+          {/* Resources Section */}
+          {/* <Section
           title="Learning Resources"
           subtitle="Curated study materials and technical tutorials"
           ctaText="Browse resources"
@@ -367,105 +531,127 @@ const Homepage: React.FC = () => {
               ))}
             </div>
           )}
-        </Section>
+        </Section> */}
+          <LearningResourceCta />
 
-        {/* Gallery Section */}
-        <Section
-          title="Community Moments"
-          subtitle="Capturing collaboration, innovation, and growth"
-          ctaText="View gallery"
-          ctaLink="/gallery"
-          id="gallery"
-        >
-          {galleryLoading ? (
-            <GallerySkeleton />
-          ) : galleryError ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">Failed to load gallery</p>
-              <button
-                onClick={() => refetchGallery()}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {gallery?.results?.slice(0, 12).map((item: GalleryItem) => (
-                <div key={item.id} className="aspect-square rounded-xl overflow-hidden group">
-                  {item.type === 'image' ? (
-                    <img
-                      src={item.url}
-                      alt={item.title || 'Community moment'}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  )}
-                  {/* Overlay on hover */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300" />
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
+          <Testimonials />
 
-        {/* Partners & Sponsors CTA */}
-        <section className="py-20 bg-gradient-to-br from-gray-50 to-green-50 relative overflow-hidden">
-          {/* Premium background elements */}
-          <div className="absolute top-0 left-0 w-72 h-72 bg-green-100 rounded-full -translate-x-1/2 -translate-y-1/2 opacity-20" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-100 rounded-full translate-x-1/3 translate-y-1/3 opacity-20" />
-
-          <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Partner With Us</h2>
-            <p className="text-gray-600 mb-8 max-w-2xl mx-auto text-lg">
-              Support student innovation, sponsor events, and help shape Nigeria's next generation of tech leaders.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Link
-                to="/contact"
-                className="bg-green-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm"
-              >
-                Get In Touch
-              </Link>
-              <Link
-                to="/sponsorship"
-                className="border-2 border-green-600 text-green-600 px-8 py-3 rounded-lg font-medium hover:bg-green-50 transition-colors"
-              >
-                Sponsorship Info
-              </Link>
-            </div>
-
-            {/* Enhanced partner logos section */}
-            <div className="border-t border-gray-200 pt-12">
-              <p className="text-sm font-medium text-gray-500 mb-8 uppercase tracking-wide">Trusted By</p>
-              <div className="flex flex-wrap justify-center items-center gap-12 opacity-70">
-                {/* Premium logo placeholders */}
-                <div className="h-8 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded flex items-center justify-center">
-                  <span className="text-xs text-gray-500 font-medium">TECH CORP</span>
-                </div>
-                <div className="h-8 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded flex items-center justify-center">
-                  <span className="text-xs text-gray-500 font-medium">INNOVATE</span>
-                </div>
-                <div className="h-8 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded flex items-center justify-center">
-                  <span className="text-xs text-gray-500 font-medium">FUTURE LABS</span>
-                </div>
+          {/* Gallery Section */}
+          <Section
+            title="Community Moments"
+            subtitle="Capturing collaboration, innovation, and growth"
+            ctaText="View gallery"
+            ctaLink="/gallery"
+            id="gallery"
+          >
+            {galleryLoading ? (
+              <GallerySkeleton />
+            ) : galleryError ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-4">Failed to load gallery</p>
+                <button
+                  onClick={() => refetchGallery()}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Try Again
+                </button>
               </div>
-            </div>
-          </div>
-        </section>
-      </main>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {gallery?.results?.slice(0, 12).map((item: GalleryItem) => (
+                  <div
+                    key={item.id}
+                    className="aspect-square rounded-xl overflow-hidden group"
+                  >
+                    {item.type === "image" ? (
+                      <img
+                        src={item.url}
+                        alt={item.title || "Community moment"}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+                        <svg
+                          className="w-12 h-12 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </Layout>
   );
 };
 
 export default Homepage;
+
+// {/* Partners & Sponsors CTA */}
+// <section className="py-20 bg-gradient-to-br from-gray-50 to-green-50 relative overflow-hidden">
+//   {/* Premium background elements */}
+//   <div className="absolute top-0 left-0 w-72 h-72 bg-green-100 rounded-full -translate-x-1/2 -translate-y-1/2 opacity-20" />
+//   <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-100 rounded-full translate-x-1/3 translate-y-1/3 opacity-20" />
+
+//   <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+//     <h2 className="text-3xl font-bold text-gray-900 mb-4">Partner With Us</h2>
+//     <p className="text-gray-600 mb-8 max-w-2xl mx-auto text-lg">
+//       Support student innovation, sponsor events, and help shape Nigeria's next generation of tech leaders.
+//     </p>
+
+//     <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+//       <Link
+//         to="/contact"
+//         className="bg-green-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm"
+//       >
+//         Get In Touch
+//       </Link>
+//       <Link
+//         to="/sponsorship"
+//         className="border-2 border-green-600 text-green-600 px-8 py-3 rounded-lg font-medium hover:bg-green-50 transition-colors"
+//       >
+//         Sponsorship Info
+//       </Link>
+//     </div>
+
+//     {/* Enhanced partner logos section */}
+//     <div className="border-t border-gray-200 pt-12">
+//       <p className="text-sm font-medium text-gray-500 mb-8 uppercase tracking-wide">Trusted By</p>
+//       <div className="flex flex-wrap justify-center items-center gap-12 opacity-70">
+//         {/* Premium logo placeholders */}
+//         <div className="h-8 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded flex items-center justify-center">
+//           <span className="text-xs text-gray-500 font-medium">TECH CORP</span>
+//         </div>
+//         <div className="h-8 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded flex items-center justify-center">
+//           <span className="text-xs text-gray-500 font-medium">INNOVATE</span>
+//         </div>
+//         <div className="h-8 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded flex items-center justify-center">
+//           <span className="text-xs text-gray-500 font-medium">FUTURE LABS</span>
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+// </section>
