@@ -8,6 +8,7 @@ from django.middleware.csrf import get_token
 
 from .models import User
 from .serializers import RegisterSerializer, LoginSerializer, ProfileSerializer
+from .utils import send_verification_email, verify_email_token
 
 
 class RegisterView(APIView):
@@ -18,13 +19,25 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
 
+            # Send verification email
+            email_sent = False
+            try:
+                email_sent = send_verification_email(user, request)
+            except Exception:
+                pass
+
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
 
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'user': ProfileSerializer(user).data
+                'user': ProfileSerializer(user).data,
+                'message': (
+                    'Registration successful! Please check your email to verify your account.'
+                    if email_sent
+                    else 'Registration successful! (Email verification is not configured on this server.)'
+                )
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -78,3 +91,56 @@ class CSRFTokenView(APIView):
 
     def get(self, request):
         return Response({'csrfToken': get_token(request)})
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+        
+        if not uidb64 or not token:
+            return Response(
+                {'error': 'UID and token are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = verify_email_token(uidb64, token)
+        
+        if user:
+            return Response({
+                'message': 'Email verified successfully!',
+                'user': ProfileSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Invalid or expired verification link.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ResendVerificationEmailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        
+        if user.is_email_verified:
+            return Response(
+                {'message': 'Email is already verified.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        success = send_verification_email(user, request)
+        
+        if success:
+            return Response({
+                'message': 'Verification email sent successfully! Please check your inbox.'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Failed to send verification email. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

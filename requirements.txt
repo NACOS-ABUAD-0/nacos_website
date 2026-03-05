@@ -1,5 +1,0 @@
-Django>=4.2
-djangorestframework
-Pillow
-django-cors-headers
-python-dotenv
