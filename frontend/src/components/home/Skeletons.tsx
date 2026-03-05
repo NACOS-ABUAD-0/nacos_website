@@ -14,6 +14,7 @@ export const HeroSkeleton: React.FC = () => (
       <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl w-2/3 mx-auto"></div>
     </div>
 
+
     {/* Subtitle */}
     <div className="h-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg w-1/2 mx-auto mb-12"></div>
 
