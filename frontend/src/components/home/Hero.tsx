@@ -43,7 +43,6 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
     "/heroImages/hero26.jpeg",
   ];
 
-
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -65,6 +64,34 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
   return (
     <>
       <div className="relative w-full min-h-[70vh] md:min-h-[878px]">
+        <div className="absolute w-full h-full bg-black/50 z-30">
+          <div className="flex w-full justify-center items-center flex-wrap gap-4">
+            <div className="w-[30%] bg-[#006E3A] h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
+              <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-white">
+                1500+
+              </p>
+              <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-white text-center">
+                Students
+              </p>
+            </div>
+            <div className="w-[30%] bg-white h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
+              <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-[#006E3A]">
+                150+
+              </p>
+              <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-[#006E3A] text-center">
+                Events Hosted
+              </p>
+            </div>
+            <div className="w-[30%] bg-[#006E3A] h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
+              <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-white">
+                20+
+              </p>
+              <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-white text-center">
+                Projects Built
+              </p>
+            </div>
+          </div>
+        </div>
         {/* Background Slides */}
         {images.map((img, index) => (
           <div
@@ -90,32 +117,6 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
         >
           ›
         </button>
-        <div className="flex absolute -bottom-32 w-full justify-center items-center flex-wrap gap-4">
-          <div className="w-[30%] bg-[#006E3A] h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
-            <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-white">
-              1500+
-            </p>
-            <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-white text-center">
-              Students
-            </p>
-          </div>
-          <div className="w-[30%] bg-white h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
-            <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-[#006E3A]">
-              150+
-            </p>
-            <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-[#006E3A] text-center">
-              Events Hosted
-            </p>
-          </div>
-          <div className="w-[30%] bg-[#006E3A] h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
-            <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-white">
-              20+
-            </p>
-            <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-white text-center">
-              Projects Built
-            </p>
-          </div>
-        </div>
       </div>
     </>
   );

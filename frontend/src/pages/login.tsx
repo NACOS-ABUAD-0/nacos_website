@@ -1,22 +1,95 @@
 // frontend/src/pages/login.tsx
-import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { AuthForm } from '../components/AuthForm';
+import React from "react";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { AuthForm } from "../components/AuthForm";
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
 
   const handleLogin = async (data: any) => {
     await login(data.email, data.password);
-    navigate('/dashboard');
+    navigate("/dashboard");
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-[#E8F4F8] w-full justify-center items-center">
+      <div className="">
+        <div className="w-[1200px] h-[700px] bg-white shadow-lg flex overflow-hidden p-5 rounded-4xl">
+          {/* IMAGE PANEL */}
+          <div
+            className={`w-1/2 text-white flex flex-col justify-center items-center transition-transform duration-700 ease-in-out rounded-3xl bg-[url('/images/hmm.png')] bg-cover bg-center ${
+              isLogin ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
+            <div className="flex gap-5 items-center">
+              <img src="/images/nacos_logo (1).png" alt="" className="w-[100px]" />
+              <img src="/images/abuadLogo.png" alt="" className="w-[100px]" />
+            </div>
+            {/* <h2 className="text-3xl font-bold mb-4">
+              {isLogin ? "New here?" : "Already have an account?"}
+            </h2>
+
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="border px-6 py-2 rounded-lg"
+            >
+              {isLogin ? "Register" : "Login"}
+            </button> */}
+          </div>
+
+          {/* FORM PANEL */}
+          <div
+            className={`w-1/2  bg-white flex items-center justify-center transition-transform duration-700 ease-in-out ${
+              isLogin ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            {isLogin ? (
+              <AuthForm
+                type="login"
+                onSubmit={handleLogin}
+                isLoading={isLoading}
+              />
+            ) : (
+              <AuthForm
+                type="register"
+                onSubmit={handleLogin}
+                isLoading={isLoading}
+              />
+            )}
+          </div>
+        </div>
+        {isLogin ? (
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-600">
+              New to NACOS ABUAD?{" "}
+              <button
+                onClick={() => setIsLogin(false)}
+                className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200"
+              >
+                Join the innovation community
+              </button>
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an accoun?{" "}
+              <button
+                onClick={() => setIsLogin(true)}
+                className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200"
+              >
+                Sign In
+              </button>
+            </p>
+          </div>
+        )}
+      </div>
       {/* Left side - Auth Form */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24">
+      {/* <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="text-center lg:text-left">
             <Link
@@ -24,15 +97,26 @@ export const LoginPage: React.FC = () => {
               className="inline-flex items-center gap-3 text-2xl font-bold text-gray-900 mb-8 hover:text-green-600 transition-colors duration-200"
             >
               <div className="flex items-center gap-2">
-                <img className="h-8 w-8" src="/assets/abuad-logo.png" alt="ABUAD Logo" />
-                <img className="h-8 w-8" src="/assets/nacos-logo.png" alt="NACOS Logo" />
+                <img
+                  className="w-10"
+                  src="/images/abuadLogo.png"
+                  alt="ABUAD Logo"
+                />
+                <img
+                  className="w-10"
+                  src="/images/nacos_logo.png"
+                  alt="NACOS Logo"
+                />
               </div>
               <span>NACOS ABUAD</span>
             </Link>
 
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome back</h2>
-            <p className="text-lg text-gray-600 mb-8 max-w-md">
-              Sign in to access your projects, connect with the community, and continue your innovation journey
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              Welcome back
+            </h2>
+            <p className="text-lg text-gray-600 mb-12 max-w-md">
+              Sign in to access your projects, connect with the community, and
+              continue your innovation journey
             </p>
           </div>
 
@@ -40,7 +124,7 @@ export const LoginPage: React.FC = () => {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">
-              New to NACOS ABUAD?{' '}
+              New to NACOS ABUAD?{" "}
               <Link
                 to="/register"
                 className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200"
@@ -50,13 +134,12 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Right side - Platform showcase */}
-      <div className="hidden lg:block relative flex-1 bg-gradient-to-br from-green-600 to-emerald-700">
-        <div className="absolute inset-0 bg-black/10"></div>
 
-        {/* Background pattern */}
+      {/* <div className="hidden lg:block relative flex-1 bg-gradient-to-br from-green-600 to-emerald-700">
+        <div className="absolute inset-0 bg-black/10"></div>
         <div
           className="absolute inset-0 opacity-10"
           style={{
@@ -140,7 +223,7 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

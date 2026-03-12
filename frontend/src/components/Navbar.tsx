@@ -337,7 +337,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import NacosLogo from "../assets/nacos_logo.png"; 
+import NacosLogo from "/images/nacos_logo.png"; 
 import AbuadLogo from "../../public/images/abuadLogo.png";
 
 const Navbar = () => {
