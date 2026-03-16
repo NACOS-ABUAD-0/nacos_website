@@ -601,8 +601,6 @@ const Homepage: React.FC = () => {
             )}
           </Section>
         </main>
-
-        <Footer />
       </div>
     </Layout>
   );
