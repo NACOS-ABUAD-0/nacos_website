@@ -357,7 +357,7 @@ const Navbar = () => {
       <div className="flex justify-between items-center px-6 md:px-12 py-4">
         {/* Logo Section */}
         <div className="flex gap-2 items-center">
-          <img src={AbuadLogo} alt="Abuad Logo" className="w-8 md:w-10"/>
+          <img src={AbuadLogo} alt="Abuad Logo" className="w-6 md:w-8"/>
           <img src={NacosLogo} alt="Nacos Logo" className="w-8 md:w-10" />
           <h1 className="font-bold text-lg lg:text-2xl">NACOS ABUAD</h1>
         </div>
@@ -369,7 +369,7 @@ const Navbar = () => {
               <Link
                 key={link.name}
                 to={link.path}
-                className="text-black hover:text-white transition-colors text-lg font-medium"
+                className="text-black hover:text-green-700 transition-colors text-lg font-medium"
               >
                 {link.name}
               </Link>
