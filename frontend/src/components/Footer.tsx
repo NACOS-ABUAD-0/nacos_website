@@ -153,23 +153,6 @@ export const Footer: React.FC = () => {
             </div>
 
             {/* Social links */}
-            <div className="flex items-center space-x-6">
-              {[
-                { name: "GitHub", icon: "💻", url: "#" },
-                { name: "Twitter", icon: "🐦", url: "#" },
-                { name: "LinkedIn", icon: "💼", url: "#" },
-                { name: "Instagram", icon: "📷", url: "#" },
-              ].map((social) => (
-                <a
-                  key={social.name}
-                  href={social.url}
-                  className="text-green-100 hover:text-white transition-all duration-300 transform hover:scale-110"
-                  aria-label={social.name}
-                >
-                  <span className="text-lg">{social.icon}</span>
-                </a>
-              ))}
-            </div>
           </div>
         </div>
 
