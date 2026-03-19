@@ -1,19 +1,251 @@
-// src/components/home/Hero.tsx
-import React from "react";
-// import { Link } from "react-router-dom";
-// import { motion } from "framer-motion";
-// import { useAuth } from "../../context/AuthContext";
-// import { Sparkles, Users, Rocket, Code } from "lucide-react";
-import sunset from "../../assets/sunset.jpg";
-import { useState, useEffect } from "react";
+// // src/components/home/Hero.tsx
+// import React from "react";
+// // import { Link } from "react-router-dom";
+// // import { motion } from "framer-motion";
+// // import { useAuth } from "../../context/AuthContext";
+// // import { Sparkles, Users, Rocket, Code } from "lucide-react";
+// import sunset from "../../assets/sunset.jpg";
+// import { useState, useEffect, useRef } from "react";
 
+// interface HeroProps {
+//   showProfileBanner?: boolean;
+// }
+
+// export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
+//   // const { isAuthenticated } = useAuth();
+
+//   const images = [
+//     "/heroImages/hero1.jpeg",
+//     "/heroImages/hero2.jpeg",
+//     "/heroImages/hero3.jpeg",
+//     "/heroImages/hero4.jpeg",
+//     "/heroImages/hero5.jpeg",
+//     "/heroImages/hero6.jpeg",
+//     "/heroImages/hero7.jpeg",
+//     "/heroImages/hero8.jpeg",
+//     "/heroImages/hero9.jpeg",
+//     "/heroImages/hero10.jpeg",
+//     "/heroImages/hero11.jpeg",
+//     "/heroImages/hero12.jpeg",
+//     "/heroImages/hero13.jpeg",
+//     "/heroImages/hero14.jpeg",
+//     "/heroImages/hero15.jpeg",
+//     "/heroImages/hero16.jpeg",
+//     "/heroImages/hero17.jpeg",
+//     "/heroImages/hero18.jpeg",
+//     "/heroImages/hero19.jpeg",
+//     "/heroImages/hero20.jpeg",
+//     "/heroImages/hero21.jpeg",
+//     "/heroImages/hero22.jpeg",
+//     "/heroImages/hero23.jpeg",
+//     "/heroImages/hero24.jpeg",
+//     "/heroImages/hero25.jpeg",
+//     "/heroImages/hero26.jpeg",
+//   ];
+
+//   const [currentIndex, setCurrentIndex] = useState(0);
+
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+//     }, 5000); // change every 5 seconds
+
+//     return () => clearInterval(interval);
+//   }, [images.length]);
+
+//   const nextSlide = () => {
+//     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+//   };
+
+//   const prevSlide = () => {
+//     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+//   };
+
+//   const Counter = ({
+//     end,
+//     duration = 2000,
+//   }: {
+//     end: number;
+//     duration?: number;
+//   }) => {
+//     const [count, setCount] = useState(0);
+//     const [hasStarted, setHasStarted] = useState(false);
+//     const countRef = useRef<HTMLSpanElement>(null);
+
+//     useEffect(() => {
+//       // 1. Create an observer to see when the element is visible
+//       const observer = new IntersectionObserver(
+//         ([entry]) => {
+//           if (entry.isIntersecting && !hasStarted) {
+//             setHasStarted(true); // Only start the animation once
+//           }
+//         },
+//         { threshold: 0.1 }, // Trigger when 10% of the number is visible
+//       );
+
+//       if (countRef.current) {
+//         observer.observe(countRef.current);
+//       }
+
+//       return () => observer.disconnect();
+//     }, [hasStarted]);
+
+//     useEffect(() => {
+//       if (!hasStarted) return;
+
+//       let startTimestamp: number | null = null;
+//       const step = (timestamp: number) => {
+//         if (!startTimestamp) startTimestamp = timestamp;
+//         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+//         setCount(Math.floor(progress * end));
+//         if (progress < 1) {
+//           window.requestAnimationFrame(step);
+//         }
+//       };
+//       window.requestAnimationFrame(step);
+//     }, [hasStarted, end, duration]);
+
+//     return <span ref={countRef}>{count}</span>;
+//   };
+
+//   return (
+//     <>
+//       <div className="relative w-full min-h-[70vh] md:min-h-[878px]">
+//         <div className="absolute w-full h-full flex flex-col justify-center items-center px-4 py-12 bg-black/60 text-white z-30">
+//           {/* Header Text */}
+//           <div className="text-center mb-12 max-w-2xl">
+//             <h2 className="text-3xl md:text-4xl font-bold mb-4">
+//               Our Growing Community
+//             </h2>
+//             <p className="text-gray-400 text-lg leading-relaxed">
+//               Empowering students with real-time tools and resources to navigate
+//               campus life more efficiently than ever before.
+//             </p>
+//           </div>
+
+//           {/* Stats Container */}
+//           <div className="flex w-full justify-center items-center flex-wrap gap-8 md:gap-16">
+//             {/* Stat Item 1 */}
+//             <div className="flex flex-col items-center group">
+//               <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+//                 <Counter end={1500} />+
+//               </p>
+//               <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+//                 Students
+//               </p>
+//               <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+//             </div>
+
+//             {/* Stat Item 2 */}
+//             <div className="flex flex-col items-center group">
+//               <p className="font-bold text-[clamp(40px,8vw,64px)] text-white leading-none mb-2">
+//                 <Counter end={150} />+
+//               </p>
+//               <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+//                 Events Hosted
+//               </p>
+//               <div className="h-1 w-0 group-hover:w-full bg-white transition-all duration-500 mt-2" />
+//             </div>
+
+//             {/* Stat Item 3 */}
+//             <div className="flex flex-col items-center group">
+//               <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+//                 <Counter end={20} />+
+//               </p>
+//               <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+//                 Projects Built
+//               </p>
+//               <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+//             </div>
+//           </div>
+//         </div>
+//         {/* Background Slides */}
+//         {images.map((img, index) => (
+//           <div
+//             key={index}
+//             className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ${
+//               index === currentIndex ? "opacity-100" : "opacity-0"
+//             }`}
+//             style={{ backgroundImage: `url(${img})` }}
+//           />
+//         ))}
+
+//         {/* Arrows */}
+//         <button
+//           onClick={prevSlide}
+//           className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/40 text-white px-6 py-4 rounded-full z-50 cursor-pointer"
+//         >
+//           ‹
+//         </button>
+
+//         <button
+//           onClick={nextSlide}
+//           className="absolute right-6 top-1/2 -translate-y-1/2 bg-black/40 text-white px-6 py-4 rounded-full z-50 cursor-pointer"
+//         >
+//           ›
+//         </button>
+//       </div>
+//     </>
+//   );
+// };
+
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+
+// --- 1. COUNTER COMPONENT (Defined outside to prevent reset on re-render) ---
+const Counter = ({
+  end,
+  duration = 2000,
+}: {
+  end: number;
+  duration?: number;
+}) => {
+  const [count, setCount] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const countRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Only trigger if it's in view AND hasn't started before
+        if (entry.isIntersecting && !hasStarted) {
+          setHasStarted(true);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (countRef.current) {
+      observer.observe(countRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasStarted]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    let startTimestamp: number | null = null;
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      setCount(Math.floor(progress * end));
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+    window.requestAnimationFrame(step);
+  }, [hasStarted, end, duration]);
+
+  return <span ref={countRef}>{count}</span>;
+};
+
+// --- 2. HERO COMPONENT ---
 interface HeroProps {
   showProfileBanner?: boolean;
 }
 
 export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
-  // const { isAuthenticated } = useAuth();
-
   const images = [
     "/heroImages/hero1.jpeg",
     "/heroImages/hero2.jpeg",
@@ -48,10 +280,10 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-    }, 5000); // change every 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [images.length]);
 
   const nextSlide = () => {
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
@@ -62,63 +294,84 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
   };
 
   return (
-    <>
-      <div className="relative w-full min-h-[70vh] md:min-h-[878px]">
-        <div className="absolute w-full h-full bg-black/50 z-30">
-          <div className="flex w-full justify-center items-center flex-wrap gap-4">
-            <div className="w-[30%] bg-[#006E3A] h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
-              <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-white">
-                1500+
-              </p>
-              <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-white text-center">
-                Students
-              </p>
-            </div>
-            <div className="w-[30%] bg-white h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
-              <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-[#006E3A]">
-                150+
-              </p>
-              <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-[#006E3A] text-center">
-                Events Hosted
-              </p>
-            </div>
-            <div className="w-[30%] bg-[#006E3A] h-[162px] flex justify-center items-center flex-col gap-2 shadow-[0px_4px_15px_5px_rgba(0,0,0,0.1)]">
-              <p className="font-semibold text-[clamp(30px,5vw,50.29px)] leading-none tracking-normal text-white">
-                20+
-              </p>
-              <p className="font-medium text-[clamp(18px,4vw,24.53px)] leading-none tracking-normal text-white text-center">
-                Projects Built
-              </p>
-            </div>
+    <div className="relative w-full min-h-[70vh] md:min-h-[878px] overflow-hidden">
+      {/* Content Overlay */}
+      <div className="absolute inset-0 flex flex-col justify-center items-center px-4 py-12 bg-black/60 text-white z-30">
+        <div className="text-center mb-12 max-w-2xl">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Our Growing Community
+          </h2>
+          <p className="text-gray-400 text-lg leading-relaxed">
+            Empowering students with real-time tools and resources to navigate
+            campus life more efficiently than ever before.
+          </p>
+        </div>
+
+        {/* Stats Container */}
+        <div className="flex w-full justify-center items-center flex-wrap gap-8 md:gap-16">
+          {/* Stat Item 1 */}
+          <div className="flex flex-col items-center group">
+            <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+              <Counter end={1500} />+
+            </p>
+            <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+              Students
+            </p>
+            <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+          </div>
+
+          {/* Stat Item 2 */}
+          <div className="flex flex-col items-center group">
+            <p className="font-bold text-[clamp(40px,8vw,64px)] text-white leading-none mb-2">
+              <Counter end={150} />+
+            </p>
+            <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+              Events Hosted
+            </p>
+            <div className="h-1 w-0 group-hover:w-full bg-white transition-all duration-500 mt-2" />
+          </div>
+
+          {/* Stat Item 3 */}
+          <div className="flex flex-col items-center group">
+            <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+              <Counter end={20} />+
+            </p>
+            <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+              Projects Built
+            </p>
+            <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
           </div>
         </div>
-        {/* Background Slides */}
-        {images.map((img, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ${
-              index === currentIndex ? "opacity-100" : "opacity-0"
-            }`}
-            style={{ backgroundImage: `url(${img})` }}
-          />
-        ))}
-
-        {/* Arrows */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-6 top-1/2 -translate-y-1/2 z-20 bg-black/40 text-white px-4 py-2 rounded-full"
-        >
-          ‹
-        </button>
-
-        <button
-          onClick={nextSlide}
-          className="absolute right-6 top-1/2 -translate-y-1/2 z-20 bg-black/40 text-white px-4 py-2 rounded-full"
-        >
-          ›
-        </button>
       </div>
-    </>
+
+      {/* Background Slides */}
+      {images.map((img, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
+            index === currentIndex ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ backgroundImage: `url(${img})` }}
+        />
+      ))}
+
+      {/* Navigation Controls */}
+      <button
+        onClick={prevSlide}
+        className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white px-6 py-4 rounded-full z-50 transition-colors cursor-pointer"
+        aria-label="Previous slide"
+      >
+        ‹
+      </button>
+
+      <button
+        onClick={nextSlide}
+        className="absolute right-6 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white px-6 py-4 rounded-full z-50 transition-colors cursor-pointer"
+        aria-label="Next slide"
+      >
+        ›
+      </button>
+    </div>
   );
 };
 
