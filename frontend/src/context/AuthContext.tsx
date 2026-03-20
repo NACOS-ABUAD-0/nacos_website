@@ -1,12 +1,6 @@
-// frontend/src/context/AuthContext.tsx
-
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { authAPI } from "../lib/api";
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-type UserRole = "user" | "admin";
 
 interface User {
   id: number;
@@ -15,9 +9,6 @@ interface User {
   matric_number: string;
   date_joined: string;
   is_email_verified: boolean;
-  profile_complete?: boolean;
-  is_staff?: boolean;
-  role: UserRole;        // ← RBAC role from the backend
 }
 
 interface AuthState {
@@ -32,16 +23,14 @@ interface AuthContextType extends AuthState {
   register: (
     email: string,
     fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string
+    matricNumber?: string,
+    password?: string,
+    password2?: string
   ) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
   verifyEmail: (uid: string, token: string) => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
-  /** Convenience helper — true if the current user holds admin privileges. */
-  isAdmin: boolean;
 }
 
 type AuthAction =
@@ -50,7 +39,7 @@ type AuthAction =
   | { type: "LOGOUT" }
   | { type: "UPDATE_USER"; payload: User };
 
-// ─── Reducer ───────────────────────────────────────────────────────────────────
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
@@ -65,17 +54,21 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
       };
     case "LOGOUT":
-      return { user: null, accessToken: null, isAuthenticated: false, isLoading: false };
+      return {
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        isLoading: false,
+      };
     case "UPDATE_USER":
-      return { ...state, user: action.payload };
+      return {
+        ...state,
+        user: action.payload,
+      };
     default:
       return state;
   }
 };
-
-// ─── Initial State ─────────────────────────────────────────────────────────────
-// isLoading: true prevents RequireAuth / RequireAdmin from redirecting
-// before the session check completes on page refresh.
 
 const initialState: AuthState = {
   user: null,
@@ -84,111 +77,120 @@ const initialState: AuthState = {
   isAuthenticated: false,
 };
 
-// ─── Context ───────────────────────────────────────────────────────────────────
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// ─── Error Handler ─────────────────────────────────────────────────────────────
-
-function handleApiError(err: any, fallback: string): void {
-  if (err && typeof err === "object") {
-    Object.entries(err).forEach(([field, messages]) => {
-      if (Array.isArray(messages)) {
-        messages.forEach((msg) => toast.error(`${field}: ${msg}`));
-      } else {
-        toast.error(String(messages));
-      }
-    });
-  } else {
-    toast.error(fallback);
-  }
-}
-
-// ─── Provider ──────────────────────────────────────────────────────────────────
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // ── Session restore on page refresh ────────────────────────────────────────
-  //
-  // Strategy: call getProfile() using the stored access token.
-  // The axios interceptor silently refreshes the access token if it's expired.
-  // If both tokens are gone/invalid, the catch fires and we dispatch LOGOUT.
-  //
   useEffect(() => {
     const initAuth = async () => {
-      const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken) {
-        dispatch({ type: "SET_LOADING", payload: false });
-        return;
-      }
+      const storedRefreshToken = localStorage.getItem("refreshToken");
+//       const storedAccessToken = localStorage.getItem("accessToken");
 
-      try {
-        const profileResponse = await authAPI.getProfile();
-        dispatch({
-          type: "LOGIN_SUCCESS",
-          payload: { user: profileResponse.data, accessToken },
-        });
-      } catch {
-        // Both tokens invalid — interceptor already cleared localStorage
-        dispatch({ type: "LOGOUT" });
+      if (storedRefreshToken) {
+        try {
+            // Get a fresh token access
+          const refreshResponse = await authAPI.refreshToken(storedRefreshToken);
+          const newAccessToken = refreshResponse.data.access;
+          const newRefreshToken = refreshResponse.data.refresh;
+          // Save access token
+          localStorage.setItem("accessToken", newAccessToken);
+          localStorage.setItem("refreshToken", newRefreshToken);
+          // Fetch user data using newAccessToken
+          const profileResponse = await authAPI.getProfile();
+          dispatch({
+            type: "LOGIN_SUCCESS",
+            payload: {
+              user: profileResponse.data,
+              accessToken: newAccessToken,
+            },
+          });
+        } catch {
+            localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+
+        }
       }
+      dispatch({ type: "SET_LOADING", payload: false });
     };
 
     initAuth();
   }, []);
 
-  // ── login ──────────────────────────────────────────────────────────────────
-
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string) => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const response = await authAPI.login(email, password);
-      localStorage.setItem("accessToken", response.data.access);
-      localStorage.setItem("refreshToken", response.data.refresh);
       dispatch({
         type: "LOGIN_SUCCESS",
-        payload: { user: response.data.user, accessToken: response.data.access },
+        payload: {
+          user: response.data.user,
+          accessToken: response.data.access,
+        },
       });
+
+      localStorage.setItem("accessToken", response.data.access);
+      localStorage.setItem("refreshToken", response.data.refresh);
       toast.success("Login successful!");
     } catch (err: any) {
-      handleApiError(err, "Login failed. Please try again.");
+      // Show per-field login errors
+      if (typeof err === "object") {
+        Object.entries(err).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            messages.forEach((msg) => toast.error(`${field}: ${msg}`));
+          } else {
+            toast.error(`${field}: ${messages}`);
+          }
+        });
+      } else {
+        toast.error("Login failed. Please try again.");
+      }
       throw err;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
   };
-
-  // ── register ───────────────────────────────────────────────────────────────
 
   const register = async (
     email: string,
     fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string
-  ): Promise<void> => {
+    matricNumber?: string,
+    password?: string,
+    password2?: string
+  ) => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const response = await authAPI.register(email, fullName, matricNumber, password, password2);
+      const response = await authAPI.register(email, fullName, matricNumber, password!, password2!);
       localStorage.setItem("accessToken", response.data.access);
       localStorage.setItem("refreshToken", response.data.refresh);
       dispatch({
         type: "LOGIN_SUCCESS",
-        payload: { user: response.data.user, accessToken: response.data.access },
+        payload: {
+          user: response.data.user,
+          accessToken: response.data.access,
+        },
       });
+
+
       toast.success("Registration successful!");
     } catch (err: any) {
-      handleApiError(err, "Registration failed. Please try again.");
+      // Show all validation errors
+      if (typeof err === "object") {
+        Object.entries(err).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            messages.forEach((msg) => toast.error(`${field}: ${msg}`));
+          } else {
+            toast.error(`${field}: ${messages}`);
+          }
+        });
+      } else {
+        toast.error("Registration failed. Please try again.");
+      }
       throw err;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
   };
 
-  // ── logout ─────────────────────────────────────────────────────────────────
-
-  const logout = (): void => {
+  const logout = () => {
     const refreshToken = localStorage.getItem("refreshToken");
     if (refreshToken) {
       authAPI.logout(refreshToken).catch(console.error);
@@ -199,20 +201,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast("Logged out.", { icon: "👋" });
   };
 
-  // ── updateProfile ──────────────────────────────────────────────────────────
+const updateProfile = async (data: Partial<User>) => {
+  dispatch({ type: "SET_LOADING", payload: true });
+  try {
+    const response = await authAPI.updateProfile(data);
 
-  const updateProfile = async (data: Partial<User>): Promise<void> => {
+    dispatch({ type: "UPDATE_USER", payload: response.data });
+
+    toast.success("Profile updated successfully!");
+  } catch (err: any) {
+    if (err.detail) {
+      // Show field-specific errors if provided
+      Object.entries(err).forEach(([field, messages]) => {
+        if (Array.isArray(messages)) {
+          messages.forEach((msg) => toast.error(`${field}: ${msg}`));
+        } else {
+          toast.error(`${field}: ${messages}`);
+        }
+      });
+    } else if (err.response?.status === 401) {
+      toast.error("Session expired. Please log in again.");
+      logout();
+    } else {
+      toast.error("Failed to update profile. Please try again.");
+    }
+    throw err;
+  } finally {
+    dispatch({ type: "SET_LOADING", payload: false });
+  }
+};
+
+
+  const verifyEmail = async (uid: string, token: string) => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const response = await authAPI.updateProfile(data);
-      dispatch({ type: "UPDATE_USER", payload: response.data });
-      toast.success("Profile updated successfully!");
+      const response = await authAPI.verifyEmail(uid, token);
+      dispatch({ type: "UPDATE_USER", payload: response.data.user });
+      toast.success("Email verified successfully!");
     } catch (err: any) {
-      if (err.response?.status === 401) {
-        toast.error("Session expired. Please log in again.");
-        logout();
+      if (err.error) {
+        toast.error(err.error);
       } else {
-        handleApiError(err, "Failed to update profile. Please try again.");
+        toast.error("Failed to verify email. Please try again.");
       }
       throw err;
     } finally {
@@ -220,63 +250,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ── verifyEmail ────────────────────────────────────────────────────────────
-
-  const verifyEmail = async (uid: string, token: string): Promise<void> => {
-    dispatch({ type: "SET_LOADING", payload: true });
-    try {
-      const response = await authAPI.verifyEmail(uid, token);
-      dispatch({ type: "UPDATE_USER", payload: response.data.user });
-      toast.success("Email verified successfully!");
-    } catch (err: any) {
-      toast.error(err?.error ?? "Failed to verify email. Please try again.");
-      throw err;
-    } finally {
-      dispatch({ type: "SET_LOADING", payload: false });
-    }
-  };
-
-  // ── resendVerificationEmail ────────────────────────────────────────────────
-
-  const resendVerificationEmail = async (): Promise<void> => {
+  const resendVerificationEmail = async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       await authAPI.resendVerification();
       toast.success("Verification email sent! Please check your inbox.");
     } catch (err: any) {
-      toast.error(err?.error ?? err?.message ?? "Failed to send verification email.");
+      if (err.error) {
+        toast.error(err.error);
+      } else if (err.message) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to send verification email. Please try again.");
+      }
       throw err;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
   };
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-
-  const isAdmin =
-    state.user?.role === "admin" || state.user?.is_staff === true;
-
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        login,
-        register,
-        logout,
-        updateProfile,
-        verifyEmail,
-        resendVerificationEmail,
-        isAdmin,
-      }}
-    >
+    <AuthContext.Provider value={{ ...state, login, register, logout, updateProfile, verifyEmail, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// ─── Hook ──────────────────────────────────────────────────────────────────────
-
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
