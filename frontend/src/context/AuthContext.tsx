@@ -82,20 +82,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem("refreshToken");
-      if (token) {
+      const storedRefreshToken = localStorage.getItem("refreshToken");
+//       const storedAccessToken = localStorage.getItem("accessToken");
+
+      if (storedRefreshToken) {
         try {
-          const response = await authAPI.refreshToken(token);
+            // Get a fresh token access
+          const refreshResponse = await authAPI.refreshToken(storedRefreshToken);
+          const newAccessToken = refreshResponse.data.access;
+          const newRefreshToken = refreshResponse.data.refresh;
+          // Save access token
+          localStorage.setItem("accessToken", newAccessToken);
+          localStorage.setItem("refreshToken", newRefreshToken);
+          // Fetch user data using newAccessToken
+          const profileResponse = await authAPI.getProfile();
           dispatch({
             type: "LOGIN_SUCCESS",
             payload: {
-              user: response.data.user,
-              accessToken: response.data.access,
+              user: profileResponse.data,
+              accessToken: newAccessToken,
             },
           });
-          localStorage.setItem("refreshToken", response.data.refresh);
         } catch {
+            localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
+
         }
       }
       dispatch({ type: "SET_LOADING", payload: false });
@@ -148,6 +159,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const response = await authAPI.register(email, fullName, matricNumber, password!, password2!);
+      localStorage.setItem("accessToken", response.data.access);
+      localStorage.setItem("refreshToken", response.data.refresh);
       dispatch({
         type: "LOGIN_SUCCESS",
         payload: {
@@ -182,6 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (refreshToken) {
       authAPI.logout(refreshToken).catch(console.error);
     }
+    localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     dispatch({ type: "LOGOUT" });
     toast("Logged out.", { icon: "👋" });

@@ -477,7 +477,7 @@ const Homepage: React.FC = () => {
           <Executives isHome />
           <Facilities />
           {/* Resources Section */}
-          {/* <Section
+          <Section
           title="Learning Resources"
           subtitle="Curated study materials and technical tutorials"
           ctaText="Browse resources"
@@ -531,7 +531,7 @@ const Homepage: React.FC = () => {
               ))}
             </div>
           )}
-        </Section> */}
+        </Section>
           <LearningResourceCta />
 
           <Testimonials />
