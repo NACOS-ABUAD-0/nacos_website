@@ -34,6 +34,42 @@
 //  */
 // type NavItem = { name: string; path: string; icon: React.ReactNode };
 
+// // frontend/src/components/Navbar.tsx
+// import React, { useState, useRef, useEffect } from 'react';
+// import { Link, useNavigate, useLocation } from 'react-router-dom';
+// import { useAuth } from '../context/AuthContext';
+// import {
+//   Home,
+//   Folder,
+//   Calendar,
+//   BookOpen,
+//   Image as ImageIcon,
+//   Users,
+//   Plus,
+//   Menu,
+//   X,
+//   ChevronDown,
+//   LogOut,
+//   User as UserIcon,
+//   Grid,
+// } from 'lucide-react';
+
+// /**
+//  * World-class Navbar for NACOS ABUAD
+//  *
+//  * Design decisions (short):
+//  * - Strict green/white palette with subtle gradients for CTA and logo container.
+//  * - Rounded-2xl cards, rounded-xl buttons, and gentle elevation (shadow-lg -> shadow-2xl on hover).
+//  * - Smooth transitions (200-300ms) and slight transforms for hover micro-interactions.
+//  * - Semantic HTML, accessible attributes for menus and buttons.
+//  * - Lightweight: no heavy animation libraries; purely Tailwind transitions for performance.
+//  */
+
+// /** Keep types flexible to match your existing AuthContext typing.
+//  * Replace `any` with your concrete `User` type if available.
+//  */
+// type NavItem = { name: string; path: string; icon: React.ReactNode };
+
 // export const Navbar: React.FC = () => {
 //   const { user, logout, isAuthenticated } = useAuth() as {
 //     user: any;
