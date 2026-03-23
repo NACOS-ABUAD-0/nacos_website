@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ExecCard from "./ExecCard";
 import SectionHeader from "./SectionHeader";
 import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
+import { Footer } from "./Footer";
 import PageHeader from "./PageHeader";
 
 type Executive = {
@@ -19,6 +21,15 @@ interface ExecutivesProps {
 }
 
 export default function Executives({ isHome }: ExecutivesProps) {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [location]);
+
   const executives: Executive[] = [
     {
       id: 1,
@@ -128,7 +139,10 @@ export default function Executives({ isHome }: ExecutivesProps) {
 
   // 1. Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 8;
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   let displayData: Executive[] = [];
 
@@ -185,70 +199,81 @@ interests of all engineering students at ABUAD and creating
 opportunities for academic and professional growth."
         />
       )}
-      <section className="flex gap-2 lg:gap-10 w-full flex-wrap justify-center mt-10 p-5">
+      <section
+        className={`${isHome ? "grid grid-cols-3 gap-2 lg:gap-10 justify-items-center mt-10 p-10 max-w-[1440px] mx-auto" : "grid grid-cols-4 gap-2 lg:gap-10 justify-items-center mt-10 p-10 max-w-[1440px] mx-auto"}`}
+        id="top"
+      >
         {displayData.map((exec) => (
           <ExecCard key={exec.id} {...exec} />
         ))}
-
-        <div className="w-full flex flex-col justify-center items-center gap-4">
-          {/* Your original text stays here */}
-          <h1 className="font-bold text-2xl md:text-3xl lg:text-[32px] leading-none tracking-normal text-[#006E3A]">
-            Get to know our full team
-          </h1>
-          <p className="font-semibold text-lg lg:text-[20px] leading-none tracking-[-0.03em] text-center">
-            Discover more about our executive team
-          </p>
-
-          {!isHome ? (
-            <div className="flex items-center gap-3 mt-4">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-gray-100 rounded-lg font-bold border border-gray-300 disabled:opacity-30"
-              >
-                Previous
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (pageNum) => (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`w-[59px] h-[59px] rounded-full font-bold border transition-all ${
-                      currentPage === pageNum
-                        ? "bg-[#006E3A] text-white border-[#006E3A]"
-                        : "bg-white text-gray-700 border-gray-300 hover:border-[#006E3A]"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                ),
-              )}
-
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-[#006E3A] text-white rounded-lg font-bold disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          ) : (
-            <div>
-              {/* Your original text stays here */}
-              <h1 className="font-bold text-2xl md:text-3xl lg:text-[32px] leading-none tracking-normal text-[#006E3A]">
-                Get to know our full team
-              </h1>
-              <p className="font-semibold text-lg lg:text-[20px] leading-none tracking-[-0.03em] text-center">
-                Discover more about our executive team
-              </p>
-              <Link to="executives">View all Excecutives</Link>
-            </div>
-          )}
-        </div>
       </section>
+      <div className="w-full flex flex-col justify-center items-center gap-4">
+        {/* <h1 className="font-bold text-2xl md:text-3xl lg:text-[32px] leading-none tracking-normal text-[#006E3A]">
+          Get to know our full team
+        </h1>
+        <p className="font-semibold text-lg lg:text-[20px] leading-none tracking-[-0.03em] text-center">
+          Discover more about our executive team
+        </p> */}
+
+        {!isHome ? (
+          <div className="flex items-center gap-3 mt-4 mb-10">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-gray-100 rounded-lg font-bold border border-gray-300 disabled:opacity-30"
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+              (pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => {
+                    setCurrentPage(pageNum);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`w-[59px] h-[59px] rounded-full font-bold border transition-all ${
+                    currentPage === pageNum
+                      ? "bg-[#006E3A] text-white border-[#006E3A]"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-[#006E3A]"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ),
+            )}
+
+            <button
+              onClick={() => {
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+              }}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-[#006E3A] text-white rounded-lg font-bold disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        ) : (
+          <div className="w-full flex items-center flex-col gap-2">
+            {/* Your original text stays here */}
+            <h1 className="font-bold text-2xl md:text-3xl lg:text-[32px] leading-none tracking-normal text-[#006E3A]">
+              Get to know our full team
+            </h1>
+            <p className="font-semibold text-lg lg:text-[20px] leading-none tracking-[-0.03em] text-center">
+              Discover more about our executive team
+            </p>
+            <Link
+              to="/executives#top"
+              className="px-4 py-2 bg-[#006E3A] text-white rounded-lg mt-4 text-xl"
+            >
+              View all Excecutives
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {!isHome ? <Footer /> : null}
     </>
   );
 }
