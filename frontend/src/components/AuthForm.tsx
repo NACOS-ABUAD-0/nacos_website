@@ -6,9 +6,11 @@ interface AuthFormProps {
   type: "login" | "register";
   onSubmit: (data: any) => Promise<void>;
   isLoading: boolean;
+  onNotRegistered?: () => void;
+  onRegistered?: () => void;
 }
 
-export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading }) => {
+export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, onNotRegistered, onRegistered }) => {
   const [formData, setFormData] = useState({
     email: "",
     fullName: "",
@@ -93,16 +95,20 @@ export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading })
             {type === "login" ? (
               <>
                 New here?{" "}
-                <Link to="/register" className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
+                <button
+                onClick={onNotRegistered}
+                 className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
                   Create account
-                </Link>
+                </button>
               </>
             ) : (
               <>
                 Already have an account?{" "}
-                <Link to="/login" className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
+                <button
+                onClick={onRegistered} 
+                className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200">
                   Sign in
-                </Link>
+                </button>
               </>
             )}
           </p>
