@@ -86,11 +86,10 @@ export const authAPI = {
       .catch(handleApiError),
 
   login: (email: string, password: string) =>
-    axios
+    api
       .post(
-        `${API_URL}/api/auth/login/`, // ✅ Keep full URL for direct axios call
-        { email, password },
-        { withCredentials: false }
+        `/auth/login/`, // ✅ Keep full URL for direct axios call
+        { email, password }
       )
       .catch(handleApiError),
 
@@ -126,7 +125,7 @@ export const projectsAPI = {
 
 // ================== SKILLS ==================
 export const skillsAPI = {
-  getSkills: () => api.get("/skills/"), // ✅ Remove /api prefix
+  getSkills: () => api.get("/skilltags/"), // ✅ Remove /api prefix
 };
 
 // ================== RESOURCES ==================

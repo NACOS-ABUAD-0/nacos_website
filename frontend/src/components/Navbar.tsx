@@ -34,6 +34,42 @@
 //  */
 // type NavItem = { name: string; path: string; icon: React.ReactNode };
 
+// // frontend/src/components/Navbar.tsx
+// import React, { useState, useRef, useEffect } from 'react';
+// import { Link, useNavigate, useLocation } from 'react-router-dom';
+// import { useAuth } from '../context/AuthContext';
+// import {
+//   Home,
+//   Folder,
+//   Calendar,
+//   BookOpen,
+//   Image as ImageIcon,
+//   Users,
+//   Plus,
+//   Menu,
+//   X,
+//   ChevronDown,
+//   LogOut,
+//   User as UserIcon,
+//   Grid,
+// } from 'lucide-react';
+
+// /**
+//  * World-class Navbar for NACOS ABUAD
+//  *
+//  * Design decisions (short):
+//  * - Strict green/white palette with subtle gradients for CTA and logo container.
+//  * - Rounded-2xl cards, rounded-xl buttons, and gentle elevation (shadow-lg -> shadow-2xl on hover).
+//  * - Smooth transitions (200-300ms) and slight transforms for hover micro-interactions.
+//  * - Semantic HTML, accessible attributes for menus and buttons.
+//  * - Lightweight: no heavy animation libraries; purely Tailwind transitions for performance.
+//  */
+
+// /** Keep types flexible to match your existing AuthContext typing.
+//  * Replace `any` with your concrete `User` type if available.
+//  */
+// type NavItem = { name: string; path: string; icon: React.ReactNode };
+
 // export const Navbar: React.FC = () => {
 //   const { user, logout, isAuthenticated } = useAuth() as {
 //     user: any;
@@ -334,89 +370,243 @@
 
 // export default Navbar;
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import NacosLogo from "/images/nacos_logo.png"; 
+import NacosLogo from "/images/nacos_logo.png";
 import AbuadLogo from "../../public/images/abuadLogo.png";
+import { NavLink } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  const navLinks = [
-    { name: "Home", path: "/" },
-    { name: "Projects", path: "/" },
-    { name: "Events", path: "/" },
-    { name: "Resource", path: "/" },
-    { name: "Gallery", path: "/" },
-    { name: "Executives", path: "/" },
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    setIsUserMenuOpen(false);
+    setIsMobileOpen(false);
+  };
+
+  // Authenticated users see Dashboard instead of Home
+  const authNavItems: NavItem[] = [
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Projects", path: "/projects" },
+    { name: "Events", path: "/events" },
+    { name: "Resources", path: "/resources" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "Executives", path: "/executives" },
   ];
 
+  const publicNavItems: NavItem[] = [
+    { name: "Home", path: "/" },
+    { name: "Projects", path: "/projects" },
+    { name: "Events", path: "/events" },
+    { name: "Resources", path: "/resources" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "Executives", path: "/executives" },
+  ];
+
+  const navItems = isAuthenticated ? authNavItems : publicNavItems;
+
+  const isActivePath = (path: string) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
+
+  // Derive display values safely
+  const firstName = user?.full_name?.split?.(" ")[0] ?? "User";
+  const initial = user?.full_name?.charAt?.(0)?.toUpperCase?.() ?? "U";
+
   return (
-    <nav className="fixed top-0 z-50 w-full backdrop-blur-xl border-b bg-white/10 border-white/20">
+    // <nav className="sticky top-0 z-50 w-full backdrop-blur-xl border-b bg-white/10 border-white/20">
+    //   <div className="flex justify-between items-center px-6 md:px-12 py-4">
+    //     {/* Logo Section */}
+    //     <div className="flex gap-2 items-center">
+    //       <img src={AbuadLogo} alt="Abuad Logo" className="w-6 md:w-8"/>
+    //       <img src={NacosLogo} alt="Nacos Logo" className="w-8 md:w-10" />
+    //       <h1 className="font-bold text-lg lg:text-2xl">NACOS ABUAD</h1>
+    //     </div>
+
+    //     {/* Desktop Links (Hidden on mobile) */}
+    //     <div className="hidden lg:flex items-center gap-8">
+    //       <div className="flex items-center gap-6">
+    //         {navLinks.map((link) => (
+    //           <Link
+    //             key={link.name}
+    //             to={link.path}
+    //             className="text-black hover:text-green-700 transition-colors text-lg font-medium"
+    //           >
+    //             {link.name}
+    //           </Link>
+    //         ))}
+    //       </div>
+    //       <Link
+    //         to="/"
+    //         className="px-8 py-2.5 bg-[#006E3A] hover:bg-[#005a30] transition-all rounded-lg text-white font-semibold text-lg"
+    //       >
+    //         Login
+    //       </Link>
+    //     </div>
+
+    //     {/* Mobile Menu Button (Hidden on desktop) */}
+    //     <button
+    //       className="lg:hidden text-white"
+    //       onClick={() => setIsOpen(!isOpen)}
+    //     >
+    //       {isOpen ? <X size={28} /> : <Menu size={28} />}
+    //     </button>
+    //   </div>
+
+    //   {/* Mobile Sidebar/Dropdown */}
+    //   <div
+    //     className={`
+    //     fixed inset-0 top-[72px] bg-black/90 backdrop-blur-2xl transition-transform duration-300 lg:hidden
+    //     ${isOpen ? "translate-x-0" : "translate-x-full"}
+    //   `}
+    //   >
+    //     <div className="flex flex-col items-center gap-4 pt-2">
+    //       {navLinks.map((link) => (
+    //         <Link
+    //           key={link.name}
+    //           to={link.path}
+    //           onClick={() => setIsOpen(false)}
+    //           className="text-black text-lg font-medium"
+    //         >
+    //           {link.name}
+    //         </Link>
+    //       ))}
+    //       <Link
+    //         to="/"
+    //         onClick={() => setIsOpen(false)}
+    //         className="w-[80%] text-center py-4 bg-[#006E3A] rounded-lg text-white font-bold text-xl"
+    //       >
+    //         Login
+    //       </Link>
+    //     </div>
+    //   </div>
+    // </nav>
+
+    <nav
+      className="sticky top-0 z-[60] w-full transition-all duration-300 bg-white/10 backdrop-blur-lg"
+    >
       <div className="flex justify-between items-center px-6 md:px-12 py-4">
         {/* Logo Section */}
-        <div className="flex gap-2 items-center">
-          <img src={AbuadLogo} alt="Abuad Logo" className="w-6 md:w-8"/>
-          <img src={NacosLogo} alt="Nacos Logo" className="w-8 md:w-10" />
-          <h1 className="font-bold text-lg lg:text-2xl">NACOS ABUAD</h1>
+        <div className="flex gap-3 items-center">
+          <img src={AbuadLogo} alt="Abuad Logo" className="w-7 md:w-9" />
+          <img src={NacosLogo} alt="Nacos Logo" className="w-9 md:w-11" />
+          <h1 className="font-bold text-lg lg:text-2xl text-gray-900">
+            NACOS ABUAD
+          </h1>
         </div>
 
-        {/* Desktop Links (Hidden on mobile) */}
+        {/* Desktop Links */}
         <div className="hidden lg:flex items-center gap-8">
           <div className="flex items-center gap-6">
             {navLinks.map((link) => (
-              <Link
+              <NavLink
                 key={link.name}
                 to={link.path}
-                className="text-black hover:text-green-700 transition-colors text-lg font-medium"
+                className={({ isActive }) =>
+                  `text-lg font-medium transition-colors ${
+                    isActive
+                      ? "text-[#006E3A]"
+                      : "text-gray-800 hover:text-[#006E3A]"
+                  }`
+                }
               >
                 {link.name}
-              </Link>
+              </NavLink>
             ))}
           </div>
-          <Link
+
+          <NavLink
             to="/"
-            className="px-8 py-2.5 bg-[#006E3A] hover:bg-[#005a30] transition-all rounded-lg text-white font-semibold text-lg"
+            className="px-8 py-2.5 bg-[#006E3A] hover:bg-[#005a30] rounded-lg text-white font-semibold text-lg shadow-md hover:shadow-lg transition-all"
           >
             Login
-          </Link>
+          </NavLink>
         </div>
 
-        {/* Mobile Menu Button (Hidden on desktop) */}
+        {/* Mobile Menu Button */}
         <button
-          className="lg:hidden text-white"
+          aria-label="Toggle menu"
+          aria-expanded={isOpen}
+          aria-controls="mobile-menu"
+          className="lg:hidden text-gray-900"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? <X size={28} /> : <Menu size={28} />}
+          {isMobileOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
-      {/* Mobile Sidebar/Dropdown */}
+      {/* Mobile Menu */}
       <div
+        id="mobile-menu"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setIsOpen(false);
+        }}
         className={`
-        fixed inset-0 top-[72px] bg-black/90 backdrop-blur-2xl transition-transform duration-300 lg:hidden
-        ${isOpen ? "translate-x-0" : "translate-x-full"}
-      `}
+    absolute right-4 top-14 w-[50%]
+    transform transition-all duration-300 ease-in-out
+    lg:hidden py-5 bg-white/95 backdrop-blur-xl rounded-lg shadow-2xs
+    ${
+      isOpen
+        ? "opacity-100 translate-y-0 visible"
+        : "opacity-0 -translate-y-4 invisible pointer-events-none"
+    }
+  `}
       >
-        <div className="flex flex-col items-center gap-4 pt-2">
+        <div className="flex flex-col items-center gap-3">
           {navLinks.map((link) => (
-            <Link
+            <NavLink
               key={link.name}
               to={link.path}
               onClick={() => setIsOpen(false)}
-              className="text-black text-lg font-medium"
+              className={({ isActive }) =>
+                `text-base font-medium ${
+                  isActive
+                    ? "text-black"
+                    : "text-white hover:text-[#00a65a]"
+                }`
+              }
             >
               {link.name}
-            </Link>
+            </NavLink>
           ))}
-          <Link
+
+          <NavLink
             to="/"
             onClick={() => setIsOpen(false)}
-            className="w-[80%] text-center py-4 bg-[#006E3A] rounded-lg text-white font-bold text-xl"
+            className="px-10 text-center py-2 bg-[#006E3A] rounded-lg text-white font-bold text-lg shadow-md"
           >
             Login
-          </Link>
+          </NavLink>
         </div>
       </div>
     </nav>

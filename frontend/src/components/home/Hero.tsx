@@ -191,6 +191,7 @@
 
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // --- 1. COUNTER COMPONENT (Defined outside to prevent reset on re-render) ---
 const Counter = ({
@@ -297,13 +298,17 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
     <div className="relative w-full min-h-[70vh] md:min-h-[878px] overflow-hidden">
       {/* Content Overlay */}
       <div className="absolute inset-0 flex flex-col justify-center items-center px-4 py-12 bg-black/60 text-white z-30">
-        <div className="text-center mb-12 max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Our Growing Community
+        <div className="text-center mb-12 max-w-3xl px-4">
+          <h2 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">
+            Pioneering the Future of <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#006E3A] to-green-400">
+              Digital Innovation
+            </span>
           </h2>
-          <p className="text-gray-400 text-lg leading-relaxed">
-            Empowering students with real-time tools and resources to navigate
-            campus life more efficiently than ever before.
+          <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
+            The official hub for computing excellence at ABUAD. We empower
+            students to bridge the gap between classroom theory and
+            industry-leading technology.
           </p>
         </div>
 
@@ -356,20 +361,30 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
       ))}
 
       {/* Navigation Controls */}
+      {/* Previous Button */}
       <button
         onClick={prevSlide}
-        className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white px-6 py-4 rounded-full z-50 transition-colors cursor-pointer"
+        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 
+             group flex items-center justify-center w-12 h-12 md:w-14 md:h-14 
+             bg-white/10 hover:bg-white/20 border border-white/20 
+             backdrop-blur-md rounded-full text-white transition-all 
+             duration-300 hover:scale-110 active:scale-95 cursor-pointer"
         aria-label="Previous slide"
       >
-        ‹
+        <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
       </button>
 
+      {/* Next Button */}
       <button
         onClick={nextSlide}
-        className="absolute right-6 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white px-6 py-4 rounded-full z-50 transition-colors cursor-pointer"
+        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 
+             group flex items-center justify-center w-12 h-12 md:w-14 md:h-14 
+             bg-white/10 hover:bg-white/20 border border-white/20 
+             backdrop-blur-md rounded-full text-white transition-all 
+             duration-300 hover:scale-110 active:scale-95 cursor-pointer"
         aria-label="Next slide"
       >
-        ›
+        <ChevronRight className="w-6 h-6 md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
       </button>
     </div>
   );
