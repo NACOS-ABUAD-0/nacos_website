@@ -350,14 +350,62 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: "Home", path: "/" },
-    { name: "Projects", path: "/" },
-    { name: "Events", path: "/" },
-    { name: "Resource", path: "/" },
-    { name: "Gallery", path: "/" },
-    { name: "Executives", path: "/" },
+  const navigate = useNavigate();
+  const location = useLocation();
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    setIsUserMenuOpen(false);
+    setIsMobileOpen(false);
+  };
+
+  // Authenticated users see Dashboard instead of Home
+  const authNavItems: NavItem[] = [
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Projects", path: "/projects" },
+    { name: "Events", path: "/events" },
+    { name: "Resources", path: "/resources" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "Executives", path: "/executives" },
   ];
+
+  const publicNavItems: NavItem[] = [
+    { name: "Home", path: "/" },
+    { name: "Projects", path: "/projects" },
+    { name: "Events", path: "/events" },
+    { name: "Resources", path: "/resources" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "Executives", path: "/executives" },
+  ];
+
+  const navItems = isAuthenticated ? authNavItems : publicNavItems;
+
+  const isActivePath = (path: string) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
+
+  // Derive display values safely
+  const firstName = user?.full_name?.split?.(" ")[0] ?? "User";
+  const initial = user?.full_name?.charAt?.(0)?.toUpperCase?.() ?? "U";
 
   return (
     // <nav className="sticky top-0 z-50 w-full backdrop-blur-xl border-b bg-white/10 border-white/20">
@@ -477,7 +525,7 @@ const Navbar = () => {
           className="lg:hidden text-gray-900"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? <X size={28} /> : <Menu size={28} />}
+          {isMobileOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
