@@ -200,7 +200,7 @@ opportunities for academic and professional growth."
         />
       )}
       <section
-        className={`${isHome ? "grid grid-cols-3 gap-2 lg:gap-10 justify-items-center mt-10 p-10 max-w-[1440px] mx-auto" : "grid grid-cols-4 gap-2 lg:gap-10 justify-items-center mt-10 p-10 max-w-[1440px] mx-auto"}`}
+        className={`${isHome ? "grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-10 justify-items-center mt-10 p-3 lg:p-10 max-w-360 mx-auto" : "grid grid-cols-1 lg:grid-cols-4 gap-2 lg:gap-10 justify-items-center mt-10 p-3 lg:p-10 max-w-360 mx-auto"}`}
         id="top"
       >
         {displayData.map((exec) => (
@@ -255,7 +255,7 @@ opportunities for academic and professional growth."
             </button>
           </div>
         ) : (
-          <div className="w-full flex items-center flex-col gap-2">
+          <div className="w-full flex items-center flex-col gap-2 p-3">
             {/* Your original text stays here */}
             <h1 className="font-bold text-2xl md:text-3xl lg:text-[32px] leading-none tracking-normal text-[#006E3A]">
               Get to know our full team
@@ -265,7 +265,7 @@ opportunities for academic and professional growth."
             </p>
             <Link
               to="/executives#top"
-              className="px-4 py-2 bg-[#006E3A] text-white rounded-lg mt-4 text-xl"
+              className="px-6 py-3 bg-[#006E3A] text-white rounded-lg mt-2 text-xl"
             >
               View all Excecutives
             </Link>
