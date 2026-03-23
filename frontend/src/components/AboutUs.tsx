@@ -5,7 +5,7 @@ export default function About() {
     <section className="mt-44 lg:mt-72 px-6 md:px-12 lg:px-24 mb-20">
       {/* Header Section */}
       <div className="w-full max-w-[570px] min-h-[145px] flex flex-col gap-3 items-center lg:items-start text-center lg:text-left mx-auto lg:mx-0">
-        <h2 className="font-bold text-[20px] md:text-[25px] leading-none tracking-normal text-[#006E3A]">
+        <h2 className="font-bold text-[20px] md:text-[25px] lg:text-4xl leading-none tracking-normal text-[#006E3A]">
           ABOUT US
         </h2>
         <p className="font-bold text-2xl md:text-3xl lg:text-[32px] leading-tight md:leading-none tracking-normal">
