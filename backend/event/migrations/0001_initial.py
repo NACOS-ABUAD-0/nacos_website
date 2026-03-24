@@ -12,21 +12,22 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='GalleryImage',
+            name='Event',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('image', models.ImageField(upload_to='gallery/')),
-                ('caption', models.CharField(blank=True, max_length=255)),
-                ('alt_text', models.CharField(blank=True, max_length=255)),
-                ('display_order', models.PositiveIntegerField(default=0)),
+                ('name', models.CharField(max_length=255)),
+                ('start_time', models.DateTimeField()),
+                ('end_time', models.DateTimeField(blank=True, null=True)),
+                ('location', models.CharField(max_length=500)),
+                ('description', models.TextField(blank=True)),
+                ('registration_url', models.URLField(blank=True)),
+                ('contact_email', models.EmailField(blank=True, max_length=254)),
                 ('is_published', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Gallery image',
-                'verbose_name_plural': 'Gallery images',
-                'ordering': ['display_order', '-created_at'],
+                'ordering': ['start_time'],
             },
         ),
     ]
