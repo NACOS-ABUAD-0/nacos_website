@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import Navbar from '../components/Navbar.jsx'
+import { Footer } from '../../components/Footer.tsx'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Line, Area, AreaChart, CartesianGrid
@@ -411,7 +412,9 @@ const Home = () => {
 
         </div>
       </main>
+      <Footer />
     </div>
+    
   )
 }
 
