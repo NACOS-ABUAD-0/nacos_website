@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { LoginPage } from "./pages/login";
 import { RegisterPage } from "./pages/register";
 import { DashboardPage } from "./pages/dashboard";
@@ -142,16 +143,18 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <div className="App">
-            <AppRoutes />
-            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-          </div>
-        </Router>
-      </QueryClientProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <Router>
+            <div className="App">
+              <AppRoutes />
+              <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+            </div>
+          </Router>
+        </QueryClientProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

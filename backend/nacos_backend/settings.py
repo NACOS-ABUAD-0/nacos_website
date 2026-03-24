@@ -2,17 +2,28 @@
 
 from datetime import timedelta
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m'
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m",
+)
 
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", "on")
 
+# Render provides RENDER_EXTERNAL_HOSTNAME, e.g. "your-service.onrender.com"
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 ALLOWED_HOSTS = [
-    'nacos-website-9g4v.onrender.com',
-    'localhost',
-    '127.0.0.1',
+    h
+    for h in [
+        RENDER_EXTERNAL_HOSTNAME,
+        "nacos-website-9g4v.onrender.com",
+        "localhost",
+        "127.0.0.1",
+    ]
+    if h
 ]
 
 INSTALLED_APPS = [
@@ -107,19 +118,24 @@ SIMPLE_JWT = {
 }
 
 # 🔥 CRITICAL: CORS must allow credentials for cookies (even though you're using JWT)
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://nacos-website-9g4v.onrender.com",
-]
+def _split_env_list(name, default_list):
+    raw = os.getenv(name)
+    if not raw:
+        return default_list
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+CORS_ALLOWED_ORIGINS = _split_env_list(
+    "CORS_ALLOWED_ORIGINS",
+    ["http://localhost:5173", "http://127.0.0.1:5173"],
+)
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings (for any cookie-based operations)
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://nacos-website-9g4v.onrender.com",
-]
+CSRF_TRUSTED_ORIGINS = _split_env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    ["http://localhost:5173", "http://127.0.0.1:5173"],
+)
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -137,12 +153,13 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # Change to SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = ''  # Set in environment variable
-EMAIL_HOST_PASSWORD = ''  # Set in environment variable
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # Set in environment variable
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment variable
 DEFAULT_FROM_EMAIL = 'nacos@abuad.edu.ng'  # Change to actual email
 
 # Frontend URL for email verification links
-FRONTEND_URL = 'http://localhost:5173'
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # For development, use console backend instead:
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

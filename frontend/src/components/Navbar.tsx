@@ -19,7 +19,8 @@ const navItems: NavItem[] = [
 ];
 
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
@@ -48,7 +49,7 @@ const Navbar = () => {
         <div className="flex gap-3 items-center">
           <img src={AbuadLogo} alt="Abuad Logo" className="w-7 md:w-9" />
           <img src={NacosLogo} alt="Nacos Logo" className="w-9 md:w-11" />
-          <h1 className="font-bold text-lg lg:text-2xl text-gray-900">
+          <h1 className={`font-bold text-lg lg:text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
             NACOS ABUAD
           </h1>
         </div>
@@ -56,19 +57,20 @@ const Navbar = () => {
         {/* Desktop Nav */}
         <div className="hidden lg:flex items-center gap-8">
           <div className="flex items-center gap-6">
+            {navItems.map((item) => (
             {navItems.map((link) => (
               <NavLink
-                key={link.name}
-                to={link.path}
+                key={item.name}
+                to={item.path}
                 className={({ isActive }) =>
                   `text-lg font-medium transition-colors ${
                     isActive
                       ? "text-[#006E3A]"
-                      : "text-gray-800 hover:text-[#006E3A]"
+                      : `${isDark ? 'text-gray-300 hover:text-[#006E3A]' : 'text-gray-800 hover:text-[#006E3A]'}`
                   }`
                 }
               >
-                {link.name}
+                {item.name}
               </NavLink>
             ))}
           </div>
@@ -111,8 +113,9 @@ const Navbar = () => {
                     : "text-gray-800 hover:text-[#006E3A]"
                 }`
               }
+
             >
-              {link.name}
+              {item.name}
             </NavLink>
           ))}
 

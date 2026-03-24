@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import Resource, ResourceCategory, ResourceTag
+from .models import Resource, ResourceCategory, ResourceTag, ResourceDownload
 from .serializers import (
     ResourceSerializer, ResourceDetailSerializer,
     ResourceCategorySerializer, ResourceTagSerializer
