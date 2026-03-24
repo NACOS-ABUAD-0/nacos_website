@@ -370,15 +370,21 @@
 
 // export default Navbar;
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu, X } from "lucide-react";
 import NacosLogo from "/images/nacos_logo.png";
 import AbuadLogo from "../../public/images/abuadLogo.png";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+
+type NavItem = { name: string; path: string };
 
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -389,6 +395,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const { user, logout, isAuthenticated } = useAuth();
 
   // Close user dropdown when clicking outside
   useEffect(() => {
@@ -513,14 +520,14 @@ const Navbar = () => {
     // </nav>
 
     <nav
-      className="sticky top-0 z-[60] w-full transition-all duration-300 bg-white/10 backdrop-blur-lg"
+      className={`sticky top-0 z-[60] w-full transition-all duration-300 ${isDark ? 'bg-black/10 backdrop-blur-lg' : 'bg-white/10 backdrop-blur-lg'}`}
     >
       <div className="flex justify-between items-center px-6 md:px-12 py-4">
         {/* Logo Section */}
         <div className="flex gap-3 items-center">
           <img src={AbuadLogo} alt="Abuad Logo" className="w-7 md:w-9" />
           <img src={NacosLogo} alt="Nacos Logo" className="w-9 md:w-11" />
-          <h1 className="font-bold text-lg lg:text-2xl text-gray-900">
+          <h1 className={`font-bold text-lg lg:text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
             NACOS ABUAD
           </h1>
         </div>
@@ -528,25 +535,25 @@ const Navbar = () => {
         {/* Desktop Links */}
         <div className="hidden lg:flex items-center gap-8">
           <div className="flex items-center gap-6">
-            {navLinks.map((link) => (
+            {navItems.map((item) => (
               <NavLink
-                key={link.name}
-                to={link.path}
+                key={item.name}
+                to={item.path}
                 className={({ isActive }) =>
                   `text-lg font-medium transition-colors ${
                     isActive
                       ? "text-[#006E3A]"
-                      : "text-gray-800 hover:text-[#006E3A]"
+                      : `${isDark ? 'text-gray-300 hover:text-[#006E3A]' : 'text-gray-800 hover:text-[#006E3A]'}`
                   }`
                 }
               >
-                {link.name}
+                {item.name}
               </NavLink>
             ))}
           </div>
 
           <NavLink
-            to="/"
+            to="/login"
             className="px-8 py-2.5 bg-[#006E3A] hover:bg-[#005a30] rounded-lg text-white font-semibold text-lg shadow-md hover:shadow-lg transition-all"
           >
             Login
@@ -556,10 +563,10 @@ const Navbar = () => {
         {/* Mobile Menu Button */}
         <button
           aria-label="Toggle menu"
-          aria-expanded={isOpen}
+          aria-expanded={isMobileOpen}
           aria-controls="mobile-menu"
-          className="lg:hidden text-gray-900"
-          onClick={() => setIsOpen(!isOpen)}
+          className={`lg:hidden ${isDark ? 'text-white' : 'text-gray-900'}`}
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
         >
           {isMobileOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
@@ -569,40 +576,41 @@ const Navbar = () => {
       <div
         id="mobile-menu"
         onClick={(e) => {
-          if (e.target === e.currentTarget) setIsOpen(false);
+          if (e.target === e.currentTarget) setIsMobileOpen(false);
         }}
         className={`
     absolute right-4 top-14 w-[50%]
     transform transition-all duration-300 ease-in-out
-    lg:hidden py-5 bg-white/95 backdrop-blur-xl rounded-lg shadow-2xs
+    lg:hidden py-5 ${isDark ? 'bg-black/95 backdrop-blur-xl' : 'bg-white/95 backdrop-blur-xl'} rounded-lg shadow-2xs
     ${
-      isOpen
+      isMobileOpen
         ? "opacity-100 translate-y-0 visible"
         : "opacity-0 -translate-y-4 invisible pointer-events-none"
     }
   `}
       >
         <div className="flex flex-col items-center gap-3">
-          {navLinks.map((link) => (
+          {navItems.map((item) => (
             <NavLink
-              key={link.name}
-              to={link.path}
-              onClick={() => setIsOpen(false)}
+              key={item.name}
+              to={item.path}
+              onClick={() => setIsMobileOpen(false)}
               className={({ isActive }) =>
                 `text-base font-medium ${
                   isActive
                     ? "text-black"
-                    : "text-white hover:text-[#00a65a]"
+                    : `${isDark ? 'text-gray-300 hover:text-[#00a65a]' : 'text-gray-800 hover:text-[#00a65a]'}`
                 }`
               }
+
             >
-              {link.name}
+              {item.name}
             </NavLink>
           ))}
 
           <NavLink
-            to="/"
-            onClick={() => setIsOpen(false)}
+            to="/login"
+            onClick={() => setIsMobileOpen(false)}
             className="px-10 text-center py-2 bg-[#006E3A] rounded-lg text-white font-bold text-lg shadow-md"
           >
             Login
