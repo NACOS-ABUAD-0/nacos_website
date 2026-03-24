@@ -30,7 +30,6 @@ const Navbar = () => {
       <ul className="hidden md:flex items-center gap-6 lg:gap-8">
         {[
           { label: 'Home',      to: '/admin' },
-          { label: 'CRUD',      to: '/admin/crud' },
           { label: 'Events',    to: '/admin/events' },
           { label: 'Metrics',   to: '/admin/metrics' },
           { label: 'Approvals', to: '/admin/approvals' },
