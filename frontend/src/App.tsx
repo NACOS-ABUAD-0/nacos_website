@@ -16,12 +16,15 @@ import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
 import Executives from "./components/Executives";
+import Home from "./admin1/pages/Home";
+
 
 // 🔥 Project imports
 import { ProjectsGallery } from "./pages/ProjectsGallery";
 import { ProjectDetail } from "./pages/project-detail";
 import { ProjectFormPage } from "./pages/ProjectFormPage";
 import { ResourcesPage } from "./pages/resources"; // ✅ Added ResourcesPage import
+
 
 // React Query
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -99,6 +102,9 @@ function AppRoutes() {
       />
       <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/admin" element={<Home />} />
+
+      
 
       {/* Protected Routes */}
       <Route
