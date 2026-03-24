@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import NacosLogo from "/images/nacos_logo.png";
-import AbuadLogo from "../../public/images/abuadLogo.png";
+import AbuadLogo from "/images/abuadLogo.png";
 
 type NavItem = {
   name: string;
@@ -20,11 +20,10 @@ const navItems: NavItem[] = [
 
 const Navbar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
-  // Navbar scroll effect
+  // Scroll effect
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
@@ -33,7 +32,7 @@ const Navbar = () => {
 
   // Close mobile menu on route change
   useEffect(() => {
-    setIsOpen(false);
+    setIsMobileOpen(false);
   }, [location.pathname]);
 
   return (
@@ -49,7 +48,7 @@ const Navbar = () => {
         <div className="flex gap-3 items-center">
           <img src={AbuadLogo} alt="Abuad Logo" className="w-7 md:w-9" />
           <img src={NacosLogo} alt="Nacos Logo" className="w-9 md:w-11" />
-          <h1 className={`font-bold text-lg lg:text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h1 className="font-bold text-lg lg:text-2xl text-gray-900">
             NACOS ABUAD
           </h1>
         </div>
@@ -58,7 +57,6 @@ const Navbar = () => {
         <div className="hidden lg:flex items-center gap-8">
           <div className="flex items-center gap-6">
             {navItems.map((item) => (
-            {navItems.map((link) => (
               <NavLink
                 key={item.name}
                 to={item.path}
@@ -66,7 +64,7 @@ const Navbar = () => {
                   `text-lg font-medium transition-colors ${
                     isActive
                       ? "text-[#006E3A]"
-                      : `${isDark ? 'text-gray-300 hover:text-[#006E3A]' : 'text-gray-800 hover:text-[#006E3A]'}`
+                      : "text-gray-800 hover:text-[#006E3A]"
                   }`
                 }
               >
@@ -87,44 +85,52 @@ const Navbar = () => {
         <button
           aria-label="Toggle menu"
           className="lg:hidden text-gray-900"
-          onClick={() => setIsOpen((prev) => !prev)}
+          onClick={() => setIsMobileOpen((prev) => !prev)}
         >
-          {isOpen ? <X size={28} /> : <Menu size={28} />}
+          {isMobileOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       <div
-        className={`lg:hidden absolute right-4 top-16 w-[65%] bg-white rounded-xl shadow-xl transition-all duration-300 ${
-          isOpen
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-4 pointer-events-none"
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden ${
+          isMobileOpen ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
+        onClick={() => setIsMobileOpen(false)}
       >
-        <div className="flex flex-col items-center gap-4 py-6">
-          {navItems.map((link) => (
+        {/* Menu Panel */}
+        <div
+          className={`absolute right-4 top-16 w-[80%] max-w-sm bg-white rounded-xl shadow-xl transition-all duration-300 ${
+            isMobileOpen ? "translate-y-0" : "-translate-y-6"
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col items-center gap-4 py-6">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.path}
+                onClick={() => setIsMobileOpen(false)}
+                className={({ isActive }) =>
+                  `text-base font-medium ${
+                    isActive
+                      ? "text-[#006E3A]"
+                      : "text-gray-800 hover:text-[#006E3A]"
+                  }`
+                }
+              >
+                {item.name}
+              </NavLink>
+            ))}
+
             <NavLink
-              key={link.name}
-              to={link.path}
-              className={({ isActive }) =>
-                `text-base font-medium ${
-                  isActive
-                    ? "text-[#006E3A]"
-                    : "text-gray-800 hover:text-[#006E3A]"
-                }`
-              }
-
+              to="/login"
+              onClick={() => setIsMobileOpen(false)}
+              className="px-8 py-2 bg-[#006E3A] text-white rounded-lg font-semibold"
             >
-              {item.name}
+              Login
             </NavLink>
-          ))}
-
-          <NavLink
-            to="/login"
-            className="px-8 py-2 bg-[#006E3A] text-white rounded-lg font-semibold"
-          >
-            Login
-          </NavLink>
+          </div>
         </div>
       </div>
     </nav>
