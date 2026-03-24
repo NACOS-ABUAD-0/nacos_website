@@ -14,7 +14,7 @@ import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
-import Executives from "./components/Executives";
+import Executives from "./pages/Executives";
 
 // 🔥 Project imports
 import { ProjectsGallery } from "./pages/ProjectsGallery";
@@ -72,14 +72,7 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Homepage />} />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
+      <Route path="/login" element={<LoginPage />} />
       <Route
         path="/register"
         element={
@@ -88,14 +81,7 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
-      <Route
-        path="/executives"
-        element={
-          <PublicRoute>
-            <Executives isHome={false} />
-          </PublicRoute>
-        }
-      />
+      <Route path="/executives" element={<Executives isHome={false} />} />
       <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
 
