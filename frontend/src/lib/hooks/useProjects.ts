@@ -1,17 +1,23 @@
 // frontend/src/hooks/useProjects.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsAPI, skillsAPI } from '../api';
+import type { Project, ProjectsResponse, Skill } from '../../types';
 
-export const useProjects = (params = {}) => {
-  return useQuery({
+type ProjectFilters = {
+  search?: string;
+  tag_names?: string;
+};
+
+export const useProjects = (params: ProjectFilters = {}) => {
+  return useQuery<ProjectsResponse>({
     queryKey: ['projects', params],
     queryFn: () => projectsAPI.getProjects(params).then(res => res.data),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 };
 
 export const useProject = (id: string | number) => {
-  return useQuery({
+  return useQuery<Project>({
     queryKey: ['project', id],
     queryFn: () => projectsAPI.getProject(id).then(res => res.data),
     enabled: !!id,
@@ -19,7 +25,7 @@ export const useProject = (id: string | number) => {
 };
 
 export const useSkills = () => {
-  return useQuery({
+  return useQuery<Skill[]>({
     queryKey: ['skills'],
     queryFn: () => skillsAPI.getSkills().then(res => res.data),
   });

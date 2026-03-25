@@ -16,12 +16,18 @@ import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
 import Executives from "./components/Executives";
+import Home from "./admin1/pages/Home";
+import Event from "./admin1/pages/Event";
+import Approval from "./admin1/pages/Approval";
+import Metrics from "./admin1/pages/Metrics";
+
 
 // 🔥 Project imports
 import { ProjectsGallery } from "./pages/ProjectsGallery";
 import { ProjectDetail } from "./pages/project-detail";
 import { ProjectFormPage } from "./pages/ProjectFormPage";
 import { ResourcesPage } from "./pages/resources"; // ✅ Added ResourcesPage import
+
 
 // React Query
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -99,6 +105,12 @@ function AppRoutes() {
       />
       <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/admin" element={<Home />} />
+      <Route path="/admin/events" element={<Event />} />
+      <Route path="/admin/approvals" element={<Approval />} />
+      <Route path="/admin/metrics" element={<Metrics />} />
+
+      
 
       {/* Protected Routes */}
       <Route

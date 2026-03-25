@@ -9,6 +9,8 @@ interface User {
   matric_number: string;
   date_joined: string;
   is_email_verified: boolean;
+  is_staff?: boolean;
+  profile_complete?: boolean;
 }
 
 interface AuthState {
@@ -193,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     const refreshToken = localStorage.getItem("refreshToken");
     if (refreshToken) {
-      authAPI.logout(refreshToken).catch(console.error);
+      authAPI.logout().catch(console.error);
     }
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
