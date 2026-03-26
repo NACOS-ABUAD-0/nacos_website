@@ -3,7 +3,7 @@ import { Building2 } from "lucide-react";
 
 export default function Facilities() {
   return (
-    <section className="mt-36 px-5 lg:px-24">
+    <section className="mt-36 px-5 lg:px-24 mb-16">
       <h1 className="text-center font-bold text-xl md:text-[25px] leading-none tracking-normal text-[#006E3A] mb-5">
         NACOS ABUAD
       </h1>
@@ -18,39 +18,41 @@ export default function Facilities() {
         </div>
       </div>
 
-      <div className="flex mt-20 justify-between flex-wrap">
-        <div className="w-[728px] bg-white relative mb-28">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-20 justify-items-center">
+        {/* Card 1 */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-[700px]">
           <img
             src={FaciImage}
-            alt="Song cover"
-            className="w-full min-h-full object-cover rounded-[10px]"
+            alt="Hardware Lab"
+            className="w-full h-64 md:h-125 object-cover"
           />
 
-          <div className="p-4 mb-20">
-            <h3 className="flex font-semibold text-xl md:text-[25px] leading-none tracking-normal items-center gap-2 text-[#006E3A] mb-4">
+          <div className="p-6">
+            <h3 className="flex items-center gap-2 text-[#006E3A] font-semibold text-xl md:text-2xl mb-2">
               <Building2 />
               Hardware Lab
             </h3>
-            <p className="font-medium text-lg md:text-xl leading-none tracking-normal ml-5">
-              Sciences Building , 3rd Floor.
+            <p className="ml-6 text-gray-700 font-medium text-lg md:text-xl">
+              Sciences Building, 3rd Floor
             </p>
           </div>
         </div>
 
-        <div className="w-[728px] bg-white relative mb-20">
+        {/* Card 2 */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-[700px]">
           <img
             src={FaciImage}
-            alt="Song cover"
-            className="w-full min-h-full object-cover rounded-[10px]"
+            alt="Hardware Lab"
+            className="w-full h-64 md:h-[500px] object-cover"
           />
 
-          <div className="p-4">
-            <h3 className="flex font-semibold text-xl md:text-[25px] leading-none tracking-normal items-center gap-2 text-[#006E3A] mb-4">
+          <div className="p-6">
+            <h3 className="flex items-center gap-2 text-[#006E3A] font-semibold text-xl md:text-2xl mb-2">
               <Building2 />
               Hardware Lab
             </h3>
-            <p className="font-medium text-lg md:text-xl leading-none tracking-normal ml-5">
-              Sciences Building , 3rd Floor.
+            <p className="ml-6 text-gray-700 font-medium text-lg md:text-xl">
+              Sciences Building, 3rd Floor
             </p>
           </div>
         </div>

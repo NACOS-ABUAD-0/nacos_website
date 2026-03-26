@@ -1,5 +1,5 @@
 // src/components/home/Skeletons.tsx
-import React from 'react';
+import React from "react";
 
 export const HeroSkeleton: React.FC = () => (
   <div className="animate-pulse">
@@ -13,7 +13,6 @@ export const HeroSkeleton: React.FC = () => (
       <div className="h-12 bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl w-3/4 mx-auto"></div>
       <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl w-2/3 mx-auto"></div>
     </div>
-
 
     {/* Subtitle */}
     <div className="h-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg w-1/2 mx-auto mb-12"></div>
@@ -72,11 +71,11 @@ export const ProjectCardSkeleton: React.FC = () => (
 );
 
 export const EventCardSkeleton: React.FC = () => (
-  <div className="animate-pulse bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group">
+  <div className="animate-pulse bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group w-[450px]">
     {/* Event image with status badge area */}
-    <div className="h-40 bg-gradient-to-br from-blue-50 to-green-50 relative">
+    <div className="bg-gradient-to-br from-blue-50 to-green-50 relative overflow-hidden aspect-[4/5]">
       <div className="absolute top-4 right-4">
-        <div className="h-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-16"></div>
+        <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"></div>
       </div>
     </div>
 
@@ -131,31 +130,6 @@ export const ResourceCardSkeleton: React.FC = () => (
   </div>
 );
 
-export const GallerySkeleton: React.FC = () => (
-  <div className="animate-pulse grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-    {[...Array(12)].map((_, i) => (
-      <div
-        key={i}
-        className="aspect-square rounded-xl overflow-hidden group relative"
-      >
-        {/* Main image gradient */}
-        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 group-hover:scale-105 transition-transform duration-300"></div>
-
-        {/* Subtle overlay for depth */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
-
-        {/* Variation in gradients for visual interest */}
-        <div className={`absolute inset-0 ${
-          i % 4 === 0 ? 'bg-gradient-to-br from-blue-50/20 to-green-50/20' :
-          i % 4 === 1 ? 'bg-gradient-to-br from-purple-50/20 to-pink-50/20' :
-          i % 4 === 2 ? 'bg-gradient-to-br from-yellow-50/20 to-orange-50/20' :
-          'bg-gradient-to-br from-teal-50/20 to-cyan-50/20'
-        }`}></div>
-      </div>
-    ))}
-  </div>
-);
-
 // Additional premium skeleton components
 export const SectionSkeleton: React.FC = () => (
   <div className="animate-pulse space-y-8">
@@ -188,7 +162,10 @@ export const NavigationSkeleton: React.FC = () => (
       {/* Navigation items */}
       <div className="hidden md:flex items-center gap-8">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-5 bg-gradient-to-r from-gray-100 to-gray-200 rounded w-16"></div>
+          <div
+            key={i}
+            className="h-5 bg-gradient-to-r from-gray-100 to-gray-200 rounded w-16"
+          ></div>
         ))}
       </div>
 
@@ -200,3 +177,71 @@ export const NavigationSkeleton: React.FC = () => (
     </div>
   </div>
 );
+
+export const EventDetailSkeleton = () => {
+  return (
+    <div className="min-h-screen flex flex-col animate-pulse">
+      <div className="flex-grow flex flex-col lg:flex-row">
+        {/* Left Half Skeleton */}
+        <div className="w-full lg:w-1/2 p-8 lg:p-20 bg-[#f4fbfc] flex flex-col justify-center space-y-6">
+          <div className="h-6 w-20 bg-gray-300 rounded" />
+          <div className="h-16 w-3/4 bg-gray-300 rounded" />
+          <div className="space-y-4 pt-6">
+            <div className="h-4 w-1/2 bg-gray-200 rounded" />
+            <div className="h-4 w-1/2 bg-gray-200 rounded" />
+            <div className="h-4 w-1/2 bg-gray-200 rounded" />
+          </div>
+          <div className="h-14 w-48 bg-gray-300 rounded-xl mt-10" />
+        </div>
+
+        {/* Right Half Skeleton */}
+        <div className="w-full lg:w-1/2 bg-gray-300 min-h-[400px]" />
+      </div>
+    </div>
+  );
+};
+
+export const GallerySkeleton = () => {
+  return (
+    <section className="py-20 px-6 max-w-7xl mx-auto animate-pulse">
+      {/* Header Skeleton */}
+      <div className="text-center mb-12 flex flex-col items-center">
+        <div className="h-8 w-64 bg-gray-200 rounded-md mb-4" />
+        <div className="h-4 w-96 bg-gray-100 rounded-md" />
+      </div>
+
+      {/* Filter Tabs Skeleton */}
+      <div className="flex justify-center gap-3 mb-12 flex-wrap">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="px-10 py-5 bg-gray-200 rounded-full" />
+        ))}
+      </div>
+
+      {/* Masonry Grid Skeleton */}
+      <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+        {/* Item 1 - Large */}
+        <div className="h-96 bg-gray-200 rounded-2xl w-full" />
+
+        {/* Item 2 - Small */}
+        <div className="h-64 bg-gray-100 rounded-2xl w-full" />
+
+        {/* Item 3 - Medium */}
+        <div className="h-80 bg-gray-200 rounded-2xl w-full" />
+
+        {/* Item 4 - Medium */}
+        <div className="h-72 bg-gray-100 rounded-2xl w-full" />
+
+        {/* Item 5 - Large */}
+        <div className="h-96 bg-gray-200 rounded-2xl w-full" />
+
+        {/* Item 6 - Small */}
+        <div className="h-60 bg-gray-100 rounded-2xl w-full" />
+      </div>
+
+      {/* Button Skeleton */}
+      <div className="w-full flex justify-center mt-16">
+        <div className="h-12 w-48 bg-gray-200 rounded-xl" />
+      </div>
+    </section>
+  );
+};
