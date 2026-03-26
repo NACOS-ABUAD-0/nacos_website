@@ -1,15 +1,44 @@
 // frontend/src/lib/api.ts
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+// ─── URL CONSTRUCTION ────────────────────────────────────────────────────────
+//
+// VITE_API_URL should be the bare origin: http://127.0.0.1:8000
+// We always append /api ourselves.
+//
+// Common mistake: setting VITE_API_URL=http://127.0.0.1:8000/api
+// That produces baseURL = "http://127.0.0.1:8000/api/api" → every request 404s.
+//
+// This helper strips any trailing /api (or /api/) so the file is
+// self-healing even if the env var is set incorrectly.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Create axios instance with consistent base URL
+function buildBaseURL(): string {
+  const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
+    .replace(/\/+$/, "")      // strip trailing slashes
+    .replace(/\/api$/, "");   // strip accidental /api suffix
+
+  return `${raw}/api`;
+}
+
+const BASE_URL = buildBaseURL();
+
+// ─── AXIOS INSTANCE ──────────────────────────────────────────────────────────
+//
+// All endpoint paths below are relative to BASE_URL.
+// They MUST start with "/" so axios's combineURLs helper strips the
+// leading slash and appends correctly:
+//
+//   combineURLs("http://host/api", "/projects/")
+//   → "http://host/api/projects/"  ✅
+//
+// ─────────────────────────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: `${API_URL}/api`, // ✅ Add /api prefix here
+  baseURL: BASE_URL,
   withCredentials: false,
 });
 
-// ✅ Add access token to requests
+// ─── REQUEST INTERCEPTOR: attach JWT ─────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
@@ -21,7 +50,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ Refresh token flow
+// ─── RESPONSE INTERCEPTOR: silent token refresh ──────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -32,25 +61,25 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refreshToken");
-        if (refreshToken) {
-          const response = await axios.post(
-            `${API_URL}/api/auth/token/refresh/`,
-            { refresh: refreshToken },
-            { withCredentials: false }
-          );
+        if (!refreshToken) throw new Error("No refresh token");
 
-          const { access, refresh } = response.data;
-          localStorage.setItem("accessToken", access);
-          localStorage.setItem("refreshToken", refresh);
+        // Use a plain axios call (not the `api` instance) to avoid
+        // triggering this interceptor again on a 401 from /token/refresh/.
+        const response = await axios.post(
+          `${BASE_URL}/auth/token/refresh/`,
+          { refresh: refreshToken }
+        );
 
-          originalRequest.headers.Authorization = `Bearer ${access}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
+        const { access, refresh } = response.data;
+        localStorage.setItem("accessToken", access);
+        if (refresh) localStorage.setItem("refreshToken", refresh);
+
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+        return api(originalRequest);
+      } catch {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         window.location.href = "/login";
-        return Promise.reject(refreshError);
       }
     }
 
@@ -58,15 +87,25 @@ api.interceptors.response.use(
   }
 );
 
-// ✅ Helper: unwrap validation errors
-const handleApiError = (error: any) => {
-  if (error.response?.data) {
-    throw error.response.data;
-  }
+// ─── ERROR UNWRAPPER ─────────────────────────────────────────────────────────
+// DRF returns validation errors as { field: ["message"] } or { detail: "..." }.
+// Re-throwing error.response.data lets callers do:
+//   catch (err) { setErrors(err) }
+// ─────────────────────────────────────────────────────────────────────────────
+const handleApiError = (error: unknown) => {
+  const axiosError = error as { response?: { data?: unknown } };
+  if (axiosError.response?.data) throw axiosError.response.data;
   throw { detail: "Something went wrong. Please try again." };
 };
 
-// ================== AUTH ==================
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT MODULES
+// Each group of related endpoints lives in its own exported object.
+// Import exactly what you need:
+//   import { projectsAPI } from "@/lib/api";
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
   register: (
     email: string,
@@ -76,7 +115,7 @@ export const authAPI = {
     password2: string
   ) =>
     api
-      .post("/auth/register/", { // ✅ Remove /api prefix since baseURL has it
+      .post("/auth/register/", {
         email,
         full_name: fullName,
         matric_number: matricNumber || null,
@@ -86,12 +125,7 @@ export const authAPI = {
       .catch(handleApiError),
 
   login: (email: string, password: string) =>
-    api
-      .post(
-        `/auth/login/`, // ✅ Keep full URL for direct axios call
-        { email, password }
-      )
-      .catch(handleApiError),
+    api.post("/auth/login/", { email, password }).catch(handleApiError),
 
   logout: () => {
     localStorage.removeItem("accessToken");
@@ -99,52 +133,77 @@ export const authAPI = {
     return Promise.resolve({ detail: "Logged out" });
   },
 
-  getProfile: () => api.get("/auth/me/").catch(handleApiError), // ✅ Remove /api prefix
-  updateProfile: (data: any) => api.patch("/auth/me/", data).catch(handleApiError), // ✅ Remove /api prefix
+  getProfile: () => api.get("/auth/me/").catch(handleApiError),
+  updateProfile: (data: unknown) =>
+    api.patch("/auth/me/", data).catch(handleApiError),
 
   refreshToken: (refreshToken: string) =>
-    api.post("/auth/token/refresh/", { refresh: refreshToken }), // ✅ Remove /api prefix
-
-  verifyEmail: (uid: string, token: string) =>
-    api.post("/auth/verify-email/", { uid, token }).catch(handleApiError),
-
-  resendVerification: () =>
-    api.post("/auth/resend-verification/").catch(handleApiError),
+    api.post("/auth/token/refresh/", { refresh: refreshToken }),
 };
 
-// ================== PROJECTS ==================
+// ── PROJECTS ─────────────────────────────────────────────────────────────────
 export const projectsAPI = {
-  getProjects: (params?: any) => api.get("/projects/", { params }), // ✅ Remove /api prefix
-  getProject: (id: string | number) => api.get(`/projects/${id}/`), // ✅ Remove /api prefix
-  createProject: (data: any) => api.post("/projects/", data), // ✅ Remove /api prefix
-  updateProject: (id: string | number, data: any) => api.patch(`/projects/${id}/`, data), // ✅ Remove /api prefix
-  deleteProject: (id: string | number) => api.delete(`/projects/${id}/`), // ✅ Remove /api prefix
-  getMyProjects: () => api.get("/projects/my_projects/"), // ✅ Remove /api prefix
-  toggleFeatured: (id: string | number) => api.post(`/projects/${id}/toggle_featured/`), // ✅ Remove /api prefix
+  // Pass params as an object — axios serialises them correctly:
+  //   getProjects({ featured: true, limit: 6 })
+  //   → GET /api/projects/?featured=true&limit=6
+  // Avoid baking query strings into the URL string itself.
+  getProjects: (params?: Record<string, unknown>) =>
+    api.get("/projects/", { params }),
+
+  getProject: (id: string | number) => api.get(`/projects/${id}/`),
+
+  createProject: (data: unknown) => api.post("/projects/", data),
+
+  updateProject: (id: string | number, data: unknown) =>
+    api.patch(`/projects/${id}/`, data),
+
+  deleteProject: (id: string | number) => api.delete(`/projects/${id}/`),
+
+  getMyProjects: () => api.get("/projects/my_projects/"),
+
+  toggleFeatured: (id: string | number) =>
+    api.post(`/projects/${id}/toggle_featured/`),
 };
 
-// ================== SKILLS ==================
+// ── SKILLS / TAGS ─────────────────────────────────────────────────────────────
 export const skillsAPI = {
-  getSkills: () => api.get("/skilltags/"), // ✅ Remove /api prefix
+  getSkills: () => api.get("/skilltags/"),
 };
 
-// ================== RESOURCES ==================
+// ── RESOURCES ────────────────────────────────────────────────────────────────
 export const resourcesAPI = {
-  getResources: (params?: any) => api.get("/resources/", { params }), // ✅ Remove /api prefix
-  getResource: (id: string | number) => api.get(`/resources/${id}/`), // ✅ Remove /api prefix
-  getResourceCategories: () => api.get("/resource-categories/"), // ✅ Remove /api prefix
-  getResourceTags: () => api.get("/resource-tags/"), // ✅ Remove /api prefix
-  trackDownload: (id: string | number) => api.post(`/resources/${id}/track_download/`), // ✅ Remove /api prefix
+  getResources: (params?: Record<string, unknown>) =>
+    api.get("/resources/", { params }),
+
+  getResource: (id: string | number) => api.get(`/resources/${id}/`),
+
+  getResourceCategories: () => api.get("/resource-categories/"),
+
+  getResourceTags: () => api.get("/resource-tags/"),
+
+  trackDownload: (id: string | number) =>
+    api.post(`/resources/${id}/track_download/`),
 };
 
-// ================== HOMEPAGE ==================
+// ── HOMEPAGE ─────────────────────────────────────────────────────────────────
+// NOTE: Pass filters as `params` objects, never as inline query strings.
+// Inline strings are opaque to TypeScript and hard to test.
 export const homepageAPI = {
   getStats: () => api.get("/admin/stats/"),
-  getFeaturedProjects: () => api.get("/projects/?featured=true&limit=6"), // ✅ Remove /api prefix
-  getUpcomingEvents: () => api.get("/events/?upcoming=true&limit=3"), // ✅ Remove /api prefix
+
+  getFeaturedProjects: () =>
+    api.get("/projects/", { params: { is_featured: true, page_size: 6 } }),
+
+  getUpcomingEvents: () =>
+    api.get("/events/", { params: { upcoming: true, page_size: 3 } }),
+
   getExecutives: () => api.get("/executives/"),
-  getLatestResources: () => api.get("/resources/?limit=6"), // ✅ Remove /api prefix
-  getLatestGallery: () => api.get("/gallery/?limit=12"), // ✅ Remove /api prefix
+
+  getLatestResources: () =>
+    api.get("/resources/", { params: { page_size: 6 } }),
+
+  getLatestGallery: () =>
+    api.get("/gallery/", { params: { page_size: 12 } }),
 };
 
 export default api;

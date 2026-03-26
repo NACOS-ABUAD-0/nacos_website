@@ -10,7 +10,7 @@ const projectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
   description: z.string().min(1, 'Description is required'),
   tag_ids: z.array(z.number()).optional(),
-  links: z.record(z.string(), z.string().url('Invalid URL')).optional(),
+  links: z.record(z.string().url('Invalid URL')).optional(),
   images: z.array(z.string().url('Invalid URL')).optional(),
 });
 

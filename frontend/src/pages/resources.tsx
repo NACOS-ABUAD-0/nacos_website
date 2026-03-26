@@ -85,8 +85,8 @@ export const ResourcesPage: React.FC = () => {
   };
 
   // Extract unique years and categories for filters
-  const years = [...new Set(resources.map(r => r.year).filter((year): year is string => Boolean(year)))].sort();
-  const categories = [...new Set(resources.map(r => r.category?.name).filter((category): category is string => Boolean(category)))].sort();
+  const years = [...new Set(resources.map(r => r.year).filter(Boolean))].sort();
+  const categories = [...new Set(resources.map(r => r.category?.name).filter(Boolean))].sort();
 
   const ResourceCardSkeleton: React.FC = () => (
     <div className="animate-pulse bg-white rounded-xl shadow-sm border border-gray-200 p-6">

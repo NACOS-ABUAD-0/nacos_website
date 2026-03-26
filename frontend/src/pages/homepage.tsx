@@ -38,7 +38,7 @@ import type {
 import { useSEO } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import Facilities from "../components/Facilities";
-import Executives from "./Executives";
+import Executives from "../components/Executives";
 import { Layout } from "../layouts/layout";
 import Gallery from "./gallery";
 
