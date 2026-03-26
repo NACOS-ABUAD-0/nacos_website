@@ -15,7 +15,7 @@ export default function Testimonials() {
         about NACOS"
       />
 
-      <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-4 mt-10">
+      <div className="flex flex-col md:flex-row items-center justify-center mt-10">
         <TestimonialCard
           name="Abdulyeekeen Habeebullah Adebayo"
           level="Computer Science 300 Level"
@@ -38,7 +38,7 @@ export default function Testimonials() {
 
       {/* Sponsors Logobar */}
       <div className="flex flex-wrap justify-center items-center gap-10">
-        <img src={logo3} alt="Sponsor" className="h-28 w-auto" />
+        <img src='/images/asva logo.jpg' alt="Sponsor" className="h-28 w-auto" />
         <img src={logo1} alt="Sponsor" className="h-28 w-auto" />
         <img src={logo4} alt="Sponsor" className="h-28 w-auto" />
         <img src={logo2} alt="Sponsor" className="h-28 w-auto" />

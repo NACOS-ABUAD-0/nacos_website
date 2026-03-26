@@ -15,7 +15,12 @@ import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
-import Executives from "./components/Executives";
+import Executives from "./pages/Executives";
+import Events from "./pages/events";
+import EventDetail from "./pages/event-detail";
+import Gallery from "./pages/gallery";
+
+// 🔥 Project imports
 import { ProjectsGallery } from "./pages/ProjectsGallery";
 import { ProjectDetail } from "./pages/project-detail";
 import { ProjectFormPage } from "./pages/ProjectFormPage";
@@ -102,6 +107,12 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
+      <Route path="/executives" element={<Executives isHome={false} />} />
+      <Route path="/events" element={<Events isHome={false} />} />
+      <Route path="/events/:id" element={<EventDetail />} />
+      <Route path="/gallery" element={<Gallery isHome={false}/>} />
+      <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* ── Protected — must be logged in ──────────────────────────────── */}
       <Route

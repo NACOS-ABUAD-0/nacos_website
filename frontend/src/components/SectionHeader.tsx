@@ -7,7 +7,7 @@ interface SectionHeaderProps {
 
 const SectionHeader: React.FC<SectionHeaderProps> = ({ subtitle, title }) => {
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center mt-8">
       {/* Subtitle - Only renders if subtitle exists */}
       {subtitle && (
         <h2 className="text-center font-bold text-xl md:text-[25px] leading-none tracking-normal text-[#006E3A] mb-5 uppercase">
