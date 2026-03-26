@@ -16,7 +16,7 @@ export default function ExecCard({
   image,
 }: ExecCardProps) {
   return (
-    <div className="w-full max-w-[500px] aspect-[426/463] mb-3">
+    <div className="w-full max-w-125 aspect-426/463 mb-3">
       <img src={image} alt={name} className="w-full h-full object-cover rounded-t-[10px]" />
       <div className="p-6 mb-5 bg-[#E8F4F8] flex flex-col gap-3 shadow-[0px_4px_15px_2px_rgba(0,0,0,0.08)] rounded-b-[10px]">
         <h1 className="font-semibold text-xl leading-none tracking-normal text-[#006E3A]">
