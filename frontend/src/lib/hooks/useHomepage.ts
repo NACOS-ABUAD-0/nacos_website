@@ -1,6 +1,7 @@
 // src/lib/hooks/useHomepage.ts
 import { useQuery } from '@tanstack/react-query';
 import api  from '../api';
+import type { ProjectsResponse } from '../../types';
 
 export interface Exec {
   id: number | string;
@@ -29,6 +30,7 @@ export interface ProjectItem {
   skills?: string[];
   cover_url?: string;
   links?: Record<string, string>;
+  updated_at?: string;
 }
 
 export interface ResourceItem {
@@ -56,9 +58,16 @@ export interface Stats {
   resources: number;
 }
 
+interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 // Homepage data hooks
 export const useFeaturedProjects = () => {
-  return useQuery({
+  return useQuery<ProjectsResponse>({
     queryKey: ['projects', 'featured'],
     queryFn: () => api.get('/api/projects/?featured=true&limit=6').then(res => res.data),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -66,7 +75,7 @@ export const useFeaturedProjects = () => {
 };
 
 export const useUpcomingEvents = () => {
-  return useQuery({
+  return useQuery<PaginatedResponse<EventItem>>({
     queryKey: ['events', 'upcoming'],
     queryFn: () => api.get('/events/?upcoming=true&limit=3').then(res => res.data),
     staleTime: 5 * 60 * 1000,
@@ -74,7 +83,7 @@ export const useUpcomingEvents = () => {
 };
 
 export const useExecutives = () => {
-  return useQuery({
+  return useQuery<PaginatedResponse<Exec>>({
     queryKey: ['execs', 'list'],
     queryFn: () => api.get('/executives/').then(res => res.data),
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -82,7 +91,7 @@ export const useExecutives = () => {
 };
 
 export const useLatestResources = () => {
-  return useQuery({
+  return useQuery<PaginatedResponse<ResourceItem>>({
     queryKey: ['resources', 'latest'],
     queryFn: () => api.get('/resources/?limit=6').then(res => res.data),
     staleTime: 15 * 60 * 1000,
@@ -90,7 +99,7 @@ export const useLatestResources = () => {
 };
 
 export const useLatestGallery = () => {
-  return useQuery({
+  return useQuery<PaginatedResponse<GalleryItem>>({
     queryKey: ['gallery', 'latest'],
     queryFn: () => api.get('/gallery/?limit=12').then(res => res.data),
     staleTime: 15 * 60 * 1000,
@@ -98,13 +107,18 @@ export const useLatestGallery = () => {
 };
 
 export const usePublicStats = () => {
-  return useQuery({
+  return useQuery<Stats>({
     queryKey: ['stats', 'public'],
-    queryFn: () => api.get('/admin/stats/').then(res => res.data),
+    queryFn: async () => {
+      try {
+        const res = await api.get('/admin/stats/');
+        return res.data;
+      } catch {
+        console.warn('Stats endpoint not available, using fallback data');
+        return { students: 0, projects: 0, skills: 0, events: 0, resources: 0 };
+      }
+    },
     staleTime: 30 * 60 * 1000, // 30 minutes
     retry: 1,
-    onError: () => {
-      console.warn('Stats endpoint not available, using fallback data');
-    },
   });
 };
