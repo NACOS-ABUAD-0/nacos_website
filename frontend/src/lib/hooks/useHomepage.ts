@@ -1,7 +1,6 @@
 // src/lib/hooks/useHomepage.ts
 import { useQuery } from '@tanstack/react-query';
-import api  from '../api';
-import type { ProjectsResponse } from '../../types';
+import api from '../api';
 
 export interface Exec {
   id: number | string;
@@ -21,6 +20,7 @@ export interface EventItem {
   start: string;
   end?: string;
   venue?: string;
+  is_remote?: boolean;
 }
 
 export interface ProjectItem {
@@ -58,67 +58,74 @@ export interface Stats {
   resources: number;
 }
 
-interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
+// ─── RULE ────────────────────────────────────────────────────────────────────
+// `api` already has baseURL = "http://127.0.0.1:8000/api"
+// Every path here must start with "/" but must NOT include "/api".
+//
+//   ❌  api.get('/api/projects/')   → .../api/api/projects/  (404)
+//   ✅  api.get('/projects/')       → .../api/projects/      (200)
+//
+// Pass query params as the `params` option — never bake them into the
+// URL string. Axios serialises them correctly and they're easy to change.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Homepage data hooks
 export const useFeaturedProjects = () => {
-  return useQuery<ProjectsResponse>({
+  return useQuery({
     queryKey: ['projects', 'featured'],
-    queryFn: () => api.get('/api/projects/?featured=true&limit=6').then(res => res.data),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: () =>
+      api
+        .get('/projects/', { params: { is_featured: true, page_size: 6 } })
+        .then(res => res.data),
+    staleTime: 5 * 60 * 1000,
   });
 };
 
 export const useUpcomingEvents = () => {
-  return useQuery<PaginatedResponse<EventItem>>({
+  return useQuery({
     queryKey: ['events', 'upcoming'],
-    queryFn: () => api.get('/events/?upcoming=true&limit=3').then(res => res.data),
+    queryFn: () =>
+      api
+        .get('/events/', { params: { upcoming: true, page_size: 3 } })
+        .then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 };
 
 export const useExecutives = () => {
-  return useQuery<PaginatedResponse<Exec>>({
+  return useQuery({
     queryKey: ['execs', 'list'],
     queryFn: () => api.get('/executives/').then(res => res.data),
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 };
 
 export const useLatestResources = () => {
-  return useQuery<PaginatedResponse<ResourceItem>>({
+  return useQuery({
     queryKey: ['resources', 'latest'],
-    queryFn: () => api.get('/resources/?limit=6').then(res => res.data),
+    queryFn: () =>
+      api
+        .get('/resources/', { params: { page_size: 6 } })
+        .then(res => res.data),
     staleTime: 15 * 60 * 1000,
   });
 };
 
 export const useLatestGallery = () => {
-  return useQuery<PaginatedResponse<GalleryItem>>({
+  return useQuery({
     queryKey: ['gallery', 'latest'],
-    queryFn: () => api.get('/gallery/?limit=12').then(res => res.data),
+    queryFn: () =>
+      api
+        .get('/gallery/', { params: { page_size: 12 } })
+        .then(res => res.data),
     staleTime: 15 * 60 * 1000,
   });
 };
 
 export const usePublicStats = () => {
-  return useQuery<Stats>({
+  return useQuery({
     queryKey: ['stats', 'public'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/admin/stats/');
-        return res.data;
-      } catch {
-        console.warn('Stats endpoint not available, using fallback data');
-        return { students: 0, projects: 0, skills: 0, events: 0, resources: 0 };
-      }
-    },
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    queryFn: () => api.get('/admin/stats/').then(res => res.data),
+    staleTime: 30 * 60 * 1000,
     retry: 1,
   });
 };

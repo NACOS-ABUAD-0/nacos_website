@@ -185,8 +185,8 @@ export const ProjectsGallery: React.FC = () => {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
-                    {projects.count}
-                    <span className="text-gray-600 font-normal"> project{projects.count !== 1 ? 's' : ''} found</span>
+                    {projects.count || projects.length}
+                    <span className="text-gray-600 font-normal"> project{(projects.count || projects.length) !== 1 ? 's' : ''} found</span>
                   </h3>
                   {filters.search && (
                     <p className="text-sm text-gray-500 mt-1">

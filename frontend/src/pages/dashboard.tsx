@@ -42,47 +42,7 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
 const syne = { fontFamily: "'Syne', sans-serif" } as const;
 
 //  Theme tokens 
-interface ThemeTokens {
-  page: string;
-  card: string;
-  cardHov: string;
-  innerBg: string;
-  t1: string;
-  t2: string;
-  t3: string;
-  divider: string;
-  field: string;
-  fLabel: string;
-  fVal: string;
-  actCard: string;
-  emptyBox: string;
-  emptyIco: string;
-  heroBg: string;
-  heroSub: string;
-  statCard: string;
-  comVal: string;
-  comLbl: string;
-  evItem: string;
-  ring: string;
-  btnGhost: string;
-  btnPrimary: string;
-  alertBg: string;
-  alertT: string;
-  alertD: string;
-  alertBtn: string;
-  alertGhost: string;
-  badgeBg: string;
-  badgeDot: string;
-  profHero: string;
-  link: string;
-  notif: string;
-  toggle: string;
-  newProj: string;
-  gridClr: string;
-  glowClr: string;
-}
-
-const LIGHT: ThemeTokens = {
+const LIGHT = {
   page:        'bg-gray-50',
   card:        'bg-white border-gray-100 shadow-sm',
   cardHov:     'hover:border-green-200 hover:shadow-md',
@@ -120,9 +80,9 @@ const LIGHT: ThemeTokens = {
   newProj:     'bg-white text-green-700 hover:bg-green-50 hover:shadow-green-200',
   gridClr:     'rgba(22,163,74,0.04)',
   glowClr:     'rgba(22,163,74,0.06)',
-};
+} as const;
 
-const DARK: ThemeTokens = {
+const DARK = {
   page:        'bg-[#0a0f1e]',
   card:        'bg-[#161d2e] border-white/[0.07]',
   cardHov:     'hover:border-white/[0.14]',
@@ -160,9 +120,9 @@ const DARK: ThemeTokens = {
   newProj:     'bg-green-600 hover:bg-green-500 text-white hover:shadow-green-900/40',
   gridClr:     'rgba(22,163,74,0.025)',
   glowClr:     'rgba(22,163,74,0.07)',
-};
+} as const;
 
-type T = ThemeTokens;
+type T = typeof LIGHT;
 
 //  StatCard 
 interface StatCardProps {
@@ -218,7 +178,7 @@ const EventItem: React.FC<EventItemProps> = ({ day, month, title, meta, tag, day
 export const DashboardPage: React.FC = () => {
   const { user, resendVerificationEmail, isLoading } = useAuth();
   const { isDark, setIsDark } = useTheme();
-  const t: T = isDark ? DARK : LIGHT;
+  const t = isDark ? DARK : LIGHT;
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
