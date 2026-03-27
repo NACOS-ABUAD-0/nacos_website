@@ -15,6 +15,14 @@ import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
+import Executives from "./components/Executives";
+import Home from "./admin1/pages/Home";
+import Event from "./admin1/pages/Event";
+import Approval from "./admin1/pages/Approval";
+import Studentprofile from  "./admin1/pages/StudentProfile";
+import Metrics from "./admin1/pages/Metrics";
+import Settings from "./admin1/pages/Settings";
+
 import Executives from "./pages/Executives";
 import Events from "./pages/events";
 import EventDetail from "./pages/event-detail";
@@ -26,6 +34,7 @@ import { ProjectDetail } from "./pages/project-detail";
 import { ProjectFormPage } from "./pages/ProjectFormPage";
 import { ResourcesPage } from "./pages/resources";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import StudentProfile from "./admin1/pages/StudentProfile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +122,13 @@ function AppRoutes() {
       <Route path="/gallery" element={<Gallery isHome={false}/>} />
       <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/admin" element={<Home />} />
+      <Route path="/admin/events" element={<Event />} />
+      <Route path="/admin/approvals" element={<Approval />} />
+      <Route path= "/admin/approvals/:id" element={<StudentProfile />} />
+      <Route path="/admin/metrics" element={<Metrics />} />
+      <Route path="/admin/settings" element={<Settings />} />
+      
 
       {/* ── Protected — must be logged in ──────────────────────────────── */}
       <Route
