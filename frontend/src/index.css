@@ -2,3 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 @import "tailwindcss";
+
+@keyframes slide {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    /* Adjust -5px or 5px depending on how much "wiggle" room you want between the bars */
+    transform: translateX(5px);
+  }
+}
+
+/* If you want it to actually "travel" across the gap, use this instead: */
+@keyframes slide-wide {
+  0%,
+  100% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}

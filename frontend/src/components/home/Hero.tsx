@@ -295,56 +295,151 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
   };
 
   return (
-    <div className="relative w-full min-h-[70vh] md:min-h-[878px] overflow-hidden">
-      {/* Content Overlay */}
-      <div className="absolute inset-0 flex flex-col justify-center items-center px-4 py-12 bg-black/60 text-white z-30">
-        <div className="text-center mb-12 max-w-3xl px-4">
-          <h2 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">
+    // <div className="relative w-full min-h-[70vh] md:min-h-[878px] overflow-hidden">
+    //   {/* Content Overlay */}
+    //   <div className="absolute inset-0 flex flex-col justify-center items-center px-4 py-12 bg-black/60 text-white z-30">
+    //     <div className="text-center mb-12 max-w-3xl px-4">
+    //       <h2 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">
+    //         Pioneering the Future of <br />
+    //         <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#006E3A] to-green-400">
+    //           Digital Innovation
+    //         </span>
+    //       </h2>
+    //       <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
+    //         The official hub for computing excellence at ABUAD. We empower
+    //         students to bridge the gap between classroom theory and
+    //         industry-leading technology.
+    //       </p>
+    //     </div>
+
+    //     {/* Stats Container */}
+    //     <div className="flex w-full justify-center items-center flex-wrap gap-8 md:gap-16">
+    //       {/* Stat Item 1 */}
+    //       <div className="flex flex-col items-center group">
+    //         <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+    //           <Counter end={1500} />+
+    //         </p>
+    //         <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+    //           Students
+    //         </p>
+    //         <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+    //       </div>
+
+    //       {/* Stat Item 2 */}
+    //       <div className="flex flex-col items-center group">
+    //         <p className="font-bold text-[clamp(40px,8vw,64px)] text-white leading-none mb-2">
+    //           <Counter end={150} />+
+    //         </p>
+    //         <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+    //           Events Hosted
+    //         </p>
+    //         <div className="h-1 w-0 group-hover:w-full bg-white transition-all duration-500 mt-2" />
+    //       </div>
+
+    //       {/* Stat Item 3 */}
+    //       <div className="flex flex-col items-center group">
+    //         <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+    //           <Counter end={20} />+
+    //         </p>
+    //         <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+    //           Projects Built
+    //         </p>
+    //         <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+    //       </div>
+    //     </div>
+    //   </div>
+
+    //   {/* Background Slides */}
+    //   {images.map((img, index) => (
+    //     <div
+    //       key={index}
+    //       className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
+    //         index === currentIndex ? "opacity-100" : "opacity-0"
+    //       }`}
+    //       style={{ backgroundImage: `url(${img})` }}
+    //     />
+    //   ))}
+
+    //   {/* Navigation Controls */}
+    //   {/* Previous Button */}
+    //   <button
+    //     onClick={prevSlide}
+    //     className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50
+    //          group flex items-center justify-center w-12 h-12 md:w-14 md:h-14
+    //          bg-white/10 hover:bg-white/20 border border-white/20
+    //          backdrop-blur-md rounded-full text-white transition-all
+    //          duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+    //     aria-label="Previous slide"
+    //   >
+    //     <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
+    //   </button>
+
+    //   {/* Next Button */}
+    //   <button
+    //     onClick={nextSlide}
+    //     className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-50
+    //          group flex items-center justify-center w-12 h-12 md:w-14 md:h-14
+    //          bg-white/10 hover:bg-white/20 border border-white/20
+    //          backdrop-blur-md rounded-full text-white transition-all
+    //          duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+    //     aria-label="Next slide"
+    //   >
+    //     <ChevronRight className="w-6 h-6 md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
+    //   </button>
+    // </div>
+
+    <div className="relative w-full min-h-[80vh] md:min-h-screen overflow-hidden">
+      {/* Overlay */}
+      <div className="absolute inset-0 flex flex-col justify-center items-center px-4 sm:px-6 py-16 bg-black/60 text-white z-30">
+        {/* Hero Text */}
+        <div className="text-center mb-10 md:mb-16 max-w-3xl">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 md:mb-6 leading-tight tracking-tight">
             Pioneering the Future of <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#006E3A] to-green-400">
               Digital Innovation
             </span>
           </h2>
-          <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
+
+          <p className="text-gray-300 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
             The official hub for computing excellence at ABUAD. We empower
             students to bridge the gap between classroom theory and
             industry-leading technology.
           </p>
         </div>
 
-        {/* Stats Container */}
-        <div className="flex w-full justify-center items-center flex-wrap gap-8 md:gap-16">
-          {/* Stat Item 1 */}
-          <div className="flex flex-col items-center group">
-            <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+        {/* Stats */}
+        <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 w-full max-w-5xl text-center justify-items-center">
+          {/* Stat 1 */}
+          <div className="group">
+            <p className="font-bold text-[clamp(20px,8vw,64px)] text-[#006E3A] leading-none mb-2">
               <Counter end={1500} />+
             </p>
-            <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+            <p className="text-gray-300 text-xs sm:text-base uppercase tracking-widest">
               Students
             </p>
-            <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+            <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2 mx-auto" />
           </div>
 
-          {/* Stat Item 2 */}
-          <div className="flex flex-col items-center group">
-            <p className="font-bold text-[clamp(40px,8vw,64px)] text-white leading-none mb-2">
+          {/* Stat 2 */}
+          <div className="group">
+            <p className="font-bold text-[clamp(20px,8vw,64px)] text-white leading-none mb-2">
               <Counter end={150} />+
             </p>
-            <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+            <p className="text-gray-300 text-xs sm:text-base uppercase tracking-widest">
               Events Hosted
             </p>
-            <div className="h-1 w-0 group-hover:w-full bg-white transition-all duration-500 mt-2" />
+            <div className="h-1 w-0 group-hover:w-full bg-white transition-all duration-500 mt-2 mx-auto" />
           </div>
 
-          {/* Stat Item 3 */}
-          <div className="flex flex-col items-center group">
-            <p className="font-bold text-[clamp(40px,8vw,64px)] text-[#006E3A] leading-none mb-2">
+          {/* Stat 3 */}
+          <div className="group">
+            <p className="font-bold text-[clamp(20px,8vw,64px)] text-[#006E3A] leading-none mb-2">
               <Counter end={20} />+
             </p>
-            <p className="font-medium text-gray-300 text-lg uppercase tracking-widest">
+            <p className="text-gray-300 text-xs sm:text-base uppercase tracking-widest">
               Projects Built
             </p>
-            <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2" />
+            <div className="h-1 w-0 group-hover:w-full bg-[#006E3A] transition-all duration-500 mt-2 mx-auto" />
           </div>
         </div>
       </div>
@@ -360,31 +455,32 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
         />
       ))}
 
-      {/* Navigation Controls */}
       {/* Previous Button */}
       <button
         onClick={prevSlide}
-        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 
-             group flex items-center justify-center w-12 h-12 md:w-14 md:h-14 
-             bg-white/10 hover:bg-white/20 border border-white/20 
-             backdrop-blur-md rounded-full text-white transition-all 
-             duration-300 hover:scale-110 active:scale-95 cursor-pointer"
-        aria-label="Previous slide"
+        className="absolute left-2 sm:left-3 md:left-6 top-1/2 -translate-y-1/2 z-50 
+  flex items-center justify-center 
+  w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14
+  bg-black/40 sm:bg-white/10 hover:bg-white/20 
+  border border-white/20 backdrop-blur-md 
+  rounded-full text-white transition-all duration-300 
+  hover:scale-110 active:scale-95"
       >
-        <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-8 md:h-8" />
       </button>
 
       {/* Next Button */}
       <button
         onClick={nextSlide}
-        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 
-             group flex items-center justify-center w-12 h-12 md:w-14 md:h-14 
-             bg-white/10 hover:bg-white/20 border border-white/20 
-             backdrop-blur-md rounded-full text-white transition-all 
-             duration-300 hover:scale-110 active:scale-95 cursor-pointer"
-        aria-label="Next slide"
+        className="absolute right-2 sm:right-3 md:right-6 top-1/2 -translate-y-1/2 z-50 
+  flex items-center justify-center 
+  w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14
+  bg-black/40 sm:bg-white/10 hover:bg-white/20 
+  border border-white/20 backdrop-blur-md 
+  rounded-full text-white transition-all duration-300 
+  hover:scale-110 active:scale-95"
       >
-        <ChevronRight className="w-6 h-6 md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-8 md:h-8" />
       </button>
     </div>
   );

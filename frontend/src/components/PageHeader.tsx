@@ -6,7 +6,7 @@ interface PageHeaderProps {
 export default function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
     <section className="w-full flex justify-center">
-      <div className="flex justify-center flex-col mt-28 max-w-[718px] items-center gap-5">
+      <div className="flex justify-center flex-col mt-10 max-w-[718px] items-center gap-5">
         <h1 className="font-bold text-3xl md:text-4xl lg:text-[45px] leading-none tracking-normal text-[#006E3A]">
           {title}
         </h1>
@@ -14,9 +14,14 @@ export default function PageHeader({ title, subtitle }: PageHeaderProps) {
           {subtitle}
         </p>
         <div className="w-full flex justify-center mb-7">
-          <div className="w-[267px] h-[9px] flex gap-1.5 items-center">
+          <div className="w-[267px] h-[9px] flex gap-1.5 items-center relative">
+            {/* Left Bar */}
             <div className="w-[45%] h-full bg-[#006E3A] rounded-l-xl"></div>
-            <div className="w-[9px] h-[9px] bg-[#006E3A] rounded-full flex-shrink-0"></div>
+
+            {/* Animated Center Circle */}
+            <div className="w-[9px] h-[9px] bg-[#006E3A] rounded-full flex-shrink-0 animate-[slide_2s_ease-in-out_infinite]"></div>
+
+            {/* Right Bar */}
             <div className="w-[45%] h-full bg-[#006E3A] rounded-r-xl"></div>
           </div>
         </div>

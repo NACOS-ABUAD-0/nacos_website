@@ -38,8 +38,9 @@ import type {
 import { useSEO } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import Facilities from "../components/Facilities";
-import Executives from "../components/Executives";
+import Executives from "./Executives";
 import { Layout } from "../layouts/layout";
+import Gallery from "./gallery";
 
 /**
  * Premium Enhancements Summary:
@@ -81,12 +82,6 @@ const Homepage: React.FC = () => {
     error: resourcesError,
     refetch: refetchResources,
   } = useLatestResources();
-  const {
-    data: gallery,
-    isLoading: galleryLoading,
-    error: galleryError,
-    refetch: refetchGallery,
-  } = useLatestGallery();
 
   return (
     <Layout>
@@ -230,7 +225,7 @@ const Homepage: React.FC = () => {
             )}
           </Section>
 
-          <Events/>
+          <Events isHome={true} />
 
           {/* <Section
           title="Our Leadership"
@@ -280,102 +275,58 @@ const Homepage: React.FC = () => {
           <Facilities />
           {/* Resources Section */}
           <Section
-          title="Learning Resources"
-          subtitle="Curated study materials and technical tutorials"
-          ctaText="Browse resources"
-          ctaLink="/resources"
-          id="resources"
-        >
-          {resourcesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <ResourceCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : resourcesError ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">Failed to load resources</p>
-              <button
-                onClick={() => refetchResources()}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {resources?.results?.slice(0, 6).map((resource: ResourceItem) => (
-                <a
-                  key={resource.id}
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-6 bg-gray-50 rounded-xl hover:bg-white hover:shadow-lg border border-gray-100 transition-all duration-300 group"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <svg className="w-5 h-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </div>
-                  <h4 className="font-medium text-gray-900 group-hover:text-green-600 mb-2 line-clamp-2 transition-colors">
-                    {resource.title}
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {resource.course_code && `${resource.course_code} • `}
-                    {resource.year && `Year ${resource.year}`}
-                  </p>
-                </a>
-              ))}
-            </div>
-          )}
-        </Section>
-          <LearningResourceCta />
-
-          <Testimonials />
-
-          {/* Gallery Section */}
-          <Section
-            title="Community Moments"
-            subtitle="Capturing collaboration, innovation, and growth"
-            ctaText="View gallery"
-            ctaLink="/gallery"
-            id="gallery"
+            title="Learning Resources"
+            subtitle="Curated study materials and technical tutorials"
+            ctaText="Browse resources"
+            ctaLink="/resources"
+            id="resources"
           >
-            {galleryLoading ? (
-              <GallerySkeleton />
-            ) : galleryError ? (
+            {resourcesLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <ResourceCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : resourcesError ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 mb-4">Failed to load gallery</p>
+                <p className="text-gray-500 mb-4">Failed to load resources</p>
                 <button
-                  onClick={() => refetchGallery()}
+                  onClick={() => refetchResources()}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Try Again
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {gallery?.results?.slice(0, 12).map((item: GalleryItem) => (
-                  <div
-                    key={item.id}
-                    className="aspect-square rounded-xl overflow-hidden group"
-                  >
-                    {item.type === "image" ? (
-                      <img
-                        src={item.url}
-                        alt={item.title || "Community moment"}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {resources?.results
+                  ?.slice(0, 6)
+                  .map((resource: ResourceItem) => (
+                    <a
+                      key={resource.id}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-6 bg-gray-50 rounded-xl hover:bg-white hover:shadow-lg border border-gray-100 transition-all duration-300 group"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </div>
                         <svg
-                          className="w-12 h-12 text-gray-400"
+                          className="w-5 h-5 text-gray-400 group-hover:text-green-600 transition-colors"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -384,24 +335,28 @@ const Homepage: React.FC = () => {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                           />
                         </svg>
                       </div>
-                    )}
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300" />
-                  </div>
-                ))}
+                      <h4 className="font-medium text-gray-900 group-hover:text-green-600 mb-2 line-clamp-2 transition-colors">
+                        {resource.title}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        {resource.course_code && `${resource.course_code} • `}
+                        {resource.year && `Year ${resource.year}`}
+                      </p>
+                    </a>
+                  ))}
               </div>
             )}
           </Section>
+          <LearningResourceCta />
+
+          <Testimonials />
+
+          {/* Gallery Section */}
+          <Gallery isHome={true}/>
         </main>
       </div>
     </Layout>
@@ -409,6 +364,70 @@ const Homepage: React.FC = () => {
 };
 
 export default Homepage;
+
+{/* <Section
+  title="Community Moments"
+  subtitle="Capturing collaboration, innovation, and growth"
+  ctaText="View gallery"
+  ctaLink="/gallery"
+  id="gallery"
+>
+  {galleryLoading ? (
+    <GallerySkeleton />
+  ) : galleryError ? (
+    <div className="text-center py-12">
+      <p className="text-gray-500 mb-4">Failed to load gallery</p>
+      <button
+        onClick={() => refetchGallery()}
+        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+      >
+        Try Again
+      </button>
+    </div>
+  ) : (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {gallery?.results?.slice(0, 12).map((item: GalleryItem) => (
+        <div
+          key={item.id}
+          className="aspect-square rounded-xl overflow-hidden group"
+        >
+          {item.type === "image" ? (
+            <img
+              src={item.url}
+              alt={item.title || "Community moment"}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+              <svg
+                className="w-12 h-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          )}
+          {/* Overlay on hover */}
+//           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300" />
+//         </div>
+//       ))}
+//     </div>
+//   )}
+// </Section>; */}
 
 // {/* Partners & Sponsors CTA */}
 // <section className="py-20 bg-gradient-to-br from-gray-50 to-green-50 relative overflow-hidden">
