@@ -19,7 +19,9 @@ import Executives from "./components/Executives";
 import Home from "./admin1/pages/Home";
 import Event from "./admin1/pages/Event";
 import Approval from "./admin1/pages/Approval";
+import Studentprofile from  "./admin1/pages/StudentProfile";
 import Metrics from "./admin1/pages/Metrics";
+import Settings from "./admin1/pages/Settings";
 
 
 // 🔥 Project imports
@@ -31,6 +33,7 @@ import { ResourcesPage } from "./pages/resources"; // ✅ Added ResourcesPage im
 
 // React Query
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import StudentProfile from "./admin1/pages/StudentProfile";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -108,8 +111,9 @@ function AppRoutes() {
       <Route path="/admin" element={<Home />} />
       <Route path="/admin/events" element={<Event />} />
       <Route path="/admin/approvals" element={<Approval />} />
+      <Route path= "/admin/approvals/:id" element={<StudentProfile />} />
       <Route path="/admin/metrics" element={<Metrics />} />
-
+      <Route path="/admin/settings" element={<Settings />} />
       
 
       {/* Protected Routes */}
