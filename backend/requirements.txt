@@ -9,3 +9,4 @@ gunicorn
 google-auth
 google-auth-oauthlib
 google-api-python-client
+qrcode

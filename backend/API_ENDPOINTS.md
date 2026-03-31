@@ -251,6 +251,49 @@ Public listing shows only **published** events (`is_published=true`). Staff (`is
 - `DELETE /api/events/{id}/`
   - **Staff only**
 
+### Attendance & QR check-in
+
+Each attendee gets a unique `check_in_token` for a specific event. That token is the QR payload source.
+
+- `GET /api/events/{id}/attendees/`
+  - **Staff only**
+  - Returns all attendee records for that event with check-in status.
+
+- `POST /api/events/{id}/register_attendee/`
+  - **Staff only**
+  - Body (JSON):
+    - `student_id` (integer, required; user id of the student)
+  - Behavior:
+    - creates a unique attendance record per `(event, student)` if missing
+    - returns attendance + QR payload values
+  - Response includes:
+    - `created` (boolean)
+    - `attendance` (record details)
+    - `payload`:
+      - `event_id`
+      - `check_in_token`
+      - `qr_value` (string to encode as QR, format: `event:{event_id}:token:{check_in_token}`)
+
+- `GET /api/events/{id}/my_qr/`
+  - Auth required (student/user)
+  - Returns the authenticated user attendance record and QR payload for that event.
+  - `404` if the user is not registered for that event.
+
+- `GET /api/events/{id}/my_qr_png/`
+  - Auth required (student/user)
+  - Returns a PNG image directly (`Content-Type: image/png`) for the authenticated user's event attendance QR code.
+  - The encoded content follows: `event:{event_id}:token:{check_in_token}`
+  - `404` if the user is not registered for that event.
+
+- `POST /api/events/{id}/check_in/`
+  - **Staff only** (scanner/check-in admin)
+  - Body (JSON):
+    - `check_in_token` (UUID string, required)
+  - Behavior:
+    - validates token belongs to that event
+    - marks attendee checked-in (`is_checked_in=true`, sets `checked_in_at`, `checked_in_by`)
+    - if already checked in, returns current record with message
+
 ## Executives
 
 Public listing shows only **active** executives (`is_active=true`). Staff see all records and can create, update, or delete.
