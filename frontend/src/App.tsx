@@ -30,7 +30,7 @@ import Gallery from "./pages/gallery";
 import ContactPage from "./pages/contact";
 
 // Admin imports
-import AdminHome from "./admin1/pages/home";
+import AdminHome from "./admin1/pages/Home";
 import AdminApproval from "./admin1/pages/Approval";
 import AdminEvents from "./admin1/pages/Event";
 import AdminSettings from "./admin1/pages/Settings";
