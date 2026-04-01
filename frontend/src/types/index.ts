@@ -1,3 +1,5 @@
+// src/types/index.ts
+
 export interface User {
   id: number;
   email: string;
@@ -5,7 +7,6 @@ export interface User {
   matric_number?: string;
   date_joined: string;
   is_staff?: boolean;
-  is_email_verified?: boolean;
   profile_complete?: boolean;
 }
 
@@ -23,8 +24,11 @@ export interface Project {
   tags?: Skill[];
   links?: Record<string, string>;
   images?: string[];
-  featured: boolean;
+  // ✅ API returns is_featured — the old field name "featured" never existed
+  // in the Django model, so project.featured was always undefined.
+  is_featured: boolean;
   like_count?: number;
+  status?: 'draft' | 'published';
   created_at: string;
   updated_at: string;
 }

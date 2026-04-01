@@ -1,187 +1,39 @@
-import { useUpcomingEvents } from "../lib/hooks/useHomepage";
-import { EventCardSkeleton } from "../components/home/Skeletons";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import SectionHeader from "../components/SectionHeader";
 import PageHeader from "../components/PageHeader";
 import { EventCard } from "../components/EventCard";
-import { useState, useEffect } from "react";
-
-interface Event {
-  id: number;
-  title: string;
-  status: "upcoming" | "ongoing" | "completed";
-  start_time: string; // ISO date string (e.g., "2026-04-10T10:00:00Z")
-  end_time: string; // ISO date string
-  is_remote: boolean;
-  location: string;
-  media: {
-    poster: string | null;
-  };
-}
+import { EventCardSkeleton } from "../components/home/Skeletons";
+import { useEvents } from "../lib/hooks/useEvents";
 
 interface EventProps {
   isHome: boolean;
 }
 
-const Mockevents: Event[] = [
-  {
-    id: 1,
-    title: "Tech Innovation Summit",
-    status: "upcoming",
-    start_time: "2026-04-10T10:00:00Z",
-    end_time: "2026-04-10T16:00:00Z",
-    is_remote: false,
-    location: "ABUAD Main Auditorium",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 2,
-    title: "Frontend Masterclass",
-    status: "upcoming",
-    start_time: "2026-04-18T14:00:00Z",
-    end_time: "2026-04-18T17:00:00Z",
-    is_remote: true,
-    location: "Zoom",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 3,
-    title: "Hackathon 2026",
-    status: "upcoming",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 4,
-    title: "Hackathon 2026",
-    status: "upcoming",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 5,
-    title: "Hackathon 2026",
-    status: "upcoming",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 6,
-    title: "Hackathon 2026",
-    status: "upcoming",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 7,
-    title: "Hackathon 2026",
-    status: "completed",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 8,
-    title: "Hackathon 2026",
-    status: "completed",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-  {
-    id: 9,
-    title: "Hackathon 2026",
-    status: "ongoing",
-    start_time: "2026-05-02T09:00:00Z",
-    end_time: "2026-05-04T18:00:00Z",
-    is_remote: false,
-    location: "Engineering Complex, ABUAD",
-    media: {
-      poster: "/events/dev.jpeg",
-    },
-  },
-];
-
 export default function Events({ isHome }: EventProps) {
-  const { data: events, isLoading: eventsLoading } = useUpcomingEvents();
-
-  // 1. States
+  const [filter, setFilter] = useState<"all" | "upcoming" | "ongoing" | "completed">("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState<
-    "all" | "upcoming" | "ongoing" | "completed"
-  >("all");
   const itemsPerPage = 6;
 
-  // 2. Sorting & Filtering Logic
-  const getDisplayData = () => {
-    let dataSource = [...Mockevents];
+  const { data, isLoading, error } = useEvents();
+  const allEvents: any[] = Array.isArray(data) ? data : data?.results ?? [];
 
-    if (isHome) {
-      // Sort by date (closest first) and take top 3
-      return dataSource
-        .sort(
-          (a, b) =>
-            new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
-        )
-        .slice(0, 3);
-    }
+  // For homepage: combine upcoming and ongoing events, sort by start_time ascending
+  const homeEvents = allEvents
+    .filter(e => e.status === "upcoming" || e.status === "ongoing")
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-    // Filter by Status
-    if (filter !== "all") {
-      dataSource = dataSource.filter((event) => event.status === filter);
-    }
+  const filtered = filter === "all" ? allEvents : allEvents.filter(e => e.status === filter);
 
-    // Paginate
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return dataSource.slice(startIndex, startIndex + itemsPerPage);
-  };
+  const displayData = isHome
+    ? homeEvents.slice(0, 3) // fallback for static (carousel handles all)
+    : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const displayData = getDisplayData();
-
-  // Calculate total pages based on filtered data
-  const filteredTotal =
-    filter === "all"
-      ? Mockevents.length
-      : Mockevents.filter((e) => e.status === filter).length;
-
-  const totalPages = Math.ceil(filteredTotal / itemsPerPage);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-  // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [filter]);
@@ -190,15 +42,28 @@ export default function Events({ isHome }: EventProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
+  const FilterIcon = ({ active }: { active: boolean }) => (
+    <svg
+      className={`w-4 h-4 mr-2 ${active ? "text-white" : "text-gray-500"}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+      />
+    </svg>
+  );
+
   return (
     <section className={isHome ? "mb-37.5" : ""}>
-      {!isHome ? <Navbar /> : null}
+      {!isHome && <Navbar />}
 
       {isHome ? (
-        <SectionHeader
-          subtitle="Upcoming Events"
-          title="Learn, Connect, and Grow"
-        />
+        <SectionHeader subtitle="Upcoming & Ongoing Events" title="Learn, Connect, and Grow" />
       ) : (
         <PageHeader
           title="NACOS EVENTS"
@@ -206,118 +71,119 @@ export default function Events({ isHome }: EventProps) {
         />
       )}
 
-      {/* --- Filter Bar (Only on Events Page) --- */}
+      {/* Filter bar — events page only */}
       {!isHome && (
         <div className="flex justify-center gap-2 md:gap-4 mt-8 px-4 flex-wrap">
-          {["all", "upcoming", "ongoing", "completed"].map((type) => (
+          {(["all", "upcoming", "ongoing", "completed"] as const).map(type => (
             <button
               key={type}
-              onClick={() => setFilter(type as any)}
-              className={`px-6 py-2 rounded-full text-sm font-bold transition-all cursor-pointer ${
+              onClick={() => setFilter(type)}
+              className={`px-6 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer flex items-center ${
                 filter === type
-                  ? "bg-[#006E3A] text-white"
-                  : "bg-white text-gray-600 border border-gray-200"
+                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
+                  : "bg-white text-gray-700 border border-gray-200 hover:border-green-400 hover:shadow-sm"
               }`}
             >
-              {type}
+              <FilterIcon active={filter === type} />
+              {type.charAt(0).toUpperCase() + type.slice(1)}
             </button>
           ))}
         </div>
       )}
 
-      {eventsLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-10 justify-items-center mt-10 p-3 lg:p-10 max-w-360 mx-auto mb-8">
-          {[...Array(isHome ? 3 : 6)].map((_, i) => (
-            <EventCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-10 justify-items-center mt-10 p-3 lg:p-10 max-w-360 mx-auto">
-            {displayData.map((event) => (
-              <EventCard key={event.id} event={event} />
+      {/* Main content area */}
+      <div className={!isHome ? "pb-20" : ""}>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 px-4 md:px-8">
+            {[...Array(isHome ? 3 : 6)].map((_, i) => (
+              <EventCardSkeleton key={i} />
             ))}
-            {displayData.length === 0 && (
-              <div className="col-span-full py-20 text-center text-gray-500 font-medium">
-                No {filter} events found at the moment.
-              </div>
-            )}
           </div>
-
-          {/* Pagination */}
-          {!isHome && totalPages > 1 && (
-            <div className="flex flex-col items-center gap-6 mt-10 mb-20">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="group p-3 rounded-full border border-gray-200 bg-white disabled:opacity-30 hover:border-green-600 transition-all"
-                >
-                  <svg
-                    className="w-6 h-6 rotate-180"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {pageNumbers.map((number) => (
-                    <button
-                      key={number}
-                      onClick={() => setCurrentPage(number)}
-                      className={`w-10 h-10 rounded-lg font-semibold transition-all ${
-                        currentPage === number
-                          ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md scale-110"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {number}
-                    </button>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Failed to load events.</p>
+          </div>
+        ) : (
+          <>
+            {isHome ? (
+              // Carousel for homepage (upcoming + ongoing events)
+              <EventCarousel events={homeEvents} />
+            ) : (
+              // Regular grid and pagination for events page
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 px-4 md:px-8">
+                  {displayData.map(event => (
+                    <EventCard key={event.id} event={event} />
                   ))}
+                  {displayData.length === 0 && (
+                    <div className="col-span-full py-20 text-center text-gray-500 font-medium">
+                      No {filter} events found at the moment.
+                    </div>
+                  )}
                 </div>
 
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="group p-3 rounded-full bg-gradient-to-r from-green-600 to-teal-600 text-white disabled:opacity-30 transition-all"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-10">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="p-3 rounded-full border border-gray-200 bg-white disabled:opacity-30 hover:border-green-600 transition-all"
+                    >
+                      <svg
+                        className="w-6 h-6 rotate-180"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 7l5 5m0 0l-5 5m5-5H6"
+                        />
+                      </svg>
+                    </button>
+                    {pageNumbers.map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setCurrentPage(n)}
+                        className={`w-10 h-10 rounded-lg font-semibold transition-all ${
+                          currentPage === n
+                            ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md scale-110"
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="p-3 rounded-full bg-gradient-to-r from-green-600 to-teal-600 text-white disabled:opacity-30 transition-all"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 7l5 5m0 0l-5 5m5-5H6"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
 
-      {/* Explore All (Home Only) */}
+      {/* "View All Events" button for homepage */}
       {isHome && (
         <div className="w-full flex flex-col items-center gap-4 p-6 mb-20">
           <h1 className="font-bold text-2xl md:text-3xl lg:text-[32px] text-[#006E3A] text-center">
-            Explore All Upcoming Events
+            Explore All Events
           </h1>
           <Link
             to="/events"
@@ -341,151 +207,153 @@ export default function Events({ isHome }: EventProps) {
         </div>
       )}
 
-      {!isHome ? <Footer /> : null}
+      {!isHome && <Footer />}
     </section>
   );
 }
 
-//         // ) : eventsError ? (
-//         //   <div className="text-center py-12">
-//         //     <p className="text-gray-500 mb-4">Failed to load events</p>
-//         //     <button
-//         //       onClick={() => refetchEvents()}
-//         //       className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-//         //     >
-//         //       Try Again
-//         //     </button>
-//         //   </div>
-//         // ) : events?.results?.length === 0 ? (
-//         //   <div className="text-center py-12">
-//         //     <p className="text-gray-500">No upcoming events scheduled</p>
-//         //   </div>
-//         <>
-//           <section
-//             className={`${isHome ? "grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-10 justify-items-center mt-10 p-3 lg:p-10 max-w-360 mx-auto" : "grid grid-cols-1 lg:grid-cols-4 gap-2 lg:gap-10 justify-items-center mt-10 p-3 lg:p-10 max-w-360 mx-auto"}`}
-//             id="top"
-//           >
-//             {/* {displayData.map((exec) => (
-//               <EventsCard key={exec.id} {...exec} />
-//             ))} */}
-//           </section>
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-//             {event?.slice(0, 3).map((event) => (
-//               <div
-//                 key={event.id}
-//                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-//               >
-//                 {event.media.poster ? (
-//                   <div className="relative overflow-hidden w-full max-w-[500px] aspect-[426/463]">
-//                     <img
-//                       src={event.media.poster}
-//                       alt={event.title}
-//                       className="w-full h-full rounded-t-[10px] object-cover"
-//                       loading="lazy"
-//                     />
-//                     {/* <div className="absolute top-4 right-4">
-//                                   {event.is_remote ? (
-//                                     <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-//                                       Remote
-//                                     </span>
-//                                   ) : (
-//                                     <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-//                                       In-person
-//                                     </span>
-//                                   )}
-//                                 </div> */}
-//                   </div>
-//                 ) : (
-//                   <div className="w-full h-40 bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-//                     <svg
-//                       className="w-10 h-10 text-gray-400"
-//                       fill="none"
-//                       stroke="currentColor"
-//                       viewBox="0 0 24 24"
-//                     >
-//                       <path
-//                         strokeLinecap="round"
-//                         strokeLinejoin="round"
-//                         strokeWidth={1.5}
-//                         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-//                       />
-//                     </svg>
-//                   </div>
-//                 )}
+// Carousel component for homepage events (displays up to 3 events per slide)
+interface EventCarouselProps {
+  events: any[];
+}
 
-//                 <div className="p-6 bg-[#E8F4F8]">
-//                   <h3 className="font-semibold text-xl md:text-2xl lg:text-[25px] leading-none tracking-normal text-black mb-4">
-//                     Title: {event.title}
-//                   </h3>
-//                   <p className="font-medium text-[15px] leading-[24px] md:text-[16px] md:leading-[26px] lg:text-[17px] lg:leading-[27px] tracking-normal text-[#000000BF]">
-//                     Theme: {event.theme}
-//                   </p>
-//                   <p className="font-medium text-[15px] leading-[24px] md:text-[16px] md:leading-[26px] lg:text-[17px] lg:leading-[27px] tracking-normal text-[#000000BF]">
-//                     Status: {event.status}
-//                   </p>
-//                   <div className="flex items-center text-sm text-gray-600 mb-3">
-//                     {/* <svg
-//                                   className="w-4 h-4 mr-2"
-//                                   fill="none"
-//                                   stroke="currentColor"
-//                                   viewBox="0 0 24 24"
-//                                 >
-//                                   <path
-//                                     strokeLinecap="round"
-//                                     strokeLinejoin="round"
-//                                     strokeWidth={2}
-//                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-//                                   />
-//                                 </svg> */}
-//                     {/* {new Date(event.start).toLocaleDateString()} */}
-//                     {/* {event.title && (
-//                                   <>
-//                                     <svg
-//                                       className="w-4 h-4 mx-2"
-//                                       fill="none"
-//                                       stroke="currentColor"
-//                                       viewBox="0 0 24 24"
-//                                     >
-//                                       <path
-//                                         strokeLinecap="round"
-//                                         strokeLinejoin="round"
-//                                         strokeWidth={2}
-//                                         d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-//                                       />
-//                                       <path
-//                                         strokeLinecap="round"
-//                                         strokeLinejoin="round"
-//                                         strokeWidth={2}
-//                                         d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-//                                       />
-//                                     </svg>
-//                                     {event.}
-//                                   </>
-//                                 )} */}
-//                   </div>
+const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-//                   <Link
-//                     to={`/events/${event.id}`}
-//                     className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
-//                   >
-//                     Learn More
-//                     <svg
-//                       className="w-4 h-4"
-//                       fill="none"
-//                       stroke="currentColor"
-//                       viewBox="0 0 24 24"
-//                     >
-//                       <path
-//                         strokeLinecap="round"
-//                         strokeLinejoin="round"
-//                         strokeWidth={2}
-//                         d="M9 5l7 7-7 7"
-//                       />
-//                     </svg>
-//                   </Link>
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         </>
-//       )}
+  // Group events into slides (max 3 per slide)
+  const itemsPerSlide = 3;
+  const slides = [];
+  for (let i = 0; i < events.length; i += itemsPerSlide) {
+    slides.push(events.slice(i, i + itemsPerSlide));
+  }
+  const totalSlides = slides.length;
+
+  // Auto‑rotate every 5 seconds
+  useEffect(() => {
+    if (isPaused || totalSlides <= 1) return;
+
+    intervalRef.current = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % totalSlides);
+    }, 5000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isPaused, totalSlides]);
+
+  const goToNext = () => {
+    setCurrentSlide((prev) => (prev + 1) % totalSlides);
+  };
+
+  const goToPrev = () => {
+    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+  };
+
+  // If no events, show a message
+  if (events.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No upcoming or ongoing events at the moment.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {/* Slides container */}
+      <div className="overflow-hidden">
+        <div
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        >
+          {slides.map((slide, slideIdx) => (
+            <div key={slideIdx} className="w-full flex-shrink-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 md:px-8">
+                {slide.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+                {/* Fill empty slots with invisible placeholders to maintain grid layout */}
+                {slide.length < itemsPerSlide &&
+                  Array.from({ length: itemsPerSlide - slide.length }).map((_, i) => (
+                    <div key={`placeholder-${i}`} className="invisible" />
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation arrows (only if more than one slide) */}
+      {totalSlides > 1 && (
+        <>
+          <button
+            onClick={goToPrev}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 lg:-ml-6 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors focus:outline-none z-10"
+            aria-label="Previous events"
+          >
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={goToNext}
+            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 lg:-mr-6 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors focus:outline-none z-10"
+            aria-label="Next events"
+          >
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </>
+      )}
+
+      {/* Dot indicators (only if more than one slide) */}
+      {totalSlides > 1 && (
+        <div className="flex justify-center gap-2 mt-8">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => goToSlide(idx)}
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 focus:outline-none ${
+                idx === currentSlide
+                  ? "bg-green-600 w-6"
+                  : "bg-gray-300 hover:bg-gray-400"
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
