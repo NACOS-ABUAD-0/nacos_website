@@ -35,6 +35,8 @@ const Navbar = () => {
           { label: 'Events',    to: '/admin/events' },
           { label: 'Metrics',   to: '/admin/metrics' },
           { label: 'Approvals', to: '/admin/approvals' },
+          { label: 'Gallery',   to: '/admin/gallery'},
+          {label: 'Inquiries',  to: '/admin/inquiries'},
         ].map(({ label, to }) => (
           <li key={label}>
             <NavLink

@@ -1,3 +1,5 @@
+// src/admin1/pages/Settings.jsx
+
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'

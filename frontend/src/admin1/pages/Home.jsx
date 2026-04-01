@@ -1,3 +1,5 @@
+//src/admin1/pages/home.jsx
+
 import React, { useState, useMemo } from 'react'
 import Navbar from '../components/Navbar.jsx'
 import { Footer } from '../../components/Footer.tsx'

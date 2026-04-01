@@ -1,4 +1,3 @@
-// frontend/src/lib/api.ts
 import axios from "axios";
 
 // ─── URL CONSTRUCTION ────────────────────────────────────────────────────────
@@ -141,6 +140,11 @@ export const authAPI = {
     api.post("/auth/token/refresh/", { refresh: refreshToken }),
 };
 
+// ── USERS (count) ────────────────────────────────────────────────────────────
+export const usersAPI = {
+  getCount: () => api.get("/users/count/"),
+};
+
 // ── PROJECTS ─────────────────────────────────────────────────────────────────
 export const projectsAPI = {
   // Pass params as an object — axios serialises them correctly:
@@ -159,10 +163,14 @@ export const projectsAPI = {
 
   deleteProject: (id: string | number) => api.delete(`/projects/${id}/`),
 
-  getMyProjects: () => api.get("/projects/my_projects/"),
+  getMyProjects: () => api.get("/projects/my-projects/"),
 
   toggleFeatured: (id: string | number) =>
     api.post(`/projects/${id}/toggle_featured/`),
+
+  // ADDED: like/unlike endpoints
+  likeProject: (id: string | number) => api.post(`/projects/${id}/like/`),
+  unlikeProject: (id: string | number) => api.post(`/projects/${id}/unlike/`),
 };
 
 // ── SKILLS / TAGS ─────────────────────────────────────────────────────────────
@@ -181,8 +189,12 @@ export const resourcesAPI = {
 
   getResourceTags: () => api.get("/resource-tags/"),
 
+  getResourcesByUrl: (url: string) => axios.get(url),
+
   trackDownload: (id: string | number) =>
     api.post(`/resources/${id}/track_download/`),
+
+  getCount: () => api.get("/resources/count/"),   // <-- ADDED
 };
 
 // ── HOMEPAGE ─────────────────────────────────────────────────────────────────

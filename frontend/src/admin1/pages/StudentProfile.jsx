@@ -1,3 +1,5 @@
+// src/admin1/pages/StudentProfile.jsx
+
 import { useLocation, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import project1 from '../../assets/profile1.png'

@@ -1,4 +1,3 @@
-// frontend/src/pages/ProjectFormPage.tsx
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ProjectForm } from '../components/ProjectForm';
@@ -23,7 +22,7 @@ export const ProjectFormPage: React.FC = () => {
 
   if (isLoading && isEditing) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-white">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
@@ -37,19 +36,19 @@ export const ProjectFormPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       <main className="flex-grow">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Enhanced header section */}
-          <div className="mb-8 text-center">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Header */}
+          <div className="text-center mb-12">
             <div className="inline-flex items-center gap-3 mb-4">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
                 {isEditing ? 'Edit Project' : 'Create New Project'}
               </h1>
             </div>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
               {isEditing
                 ? 'Update your project details and showcase your latest improvements to the community'
                 : 'Share your innovative work with the NACOS community and showcase your skills'
@@ -57,35 +56,12 @@ export const ProjectFormPage: React.FC = () => {
             </p>
           </div>
 
-          {/* GitHub-inspired form container */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-            {/* Form header with GitHub-like styling */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {isEditing ? 'Project Repository Settings' : 'New Repository'}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {isEditing
-                      ? 'Configure your project details and visibility'
-                      : 'Initialize your project repository and settings'
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Form content */}
-            <div className="p-6">
-              <ProjectForm
-                project={project}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-              />
-            </div>
-          </div>
+          {/* Form Container */}
+          <ProjectForm
+            project={project}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
 
           {/* Additional guidance for new projects */}
           {!isEditing && (
