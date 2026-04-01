@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usersAPI, resourcesAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { motion, AnimatePresence, useInView} from 'framer-motion';
+import { motion, AnimatePresence, useInView, easeInOut} from 'framer-motion';
 import {
   Mail, Code2, Plus, CalendarDays, BookOpen,
   Users, Rocket, Settings, ChevronRight,
@@ -403,11 +403,12 @@ export const DashboardPage: React.FC = () => {
         animate={{
           scale: [1, 1.1, 1],
           opacity: [0.6, 0.8, 0.6],
+          opacity: [0.6, 0.8, 0.6],
         }}
         transition={{
           duration: 8,
           repeat: Infinity,
-          ease: "easeInOut",
+          ease: easeInOut as const,
         }}
       />
 

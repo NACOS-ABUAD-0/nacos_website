@@ -1,6 +1,6 @@
 // src/components/home/StatsStrip.tsx
 import React, { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, easeInOut } from "framer-motion";
 import type { Stats } from "../../lib/hooks/useHomepage";
 import { StatsSkeleton } from "./Skeletons";
 
@@ -101,7 +101,7 @@ const StatCard: React.FC<{ stat: StatItem }> = ({ stat }) => {
         <motion.div
           className="text-2xl mb-3"
           whileHover={{ scale: 1.25, rotate: [0, -8, 8, 0] }}
-          transition={{ duration: 0.45, ease: "easeInOut" }}
+          transition={{ duration: 0.45, ease: easeInOut as const }}
         >
           {stat.icon}
         </motion.div>
@@ -190,12 +190,12 @@ export const StatsStrip: React.FC<StatsStripProps> = ({ stats, isLoading, error 
       <motion.div
         className="absolute top-4 left-10 w-3 h-3 bg-green-300 rounded-full pointer-events-none"
         animate={{ opacity: [0.2, 0.45, 0.2], y: [0, -8, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 4, repeat: Infinity, ease: easeInOut as const }}
       />
       <motion.div
         className="absolute bottom-6 right-16 w-2 h-2 bg-teal-400 rounded-full pointer-events-none"
         animate={{ opacity: [0.3, 0.6, 0.3], y: [0, -6, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+        transition={{ duration: 5, repeat: Infinity, ease: easeInOut as const, delay: 1.5 }}
       />
 
       <div className="max-w-7xl mx-auto px-4 relative">
