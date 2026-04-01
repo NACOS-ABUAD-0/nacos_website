@@ -20,13 +20,22 @@ class ProjectSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    like_count = serializers.IntegerField(read_only=True)
+    is_liked_by_user = serializers.SerializerMethodField()
+
+    def get_is_liked_by_user(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Use the annotated value (if available) or query directly
+            return getattr(obj, 'is_liked_by_user', False)
+        return False
 
     class Meta:
         model = Project
         fields = [
             'id', 'owner', 'title', 'description', 'tags', 'tag_ids',
             'images', 'links', 'created_at', 'updated_at',
-            'is_featured', 'status'
+            'is_featured', 'status', 'like_count', 'is_liked_by_user'
         ]
         read_only_fields = ['id', 'owner', 'created_at', 'updated_at']
 

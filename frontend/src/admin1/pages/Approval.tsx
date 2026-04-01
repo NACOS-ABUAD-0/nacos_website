@@ -1,6 +1,12 @@
+<<<<<<< HEAD:frontend/src/admin1/pages/Approval.tsx
 // src/admin1/pages/Approval.tsx
 
 import React, { useState, useMemo } from 'react'
+=======
+// src/admin1/pages/Approval.jsx
+
+import { useState, useMemo } from 'react'
+>>>>>>> 4651335 (Ready for deployment):frontend/src/admin1/pages/Approval.jsx
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'

@@ -13,6 +13,7 @@ from .serializers import RegisterSerializer, LoginSerializer, ProfileSerializer
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -33,6 +34,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -78,3 +80,67 @@ class CSRFTokenView(APIView):
 
     def get(self, request):
         return Response({'csrfToken': get_token(request)})
+<<<<<<< HEAD
+=======
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+
+        if not uidb64 or not token:
+            return Response(
+                {'error': 'UID and token are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = verify_email_token(uidb64, token)
+
+        if user:
+            return Response({
+                'message': 'Email verified successfully!',
+                'user': ProfileSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Invalid or expired verification link.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ResendVerificationEmailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if user.is_email_verified:
+            return Response(
+                {'message': 'Email is already verified.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        success = send_verification_email(user, request)
+
+        if success:
+            return Response({
+                'message': 'Verification email sent successfully! Please check your inbox.'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Failed to send verification email. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class UserCountView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        count = User.objects.count()
+        return Response({'count': count})
+>>>>>>> 4651335 (Ready for deployment)

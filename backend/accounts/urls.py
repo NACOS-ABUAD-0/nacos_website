@@ -2,7 +2,7 @@
 from django.urls import path
 from .views import (
     RegisterView, LoginView, LogoutView, ProfileView, CSRFTokenView,
-    VerifyEmailView, ResendVerificationEmailView
+    VerifyEmailView, ResendVerificationEmailView, UserCountView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -15,5 +15,6 @@ urlpatterns = [
     path('auth/verify-email/', VerifyEmailView.as_view(), name='verify_email'),
     path('auth/resend-verification/', ResendVerificationEmailView.as_view(), name='resend_verification'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('users/count/', UserCountView.as_view(), name='user-count'),
 
 ]

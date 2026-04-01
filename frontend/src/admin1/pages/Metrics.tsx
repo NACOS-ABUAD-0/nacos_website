@@ -1,4 +1,10 @@
+<<<<<<< HEAD:frontend/src/admin1/pages/Metrics.tsx
 // src/admin1/pages/Metrics.tsx
+=======
+// src/admin1/pages/Metrics.jsx
+import React from 'react'
+import Navbar from '../components/Navbar.jsx'
+>>>>>>> 4651335 (Ready for deployment):frontend/src/admin1/pages/Metrics.jsx
 
 import React from 'react'
 import Navbar from '../components/Navbar'

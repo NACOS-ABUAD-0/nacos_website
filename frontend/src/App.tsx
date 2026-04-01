@@ -1,4 +1,4 @@
-// frontend/src/App.tsx
+// frontend/src/App.tsx - COMPLETE WITH ALL ROUTES INCLUDING ADMIN
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/login";
 import { RegisterPage } from "./pages/register";
 import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
+<<<<<<< HEAD
 import Homepage from './pages/homepage';
 
 // 🔥 Project imports
@@ -14,6 +15,33 @@ import { ProjectsGallery } from './pages/ProjectsGallery';
 import { ProjectDetail } from './pages/project-detail';
 import { ProjectFormPage } from './pages/ProjectFormPage';
 import { ResourcesPage } from './pages/resources'; // ✅ Added ResourcesPage import
+=======
+import { VerifyEmailPage } from "./pages/verify-email";
+import Homepage from "./pages/homepage";
+import MyProjectsPage from './pages/MyProjectsPage';
+import Executives from "./components/Executives";
+import { ProjectsGallery } from "./pages/ProjectsGallery";
+import { ProjectDetail } from "./pages/project-detail";
+import { ProjectFormPage } from "./pages/ProjectFormPage";
+import { ResourcesPage } from "./pages/resources";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Events and Gallery imports
+import Events from "./pages/events";
+import EventDetail from "./pages/event-detail";
+import Gallery from "./pages/gallery";
+import ContactPage from "./pages/contact";
+
+// Admin imports
+import AdminHome from "./admin1/pages/home";
+import AdminApproval from "./admin1/pages/Approval";
+import AdminEvents from "./admin1/pages/Event";
+import AdminSettings from "./admin1/pages/Settings";
+import AdminStudentProfile from "./admin1/pages/StudentProfile";
+import AdminMetrics from "./admin1/pages/Metrics";
+import AdminGallery from "./admin1/pages/Gallery";
+import AdminInquiries from "./admin1/pages/Inquiries";
+>>>>>>> 4651335 (Ready for deployment)
 
 // React Query
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -28,6 +56,10 @@ const queryClient = new QueryClient({
   },
 });
 
+<<<<<<< HEAD
+=======
+// ─── RequireAuth ──────────────────────────────────────────────────────────────
+>>>>>>> 4651335 (Ready for deployment)
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -42,6 +74,34 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
+<<<<<<< HEAD
+=======
+// ─── RequireAdmin ─────────────────────────────────────────────────────────────
+const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check if user has admin/staff privileges
+  if (!user?.is_staff) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// ─── PublicRoute ──────────────────────────────────────────────────────────────
+>>>>>>> 4651335 (Ready for deployment)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -61,6 +121,60 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Homepage />} />
+<<<<<<< HEAD
+=======
+      <Route path="/executives" element={<Executives isHome={false} />} />
+      <Route path="/contact" element={<ContactPage />} />
+
+      {/* ── Projects routes — ORDER MATTERS! Specific routes before parameterized ones ──────────── */}
+      <Route path="/projects" element={<ProjectsGallery />} />
+
+      {/* My Projects — MUST come before /projects/:id to avoid being caught as :id="my-projects" */}
+      <Route
+        path="/my-projects"
+        element={
+          <RequireAuth>
+            <MyProjectsPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* Create project — also before :id */}
+      <Route
+        path="/projects/new"
+        element={
+          <RequireAuth>
+            <ProjectFormPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* Edit project — explicit route with :id/edit pattern */}
+      <Route
+        path="/projects/:id/edit"
+        element={
+          <RequireAuth>
+            <ProjectFormPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* Project detail — MUST be last among /projects/* routes */}
+      <Route path="/projects/:id" element={<ProjectDetail />} />
+
+      {/* Events routes */}
+      <Route path="/events" element={<Events isHome={false} />} />
+      <Route path="/events/:id" element={<EventDetail />} />
+
+      {/* Gallery route */}
+      <Route path="/gallery" element={<Gallery isHome={false}/>} />
+
+      {/* Verification routes */}
+      <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+      {/* ── Auth pages — redirect to /dashboard if already logged in ────── */}
+>>>>>>> 4651335 (Ready for deployment)
       <Route
         path="/login"
         element={
@@ -104,30 +218,71 @@ function AppRoutes() {
         }
       />
 
+<<<<<<< HEAD
       {/* 🔥 Project Routes */}
       {/* Public - Anyone can view projects */}
       <Route path="/projects" element={<ProjectsGallery />} />
       <Route path="/projects/:id" element={<ProjectDetail />} />
 
       {/* Protected - Only authenticated users can create/edit */}
+=======
+      {/* ── Admin Routes — must be logged in AND have staff privileges ──────────── */}
+>>>>>>> 4651335 (Ready for deployment)
       <Route
-        path="/projects/new"
+        path="/admin"
         element={
-          <RequireAuth>
-            <ProjectFormPage />
-          </RequireAuth>
+            <AdminHome />
         }
       />
       <Route
-        path="/projects/:id/edit"
+        path="/admin/dashboard"
         element={
-          <RequireAuth>
-            <ProjectFormPage />
-          </RequireAuth>
+            <AdminHome />
+        }
+      />
+      <Route
+        path="/admin/approvals"
+        element={
+            <AdminApproval />
+        }
+      />
+      <Route
+        path="/admin/approvals/:id"
+        element={
+            <AdminStudentProfile />
+        }
+      />
+      <Route
+        path="/admin/events"
+        element={
+            <AdminEvents />
+        }
+      />
+      <Route
+        path="/admin/settings"
+        element={
+            <AdminSettings />
+        }
+      />
+      <Route
+        path="/admin/metrics"
+        element={
+            <AdminMetrics />
+        }
+      />
+      <Route
+        path="/admin/gallery"
+        element={
+            <AdminGallery />
         }
       />
 
+<<<<<<< HEAD
       {/* Catch all - redirect to home */}
+=======
+    <Route path="/admin/inquiries" element={<AdminInquiries />} />
+      {/* ── Catch-all ──────────────────────────────────────────────────── */}
+>>>>>>> 4651335 (Ready for deployment)
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

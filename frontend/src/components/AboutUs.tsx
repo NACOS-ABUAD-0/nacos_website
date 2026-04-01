@@ -35,8 +35,13 @@ export default function About() {
   }, []);
 
   const logoSrc = logoIndex === 0
+<<<<<<< HEAD
     ? "/images/nacos-abuad-logo.PNG"
     : "/images/Bada.jpg";
+=======
+    ? "/images/nacos_logo (1).png"
+    : "/images/abuadLogo.png";
+>>>>>>> 4651335 (Ready for deployment)
 
   return (
     <section className="mt-36 px-6 md:px-12 lg:px-24 mb-20">

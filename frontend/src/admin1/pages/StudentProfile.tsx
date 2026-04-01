@@ -1,6 +1,11 @@
+<<<<<<< HEAD:frontend/src/admin1/pages/StudentProfile.tsx
 // src/admin1/pages/StudentProfile.tsx
 
 import React from 'react'
+=======
+// src/admin1/pages/StudentProfile.jsx
+
+>>>>>>> 4651335 (Ready for deployment):frontend/src/admin1/pages/StudentProfile.jsx
 import { useLocation, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import project1 from '../../assets/profile1.png'

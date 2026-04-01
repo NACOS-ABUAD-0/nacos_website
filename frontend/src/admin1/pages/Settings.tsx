@@ -1,8 +1,17 @@
+<<<<<<< HEAD:frontend/src/admin1/pages/Settings.tsx
 // src/admin1/pages/Settings.tsx
 
 import React, { useState, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
+=======
+// src/admin1/pages/Settings.jsx
+
+import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Navbar from '../components/Navbar.jsx'
+import { Footer } from '../../components/Footer.tsx'
+>>>>>>> 4651335 (Ready for deployment):frontend/src/admin1/pages/Settings.jsx
 import profileImg from '../../assets/profile.png'
 
 // ── Types ──────────────────────────────────────────────────────

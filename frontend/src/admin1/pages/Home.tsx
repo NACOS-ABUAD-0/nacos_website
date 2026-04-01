@@ -1,4 +1,8 @@
+<<<<<<< HEAD:frontend/src/admin1/pages/Home.tsx
 // src/admin1/pages/Home.tsx
+=======
+//src/admin1/pages/home.jsx
+>>>>>>> 4651335 (Ready for deployment):frontend/src/admin1/pages/Home.jsx
 
 import React, { useState, useMemo } from 'react'
 import Navbar from '../components/Navbar'

@@ -4,7 +4,10 @@ import Navbar from '../components/Navbar'
 import { Footer } from '../components/Footer'
 import { useSubmitInquiry, type InquiryType } from '../lib/hooks/useInquiries'
 import toast from 'react-hot-toast'
+<<<<<<< HEAD
 import {FaSnapchat, FaTiktok} from 'react-icons/fa'
+=======
+>>>>>>> 4651335 (Ready for deployment)
 
 import {
   Mail,
@@ -17,13 +20,21 @@ import {
   Target,
   CheckCircle,
   Send,
+<<<<<<< HEAD
   Download,
+=======
+  Download
+>>>>>>> 4651335 (Ready for deployment)
 } from 'lucide-react'
 
 const TABS = [
   { label: 'General', value: 'general', icon: MessageSquare },
   { label: 'Sponsorship', value: 'sponsorship', icon: Handshake },
   { label: 'Partnership', value: 'partnership', icon: Link2 },
+<<<<<<< HEAD
+=======
+  { label: 'Recruitment', value: 'recruitment', icon: Target },
+>>>>>>> 4651335 (Ready for deployment)
 ]
 
 const BUDGET_OPTIONS = [
@@ -115,8 +126,11 @@ export default function ContactPage() {
               { icon: MapPin, label: 'Location', value: 'ABUAD, Ado-Ekiti' },
               { icon: Twitter, label: 'Twitter/X', value: '@nacos_abuad' },
               { icon: Instagram, label: 'Instagram', value: '@nacos_abuad' },
+<<<<<<< HEAD
               { icon: FaSnapchat, label: 'Snapchat', value: '@nacos_abuad'},
               { icon: FaTiktok, label: 'Tiktok', value: '@nacos_abuad'}
+=======
+>>>>>>> 4651335 (Ready for deployment)
             ].map((item, i) => (
               <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-start gap-4">
                 <item.icon className="w-5 h-5 text-[#006E3A]" />
@@ -248,11 +262,19 @@ export default function ContactPage() {
                   )}
 
                   <textarea
+<<<<<<< HEAD
                     rows={15}
                     placeholder="Your message"
                     value={form.message}
                     onChange={e => set('message', e.target.value)}
                     className="input w-full"
+=======
+                    rows={5}
+                    placeholder="Your message"
+                    value={form.message}
+                    onChange={e => set('message', e.target.value)}
+                    className="input resize-none"
+>>>>>>> 4651335 (Ready for deployment)
                   />
 
                   <button

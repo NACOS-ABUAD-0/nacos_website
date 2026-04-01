@@ -56,8 +56,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
+<<<<<<< HEAD
       {/* Poster */}
       {event.poster_url ? (
+=======
+      {/* Poster Container - Square */}
+      {event.media.poster ? (
+>>>>>>> 4651335 (Ready for deployment)
         <div className="relative overflow-hidden aspect-square bg-gray-100">
           <img
             src={event.poster_url}
@@ -65,7 +70,6 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
-
           {/* Status Badge */}
           <div className="absolute top-4 right-4">
             <span
@@ -95,7 +99,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           {event.title}
         </h3>
 
+<<<<<<< HEAD
         {/* Date & Time */}
+=======
+        {/* Date and Time */}
+>>>>>>> 4651335 (Ready for deployment)
         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mb-1">
           <div className="flex items-center gap-1.5">
             <CalendarIcon />
@@ -107,6 +115,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               })}
             </span>
           </div>
+<<<<<<< HEAD
 
           <div className="flex items-center gap-1.5">
             <ClockIcon />
@@ -132,6 +141,30 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           <Link
             to={`/events/${event.id}`}
             className="text-green-600 hover:text-green-700 font-semibold text-sm inline-flex items-center gap-1 transition-all"
+=======
+          <div className="flex items-center gap-1.5">
+            <ClockIcon />
+            <span>
+              {new Date(event.start_time).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </div>
+        </div>
+
+        {/* Location */}
+        <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-4">
+          <LocationIcon />
+          <span className="truncate">{event.is_remote ? "Remote Event" : event.location}</span>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex items-center justify-between gap-3 mt-auto pt-1">
+          <Link
+            to={`/events/${event.id}`}
+            className="text-green-600 hover:text-green-700 font-semibold text-sm inline-flex items-center gap-1 group/link transition-all"
+>>>>>>> 4651335 (Ready for deployment)
           >
             Learn More
             <ArrowRightIcon />

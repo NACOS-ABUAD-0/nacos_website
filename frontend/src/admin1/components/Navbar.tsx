@@ -36,8 +36,13 @@ const Navbar: React.FC = () => {
           { label: 'Events',    to: '/admin/events' },
           { label: 'Metrics',   to: '/admin/metrics' },
           { label: 'Approvals', to: '/admin/approvals' },
+<<<<<<< HEAD:frontend/src/admin1/components/Navbar.tsx
           { label: 'Gallery',   to: '/admin/gallery' },
           { label: 'Inquiries', to: '/admin/inquiries' },
+=======
+          { label: 'Gallery',   to: '/admin/gallery'},
+          {label: 'Inquiries',  to: '/admin/inquiries'},
+>>>>>>> 4651335 (Ready for deployment):frontend/src/admin1/components/Navbar.jsx
         ].map(({ label, to }) => (
           <li key={label}>
             <NavLink

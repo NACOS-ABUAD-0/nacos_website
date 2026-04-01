@@ -30,8 +30,22 @@ class Project(models.Model):
         default='published'
     )
 
+    # like_count = models.PositiveIntegerField(default=0)
+
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return self.title
+
+
+class Like(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='project_likes')
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'project')  # prevents duplicate likes
+
+    def __str__(self):
+        return f"{self.user} likes {self.project}"
