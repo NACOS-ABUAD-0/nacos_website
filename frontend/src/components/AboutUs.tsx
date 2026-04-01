@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function About() {
   const [activeTab, setActiveTab] = useState(0);
+  const [logoIndex, setLogoIndex] = useState(0); // 0 = NACOS, 1 = ABUAD
 
   const content = [
     {
@@ -15,13 +16,26 @@ export default function About() {
     },
   ];
 
+  // Rotate mission/vision text
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveTab((prev) => (prev === 0 ? 1 : 0));
-    }, 5000); // 5000ms = 5 seconds
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
-    return () => clearInterval(timer); // Cleanup on unmount
-  }, [activeTab]);
+  // Rotate logo image
+  useEffect(() => {
+    const logoInterval = setInterval(() => {
+      setLogoIndex((prev) => (prev === 0 ? 1 : 0));
+    }, 5000);
+    return () => clearInterval(logoInterval);
+  }, []);
+
+  const logoSrc = logoIndex === 0
+    ? "/images/nacos_logo (1).png"
+    : "/images/abuadLogo.png";
+
   return (
     <section className="mt-36 px-6 md:px-12 lg:px-24 mb-20">
       {/* Header Section */}
@@ -41,54 +55,35 @@ export default function About() {
 
       {/* Content Section */}
       <div className="flex flex-col lg:flex-row mt-16 gap-16 lg:gap-10 justify-between items-center">
-        {/* Left Side: Image & Mission Card */}
-        <div className="w-full lg:max-w-[600px] relative">
-          <img
-            src="/images/Bada2.jpg"
-            alt="About NACOS"
-            className="w-full aspect-[6/7] object-cover rounded-[10px]"
-          />
-
-          {/* Mission Card - Responsive adjustments */}
-          {/* <div
-            className="  bg-white 
-  absolute
-  lg:left-auto lg:translate-x-0 lg:-right-10
-  -bottom-28 lg:-bottom-32
-  shadow-lg md:shadow-[0px_1px_15px_0px_rgba(0,0,0,0.1)]
-  w-[90%] sm:w-[80%] md:w-[407px]
-  rounded-[10px] py-6 px-6 md:px-7
-  flex flex-col gap-4 z-10 right-0"
-          >
-            <h1 className="font-medium text-lg md:text-xl leading-none tracking-normal text-[#006E3A]">
-              Our Mission
-            </h1>
-            <p className="font-normal text-xs md:text-[18px] lg:text-[20px] leading-relaxed md:leading-[31px] tracking-normal">
-              To equip computing students with the skills, resources and
-              community they need to thrive academically and professionally.
-            </p>
-            <div className="flex items-center gap-1 self-end">
-              <div className="bg-[#006E3A] w-[13px] h-[13px] rounded-full"></div>
-              <div className="bg-[#D9D9D9] w-[13px] h-[13px] rounded-full"></div>
-            </div>
+        {/* Left Side: Image Container & Overlay Card */}
+        <div className="w-full lg:max-w-[700px] relative">
+          {/* Fixed square container for consistent layout */}
+          <div className="relative w-full aspect-square">
+            <img
+              src={logoSrc}
+              alt="NACOS ABUAD Chapter"
+              className={`absolute inset-0 w-full h-full transition-all duration-500 ${
+                logoIndex === 0
+                  ? "object-cover rounded-full" // NACOS: circular crop
+                  : "object-contain rounded-lg bg-white" // ABUAD: full visibility, no circle
+              }`}
+            />
           </div>
-        </div> */}
+
+          {/* Animated Mission/Vision Card */}
           <div
-            className="bg-white 
-      absolute
-      lg:left-auto lg:translate-x-0 lg:-right-10
-      -bottom-28 lg:-bottom-32
-      shadow-lg md:shadow-[0px_1px_15px_0px_rgba(0,0,0,0.1)]
-      w-[90%] sm:w-[80%] md:w-[407px]
-      rounded-[10px] py-6 px-6 md:px-7
-      flex flex-col gap-4 z-10 right-0 overflow-hidden"
+            className="bg-white
+              absolute
+              lg:left-auto lg:translate-x-0 lg:-right-10
+              -bottom-28 lg:-bottom-32
+              shadow-lg md:shadow-[0px_1px_15px_0px_rgba(0,0,0,0.1)]
+              w-[90%] sm:w-[80%] md:w-[407px]
+              rounded-[10px] py-6 px-6 md:px-7
+              flex flex-col gap-4 z-10 right-0 overflow-hidden"
           >
-            {/* AnimatePresence allows components to animate out 
-          mode="wait" ensures the old text leaves before the new one enters
-      */}
             <AnimatePresence mode="wait">
               <motion.div
-                key={activeTab} // Unique key triggers the animation on change
+                key={activeTab}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}

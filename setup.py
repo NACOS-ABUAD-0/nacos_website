@@ -66,7 +66,7 @@ def create_structure():
 
     # Pages
     pages = [
-        "homepage.tsx", "events.tsx", "event-detail.tsx",
+        "homepage.tsx", "events.tsx", "events-detail.tsx",
         "gallery.tsx", "executives.tsx",
         "contact.tsx", "sponsorship.tsx",
         "register.tsx", "login.tsx",

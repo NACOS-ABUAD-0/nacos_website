@@ -14,6 +14,7 @@ from .utils import send_verification_email, verify_email_token
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -46,6 +47,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -100,15 +102,15 @@ class VerifyEmailView(APIView):
     def post(self, request):
         uidb64 = request.data.get('uid')
         token = request.data.get('token')
-        
+
         if not uidb64 or not token:
             return Response(
                 {'error': 'UID and token are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         user = verify_email_token(uidb64, token)
-        
+
         if user:
             return Response({
                 'message': 'Email verified successfully!',
@@ -126,15 +128,15 @@ class ResendVerificationEmailView(APIView):
 
     def post(self, request):
         user = request.user
-        
+
         if user.is_email_verified:
             return Response(
                 {'message': 'Email is already verified.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         success = send_verification_email(user, request)
-        
+
         if success:
             return Response({
                 'message': 'Verification email sent successfully! Please check your inbox.'
@@ -144,3 +146,11 @@ class ResendVerificationEmailView(APIView):
                 {'error': 'Failed to send verification email. Please try again later.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class UserCountView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        count = User.objects.count()
+        return Response({'count': count})

@@ -64,6 +64,7 @@ const Navbar = () => {
     { name: "Resources", path: "/resources" },
     { name: "Gallery", path: "/gallery" },
     { name: "Executives", path: "/executives" },
+    { name: "Contact", path: "/contact" },
   ];
 
   const publicNavItems: NavItem[] = [
@@ -73,6 +74,7 @@ const Navbar = () => {
     { name: "Resources", path: "/resources" },
     { name: "Gallery", path: "/gallery" },
     { name: "Executives", path: "/executives" },
+    { name: "Contact", path: "/contact" },
   ];
 
   const navItems = isAuthenticated ? authNavItems : publicNavItems;
@@ -219,7 +221,7 @@ const Navbar = () => {
                           label: "Your Profile",
                         },
                         {
-                          to: "/projects/my_projects",
+                          to: "/projects/my-projects",
                           icon: <Folder className="w-4 h-4" />,
                           label: "My Projects",
                         },
@@ -267,13 +269,6 @@ const Navbar = () => {
                 className={`text-base font-medium transition-colors ${textMuted} hover:text-[#006E3A]`}
               >
                 Sign In
-              </NavLink>
-              <NavLink
-                to="/register"
-                className="inline-flex items-center gap-2 bg-[#006E3A] hover:bg-[#005a30] text-white px-6 py-2.5 rounded-lg font-semibold text-base shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                <Plus className="w-4 h-4" />
-                Join Now
               </NavLink>
             </>
           )}
@@ -354,7 +349,7 @@ const Navbar = () => {
               {[
                 { to: "/dashboard", icon: <Grid className="w-4 h-4" />, label: "Dashboard" },
                 { to: "/profile", icon: <UserIcon className="w-4 h-4" />, label: "Profile" },
-                { to: "/projects/my_projects", icon: <Folder className="w-4 h-4" />, label: "My Projects" },
+                { to: "/projects/my-projects", icon: <Folder className="w-4 h-4" />, label: "My Projects" },
               ].map(({ to, icon, label }) => (
                 <NavLink
                   key={to}

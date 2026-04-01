@@ -39,6 +39,9 @@ INSTALLED_APPS = [
     'projects',
     'resources',
     'gallery',
+    'events',
+    'executives',
+    'inquiries',
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',

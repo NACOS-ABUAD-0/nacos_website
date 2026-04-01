@@ -17,9 +17,9 @@ export default function Testimonials() {
 
       <div className="flex flex-col md:flex-row items-center justify-center mt-10">
         <TestimonialCard
-          name="Abdulyeekeen Habeebullah Adebayo"
+          name="Abdulazeez Jamiu Oladipupo"
           level="Computer Science 300 Level"
-          text="With NACOS I've made more connection and built more network."
+          text="With NACOS I've been able to build more projects, and think in systems."
         />
         <TestimonialCard
           name="Abdulyeekeen Habeebullah Adebayo"
@@ -28,9 +28,9 @@ export default function Testimonials() {
           isActive={true}
         />
         <TestimonialCard
-          name="Abdulyeekeen Habeebullah Adebayo"
-          level="Computer Science 300 Level"
-          text="With NACOS I've made more connection and built more network."
+          name="Adeyanju Temisola"
+          level="Computer Science 200 Level"
+          text="NACOS has really helped me become a better Computer Science Student."
         />
       </div>
 
@@ -38,10 +38,11 @@ export default function Testimonials() {
 
       {/* Sponsors Logobar */}
       <div className="flex flex-wrap justify-center items-center gap-10">
-        <img src='/images/asva logo.jpg' alt="Sponsor" className="h-28 w-auto" />
-        <img src={logo1} alt="Sponsor" className="h-28 w-auto" />
-        <img src={logo4} alt="Sponsor" className="h-28 w-auto" />
-        <img src={logo2} alt="Sponsor" className="h-28 w-auto" />
+        <img src='/images/asva.jpg' alt="Sponsor" className="h-28 w-auto" />
+        <img src='/images/iee abuad.jpg' alt="Sponsor" className="h-28 w-auto" />
+        <img src="/images/ASA.jpg" className="h-28 w-auto" />
+        <img src="/images/apwen abuad.jpg" className="h-28 w-auto" />
+        <img src="/images/nacos unilag.jpg" className="h-28 w-auto" />
       </div>
     </section>
   );

@@ -36,7 +36,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
       name: "Bada Najeebah Motunrayo",
       position: "President",
       level: "Computer Science 400 Level",
-      bio: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae suscipit vel vel facilisis venenatis. Semper risus in hendrerit gravida rutrum quisque non tellus.",
+      bio: "+234 706 871 3177",
       image: "/images/Bada.jpg",
     },
     {

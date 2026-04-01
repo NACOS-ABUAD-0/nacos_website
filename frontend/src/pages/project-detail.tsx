@@ -1,4 +1,3 @@
-// frontend/src/pages/project-detail.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProject, useDeleteProject } from '../lib/hooks/useProjects';
@@ -14,11 +13,6 @@ export const ProjectDetail: React.FC = () => {
   const { user } = useAuth();
 
   const [isLiked, setIsLiked] = useState(false);
-
-  // ── Fix 1: don't seed useState from async data ───────────────────────────
-  // useState(project?.like_count) only reads its argument on the VERY FIRST
-  // render, when project is still undefined → likeCount stays 0 forever.
-  // useEffect syncs the value once the project actually loads.
   const [likeCount, setLikeCount] = useState(0);
   useEffect(() => {
     if (project?.like_count !== undefined) {
@@ -26,10 +20,6 @@ export const ProjectDetail: React.FC = () => {
     }
   }, [project?.like_count]);
 
-  // ── Fix 2: optional chaining on project.owner ────────────────────────────
-  // project can exist while project.owner is undefined (API shape mismatch,
-  // or the response hasn't fully hydrated the nested object yet).
-  // Optional chaining short-circuits safely instead of throwing.
   const isOwner = user && project && user.id === project.owner?.id;
   const canEdit = isOwner || user?.is_staff;
 
@@ -47,13 +37,11 @@ export const ProjectDetail: React.FC = () => {
   const handleLike = () => {
     setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
     setIsLiked((prev) => !prev);
-    // TODO: wire up like API endpoint
   };
 
-  // ── Loading state ─────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-white">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
@@ -63,21 +51,19 @@ export const ProjectDetail: React.FC = () => {
     );
   }
 
-  // ── Error / not found state ───────────────────────────────────────────────
   if (error || !project) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-white">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900">Project not found</h1>
             <p className="text-gray-600 mt-2">
-              The project you're looking for doesn't exist or you don't have
-              permission to view it.
+              The project you're looking for doesn't exist or you don't have permission to view it.
             </p>
             <Link
               to="/projects"
-              className="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+              className="mt-4 inline-block bg-gradient-to-r from-green-600 to-teal-600 text-white px-4 py-2 rounded-lg hover:shadow-md transition-all"
             >
               Back to Projects
             </Link>
@@ -88,27 +74,25 @@ export const ProjectDetail: React.FC = () => {
     );
   }
 
-  // ── Safe derived values (project is guaranteed defined below this line) ───
   const ownerName = project.owner?.full_name ?? 'Unknown';
   const ownerInitial = ownerName.charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       <main className="flex-grow">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-          {/* ── Header ──────────────────────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 mb-6 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Header Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-green-500 rounded-full" />
                   <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">
                       {project.title}
                     </h1>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <p className="text-gray-500 text-sm mt-1">
                       by{' '}
                       <Link
                         to={`/profile/${project.owner?.id}`}
@@ -147,14 +131,14 @@ export const ProjectDetail: React.FC = () => {
             </div>
 
             {/* Stats bar */}
-            <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-6 text-sm">
+            <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="flex flex-wrap items-center gap-6 text-sm">
                 <button
                   onClick={handleLike}
                   className={`flex items-center gap-2 px-3 py-1 rounded-md border transition-colors ${
                     isLiked
                       ? 'bg-green-50 border-green-200 text-green-700'
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   <svg
@@ -183,23 +167,21 @@ export const ProjectDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* ── Body ────────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* README area */}
             <div className="lg:col-span-3">
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="border-b border-gray-200">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="border-b border-gray-100">
                   <nav className="flex -mb-px">
                     <button className="border-b-2 border-green-500 text-green-600 px-4 py-3 text-sm font-medium">
                       README
                     </button>
                   </nav>
                 </div>
-
                 <div className="p-6">
                   <div className="prose max-w-none text-sm">
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
                       <h2 className="text-lg font-semibold text-gray-900 mb-3">
                         About this project
                       </h2>
@@ -217,7 +199,7 @@ export const ProjectDetail: React.FC = () => {
                           {project.images.map((image: string, index: number) => (
                             <div
                               key={index}
-                              className="border border-gray-200 rounded-lg overflow-hidden"
+                              className="border border-gray-200 rounded-xl overflow-hidden"
                             >
                               <img
                                 src={image}
@@ -235,12 +217,16 @@ export const ProjectDetail: React.FC = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-4">
-
+            <div className="lg:col-span-1 space-y-6">
               {/* Technologies */}
               {project.tags && project.tags.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Technologies</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    Technologies
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {project.tags.map((tag: { id: number; name: string }) => (
                       <span
@@ -256,11 +242,15 @@ export const ProjectDetail: React.FC = () => {
 
               {/* Links */}
               {project.links && Object.keys(project.links).length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Project Links</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.102m3.172-3.172l1.102-1.102a4 4 0 00-5.656-5.656l-4 4a4 4 0 105.656 5.656z" />
+                    </svg>
+                    Project Links
+                  </h3>
                   <div className="space-y-2">
                     {Object.entries(project.links).map(([key, value]) => {
-                      // Safely parse hostname — skip malformed URLs
                       let hostname = value as string;
                       try { hostname = new URL(value as string).hostname; } catch { /* keep raw */ }
                       return (
@@ -284,8 +274,13 @@ export const ProjectDetail: React.FC = () => {
               )}
 
               {/* Owner */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Owner</h3>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Owner
+                </h3>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-sm font-bold">{ownerInitial}</span>
@@ -303,8 +298,13 @@ export const ProjectDetail: React.FC = () => {
               </div>
 
               {/* Details */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Details</h3>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Details
+                </h3>
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex justify-between">
                     <span>Created</span>

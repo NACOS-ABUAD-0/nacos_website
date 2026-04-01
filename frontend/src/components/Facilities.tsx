@@ -1,4 +1,5 @@
-import FaciImage from "../assets/kate-sade-2zZp12ChxhU-unsplash (1).jpg";
+import FaciImage1 from "../assets/hardware lab.jpg";
+import FaciImage2 from "../assets/software lab.jpg"
 import { Building2 } from "lucide-react";
 
 export default function Facilities() {
@@ -22,7 +23,7 @@ export default function Facilities() {
         {/* Card 1 */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-[700px]">
           <img
-            src={FaciImage}
+            src={FaciImage1}
             alt="Hardware Lab"
             className="w-full h-64 md:h-125 object-cover"
           />
@@ -33,7 +34,7 @@ export default function Facilities() {
               Hardware Lab
             </h3>
             <p className="ml-6 text-gray-700 font-medium text-lg md:text-xl">
-              Sciences Building, 3rd Floor
+              Sciences Building, 2nd Floor
             </p>
           </div>
         </div>
@@ -41,18 +42,18 @@ export default function Facilities() {
         {/* Card 2 */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-[700px]">
           <img
-            src={FaciImage}
-            alt="Hardware Lab"
+            src={FaciImage2}
+            alt="Software Lab"
             className="w-full h-64 md:h-[500px] object-cover"
           />
 
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-[#006E3A] font-semibold text-xl md:text-2xl mb-2">
               <Building2 />
-              Hardware Lab
+              Software Lab
             </h3>
             <p className="ml-6 text-gray-700 font-medium text-lg md:text-xl">
-              Sciences Building, 3rd Floor
+              Sciences Building, 2nd Floor
             </p>
           </div>
         </div>

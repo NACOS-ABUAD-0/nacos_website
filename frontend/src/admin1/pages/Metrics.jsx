@@ -1,3 +1,4 @@
+// src/admin1/pages/Metrics.jsx
 import React from 'react'
 import Navbar from '../components/Navbar.jsx'
 
