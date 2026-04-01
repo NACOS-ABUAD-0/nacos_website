@@ -8,6 +8,7 @@ import {
   useScroll,
   useTransform,
   AnimatePresence,
+  easeInOut
 } from "framer-motion";
 
 interface SectionProps {
@@ -96,7 +97,7 @@ const FloatingOrb: React.FC<{
       duration,
       delay,
       repeat: Infinity,
-      ease: "easeInOut",
+      ease: easeInOut as const,
     }}
   />
 );

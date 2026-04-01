@@ -8,6 +8,7 @@ import {
   useMotionValue,
   useTransform,
   useSpring,
+  easeInOut
 } from "framer-motion";
 
 // ─── Reusable variants ────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
             scale: index === currentIndex ? 1.04 : 1,
           }}
           transition={{
-            opacity: { duration: 1.1, ease: "easeInOut" },
+            opacity: { duration: 1.1, ease: easeInOut as const },
             scale: { duration: 6, ease: "linear" },
           }}
         />
@@ -230,7 +231,7 @@ export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
               animate={{
                 backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
               }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 5, repeat: Infinity, ease: easeInOut as const }}
               style={{ backgroundSize: "200% 200%" }}
             >
               Digital Innovation

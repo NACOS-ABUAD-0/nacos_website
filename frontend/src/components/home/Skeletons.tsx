@@ -1,6 +1,6 @@
 // src/components/home/Skeletons.tsx
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, easeInOut } from "framer-motion";
 
 // ─── Shared shimmer keyframe via Tailwind (augmented with Framer stagger) ────
 
@@ -20,7 +20,7 @@ const ShimmerBar: React.FC<{
       duration: 1.6,
       delay,
       repeat: Infinity,
-      ease: "easeInOut",
+      ease: easeInOut as const,
     }}
   >
     {/* Glint sweep */}
@@ -36,7 +36,7 @@ const ShimmerBar: React.FC<{
         duration: 1.6,
         delay,
         repeat: Infinity,
-        ease: "easeInOut",
+        ease: easeInOut as const,
         repeatDelay: 0.3,
       }}
     />
@@ -123,7 +123,7 @@ export const ProjectCardSkeleton: React.FC = () => (
             "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
         }}
         animate={{ x: ["-100%", "200%"] }}
-        transition={{ duration: 1.7, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.4 }}
+        transition={{ duration: 1.7, repeat: Infinity, ease: easeInOut as const, repeatDelay: 0.4 }}
       />
     </div>
 
@@ -166,7 +166,7 @@ export const EventCardSkeleton: React.FC = () => (
             "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%)",
         }}
         animate={{ x: ["-100%", "200%"] }}
-        transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.5 }}
+        transition={{ duration: 1.9, repeat: Infinity, ease: easeInOut as const, repeatDelay: 0.5 }}
       />
       <div className="absolute top-4 right-4">
         <ShimmerBar className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-8 h-8" delay={0.1} />
@@ -324,7 +324,7 @@ export const EventDetailSkeleton = () => (
               "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
           }}
           animate={{ x: ["-100%", "200%"] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.5 }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: easeInOut as const, repeatDelay: 0.5 }}
         />
       </motion.div>
     </div>
@@ -375,7 +375,7 @@ export const GallerySkeleton = () => (
               duration: 1.7,
               delay,
               repeat: Infinity,
-              ease: "easeInOut",
+              ease: easeInOut as const,
               repeatDelay: 0.5,
             }}
           />
