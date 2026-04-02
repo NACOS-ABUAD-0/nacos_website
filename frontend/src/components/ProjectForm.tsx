@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useSkills, useCreateProject, useUpdateProject } from '../lib/hooks/useProjects';
-import type { Project } from '../types';
+import type { Project, Skill } from '../types';
 
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
@@ -24,7 +24,7 @@ interface ProjectFormProps {
 export const ProjectForm: React.FC<ProjectFormProps> = ({
   project,
   onSubmit,
-  onCancel
+  onCancel,
 }) => {
   const { data: skills } = useSkills();
   const createMutation = useCreateProject();
@@ -41,22 +41,20 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     defaultValues: {
       title: project?.title || '',
       description: project?.description || '',
-      tag_ids: project?.tags?.map(tag => tag.id) || [],
+      tag_ids: project?.tags?.map((tag: Skill) => tag.id) || [],
       links: project?.links || {},
       images: project?.images || [],
     },
   });
 
-  const [linkInputs, setLinkInputs] = useState<{key: string; value: string}[]>([]);
+  const [linkInputs, setLinkInputs] = useState<{ key: string; value: string }[]>([]);
   const [imageInputs, setImageInputs] = useState<string[]>([]);
 
   useEffect(() => {
     if (project?.links) {
-      const links = Object.entries(project.links).map(([key, value]) => ({
-        key,
-        value,
-      }));
-      setLinkInputs(links);
+      setLinkInputs(
+        Object.entries(project.links).map(([key, value]) => ({ key, value }))
+      );
     }
     if (project?.images) {
       setImageInputs(project.images);
@@ -68,11 +66,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   const handleFormSubmit = (data: ProjectFormData) => {
     const formattedData = {
       ...data,
-      links: linkInputs.reduce((acc, { key, value }) => {
+      links: linkInputs.reduce<Record<string, string>>((acc, { key, value }) => {
         if (key && value) acc[key] = value;
         return acc;
-      }, {} as Record<string, string>),
-      images: imageInputs.filter(url => url.trim() !== ''),
+      }, {}),
+      images: imageInputs.filter((url: string) => url.trim() !== ''),
     };
 
     if (project) {
@@ -85,13 +83,10 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
-  const addLinkInput = () => {
-    setLinkInputs([...linkInputs, { key: '', value: '' }]);
-  };
+  const addLinkInput = () => setLinkInputs([...linkInputs, { key: '', value: '' }]);
 
-  const removeLinkInput = (index: number) => {
+  const removeLinkInput = (index: number) =>
     setLinkInputs(linkInputs.filter((_, i) => i !== index));
-  };
 
   const updateLinkInput = (index: number, field: 'key' | 'value', newValue: string) => {
     const updated = [...linkInputs];
@@ -99,13 +94,10 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     setLinkInputs(updated);
   };
 
-  const addImageInput = () => {
-    setImageInputs([...imageInputs, '']);
-  };
+  const addImageInput = () => setImageInputs([...imageInputs, '']);
 
-  const removeImageInput = (index: number) => {
+  const removeImageInput = (index: number) =>
     setImageInputs(imageInputs.filter((_, i) => i !== index));
-  };
 
   const updateImageInput = (index: number, newValue: string) => {
     const updated = [...imageInputs];
@@ -115,7 +107,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
 
   const toggleTag = (tagId: number) => {
     const newTags = selectedTags.includes(tagId)
-      ? selectedTags.filter(id => id !== tagId)
+      ? selectedTags.filter((id: number) => id !== tagId)
       : [...selectedTags, tagId];
     setValue('tag_ids', newTags);
   };
@@ -191,7 +183,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             Technologies & Skills
           </label>
           <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 min-h-16">
-            {skills?.map((skill) => (
+            {skills?.map((skill: Skill) => (
               <button
                 key={skill.id}
                 type="button"
@@ -219,9 +211,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Links Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">
-              Project Links
-            </label>
+            <label className="block text-sm font-semibold text-gray-900">Project Links</label>
             <span className="text-xs text-gray-500">GitHub, Demo, etc.</span>
           </div>
 
@@ -255,7 +245,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                 </button>
               </div>
             ))}
-
             <button
               type="button"
               onClick={addLinkInput}
@@ -272,14 +261,12 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Images Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">
-              Image URLs
-            </label>
+            <label className="block text-sm font-semibold text-gray-900">Image URLs</label>
             <span className="text-xs text-gray-500">Screenshots, mockups</span>
           </div>
 
           <div className="space-y-3">
-            {imageInputs.map((url, index) => (
+            {imageInputs.map((url: string, index: number) => (
               <div key={index} className="flex gap-3">
                 <input
                   type="url"
@@ -299,7 +286,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                 </button>
               </div>
             ))}
-
             <button
               type="button"
               onClick={addImageInput}
@@ -331,7 +317,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Saving...
               </>
             ) : project ? (
