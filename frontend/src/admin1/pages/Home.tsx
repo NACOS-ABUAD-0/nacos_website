@@ -306,11 +306,11 @@ const Home: React.FC = () => {
                 <YAxis tick={<CustomYTick />} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' }}
-                  formatter={(val: number, name: string) => {
+                  formatter={(val: number | undefined, name: string | undefined) => {
                     const map: Record<string, string> = { thisMonth: 'This month', lastMonth: 'Last Month', other: 'Other' }
-                    return [val, map[name] || name]
+                    return [val ?? 0, map[name ?? ''] || name || '']
                   }}
-                  labelFormatter={(label: string) => `Day ${label}`}
+                  labelFormatter={(label: React.ReactNode) => `Day ${String(label)}`}
                 />
                 <Area
                   type="monotone"

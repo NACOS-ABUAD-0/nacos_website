@@ -7,7 +7,8 @@ import {
   useMotionValue,
   useTransform,
   useSpring,
-  easeInOut
+  easeInOut,
+  cubicBezier
 } from "framer-motion";
 
 // ─── Reusable variants ────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ const slideTextVariants = {
     opacity: 1,
     y: 0,
     filter: "blur(0px)",
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: d },
+    transition: { duration: 0.8, ease: cubicBezier(0.22, 1, 0.36, 1), delay: d },
   }),
   exit: { opacity: 0, y: -20, filter: "blur(6px)", transition: { duration: 0.4 } },
 };
@@ -29,13 +30,13 @@ const statVariant = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: d },
+    transition: { duration: 0.7, ease: cubicBezier(0.22, 1, 0.36, 1), delay: d },
   }),
 };
 
 const navBtnVariant = {
   hidden: { opacity: 0, scale: 0.7 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: cubicBezier(0.22, 1, 0.36, 1) } },
 };
 
 // ─── Counter component (preserved exactly, with entrance animation wrapper) ──
@@ -98,7 +99,7 @@ const SlideDots: React.FC<{ total: number; current: number; onDotClick: (i: numb
           opacity: i === current ? 1 : 0.5,
         }}
         style={{ height: 8 }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.35, ease: cubicBezier(0.22, 1, 0.36, 1) }}
       />
     ))}
   </div>
@@ -189,7 +190,7 @@ export const Hero: React.FC<HeroProps> = ( ) => {
             scale: index === currentIndex ? 1.04 : 1,
           }}
           transition={{
-            opacity: { duration: 1.1, ease: easeInOut as const },
+            opacity: { duration: 1.1, ease: easeInOut },
             scale: { duration: 6, ease: "linear" },
           }}
         />
@@ -226,7 +227,7 @@ export const Hero: React.FC<HeroProps> = ( ) => {
               animate={{
                 backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
               }}
-              transition={{ duration: 5, repeat: Infinity, ease: easeInOut as const }}
+              transition={{ duration: 5, repeat: Infinity, ease: easeInOut }}
               style={{ backgroundSize: "200% 200%" }}
             >
               Digital Innovation
@@ -275,7 +276,7 @@ export const Hero: React.FC<HeroProps> = ( ) => {
                 className={`h-0.5 ${stat.barColor} rounded-full mx-auto mt-2`}
                 initial={{ width: 0 }}
                 whileHover={{ width: "100%" }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.35, ease: cubicBezier(0.22, 1, 0.36, 1) }}
                 style={{ width: 0 }}
               />
             </motion.div>

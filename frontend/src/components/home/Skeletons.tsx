@@ -1,6 +1,6 @@
 // src/components/home/Skeletons.tsx
 import React from "react";
-import { motion, easeInOut } from "framer-motion";
+import { motion, easeInOut, cubicBezier } from "framer-motion";
 
 // ─── Shared shimmer keyframe via Tailwind (augmented with Framer stagger) ────
 
@@ -20,7 +20,7 @@ const ShimmerBar: React.FC<{
       duration: 1.6,
       delay,
       repeat: Infinity,
-      ease: easeInOut as const,
+      ease: easeInOut,
     }}
   >
     {/* Glint sweep */}
@@ -36,7 +36,7 @@ const ShimmerBar: React.FC<{
         duration: 1.6,
         delay,
         repeat: Infinity,
-        ease: easeInOut as const,
+        ease: easeInOut,
         repeatDelay: 0.3,
       }}
     />
@@ -111,7 +111,7 @@ export const ProjectCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+    transition={{ duration: 0.45, ease: cubicBezier(0.22, 1, 0.36, 1) }}
     className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group"
   >
     {/* Image placeholder */}
@@ -123,7 +123,7 @@ export const ProjectCardSkeleton: React.FC = () => (
             "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
         }}
         animate={{ x: ["-100%", "200%"] }}
-        transition={{ duration: 1.7, repeat: Infinity, ease: easeInOut as const, repeatDelay: 0.4 }}
+        transition={{ duration: 1.7, repeat: Infinity, ease: easeInOut, repeatDelay: 0.4 }}
       />
     </div>
 
@@ -155,7 +155,7 @@ export const EventCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+    transition={{ duration: 0.45, ease: cubicBezier(0.22, 1, 0.36, 1) }}
     className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group w-[450px]"
   >
     <div className="bg-gradient-to-br from-blue-50 to-green-50 relative overflow-hidden aspect-[4/5]">
@@ -166,7 +166,7 @@ export const EventCardSkeleton: React.FC = () => (
             "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%)",
         }}
         animate={{ x: ["-100%", "200%"] }}
-        transition={{ duration: 1.9, repeat: Infinity, ease: easeInOut as const, repeatDelay: 0.5 }}
+        transition={{ duration: 1.9, repeat: Infinity, ease: easeInOut, repeatDelay: 0.5 }}
       />
       <div className="absolute top-4 right-4">
         <ShimmerBar className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-8 h-8" delay={0.1} />
@@ -191,7 +191,7 @@ export const ExecutiveCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, scale: 0.94 }}
     animate={{ opacity: 1, scale: 1 }}
-    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+    transition={{ duration: 0.45, ease: cubicBezier(0.22, 1, 0.36, 1) }}
     className="text-center group"
   >
     <div className="relative inline-block mb-4">
@@ -297,7 +297,7 @@ export const EventDetailSkeleton = () => (
       <motion.div
         initial={{ opacity: 0, x: -24 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+        transition={{ duration: 0.55, ease: cubicBezier(0.22, 1, 0.36, 1), delay: 0.1 }}
         className="w-full lg:w-1/2 p-8 lg:p-20 bg-[#f4fbfc] flex flex-col justify-center space-y-6"
       >
         <ShimmerBar className="h-6 w-20 bg-gray-300 rounded" delay={0.15} />
@@ -314,7 +314,7 @@ export const EventDetailSkeleton = () => (
       <motion.div
         initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+        transition={{ duration: 0.55, ease: cubicBezier(0.22, 1, 0.36, 1), delay: 0.15 }}
         className="w-full lg:w-1/2 bg-gray-300 min-h-[400px] relative overflow-hidden"
       >
         <motion.div
@@ -324,7 +324,7 @@ export const EventDetailSkeleton = () => (
               "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
           }}
           animate={{ x: ["-100%", "200%"] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: easeInOut as const, repeatDelay: 0.5 }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: easeInOut, repeatDelay: 0.5 }}
         />
       </motion.div>
     </div>
@@ -375,7 +375,7 @@ export const GallerySkeleton = () => (
               duration: 1.7,
               delay,
               repeat: Infinity,
-              ease: easeInOut as const,
+              ease: easeInOut,
               repeatDelay: 0.5,
             }}
           />

@@ -1,6 +1,7 @@
 // src/admin1/pages/Gallery.tsx
 
-import React, { useState, useRef, ChangeEvent } from 'react'
+import React, { useState, useRef} from 'react'
+import type { ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
