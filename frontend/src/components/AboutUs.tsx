@@ -1,3 +1,5 @@
+// src/components/AboutUs.tsx
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence, easeInOut } from "framer-motion";
 
@@ -87,7 +89,7 @@ export default function About() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.4, ease: easeInOut as const }}
+                transition={{ duration: 0.4, ease: easeInOut }}
                 className="flex flex-col gap-4"
               >
                 <h1 className="font-medium text-lg md:text-xl leading-none tracking-normal text-[#006E3A]">
