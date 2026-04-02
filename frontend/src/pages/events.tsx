@@ -1,3 +1,5 @@
+// frontend/src/pages/events.tsx
+
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";

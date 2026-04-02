@@ -1,22 +1,46 @@
-// src/admin1/pages/Settings.jsx
+// src/admin1/pages/Settings.tsx
 
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar.jsx'
-import { Footer } from '../../components/Footer.tsx'
+import Navbar from '../components/Navbar'
+import { Footer } from '../../components/Footer'
 import profileImg from '../../assets/profile.png'
 
-// Reusable row 
-const Field = ({ label, children }) => (
+// ── Types ──────────────────────────────────────────────────────
+interface FieldProps {
+  label: string
+  children: React.ReactNode
+}
+
+interface PasswordFieldProps {
+  label: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  hint?: string
+}
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  icon?: React.ReactNode
+}
+
+interface SessionRowProps {
+  device: string
+  location: string
+  time: string
+  active: boolean
+}
+
+// ── Reusable row ───────────────────────────────────────────────
+const Field: React.FC<FieldProps> = ({ label, children }) => (
   <div className="flex flex-col sm:flex-row sm:items-start gap-3 py-5 border-b border-gray-100 last:border-0">
     <span className="text-[13px] font-medium text-gray-700 sm:w-56 shrink-0 pt-2">{label}</span>
     <div className="flex-1">{children}</div>
   </div>
 )
 
-// Password row
-const PasswordField = ({ label, value, onChange, hint }) => {
-  const [show, setShow] = useState(false)
+// ── Password row ───────────────────────────────────────────────
+const PasswordField: React.FC<PasswordFieldProps> = ({ label, value, onChange, hint }) => {
+  const [show, setShow] = useState<boolean>(false)
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-3 py-5 border-b border-gray-100 last:border-0">
       <span className="text-[13px] font-medium text-gray-700 sm:w-56 shrink-0 pt-2">{label}</span>
@@ -52,7 +76,7 @@ const PasswordField = ({ label, value, onChange, hint }) => {
   )
 }
 
-const Input = ({ icon, ...props }) => (
+const Input: React.FC<InputProps> = ({ icon, ...props }) => (
   <div className="relative">
     {icon && (
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>
@@ -64,8 +88,8 @@ const Input = ({ icon, ...props }) => (
   </div>
 )
 
-// Session device row 
-const SessionRow = ({ device, location, time, active }) => (
+// ── Session device row ─────────────────────────────────────────
+const SessionRow: React.FC<SessionRowProps> = ({ device, location, time, active }) => (
   <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
     <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
       <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -87,20 +111,28 @@ const SessionRow = ({ device, location, time, active }) => (
   </div>
 )
 
-//  My Details Tab 
-const MyDetails = () => {
-  const fileRef = useRef(null)
-  const [photo, setPhoto] = useState(profileImg)
-  const [form, setForm] = useState({
+// ── My Details Tab ─────────────────────────────────────────────
+interface FormState {
+  firstName: string
+  lastName: string
+  email: string
+  role: string
+  level: string
+}
+
+const MyDetails: React.FC = () => {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [photo, setPhoto] = useState<string>(profileImg)
+  const [form, setForm]   = useState<FormState>({
     firstName: 'Oliva',
     lastName:  'Rhye',
     email:     'olivia@untitledui.com',
     role:      'Admin',
     level:     '400',
   })
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState<boolean>(false)
 
-  const handlePhoto = (e) => {
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) setPhoto(URL.createObjectURL(file))
   }
@@ -112,7 +144,6 @@ const MyDetails = () => {
 
   return (
     <div>
-      {/* Section header + Cancel / Save */}
       <div className="flex items-start justify-between pb-6 border-b border-gray-100 mb-2">
         <div>
           <h2 className="text-[15px] font-semibold text-gray-900">Personal info</h2>
@@ -131,21 +162,14 @@ const MyDetails = () => {
         </div>
       </div>
 
-      {/* Your photo — label + subtitle on left, image on right */}
       <div className="flex flex-col sm:flex-row sm:items-start gap-3 py-5 border-b border-gray-100">
         <div className="sm:w-56 shrink-0">
           <p className="text-[13px] font-medium text-gray-700">Your photo</p>
           <p className="text-[12px] text-gray-400 mt-0.5">This will be displayed on your profile.</p>
         </div>
         <div className="flex-1 flex items-center">
-          {/* Profile image with Edit overlay */}
           <div className="relative w-16 h-16 group cursor-pointer" onClick={() => fileRef.current?.click()}>
-            <img
-              src={photo}
-              alt="Profile"
-              className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-            />
-            {/* Edit overlay on hover */}
+            <img src={photo} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" />
             <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <span className="text-white text-[10px] font-semibold">Edit</span>
             </div>
@@ -154,7 +178,6 @@ const MyDetails = () => {
         </div>
       </div>
 
-      {/* Name */}
       <Field label="Name">
         <div className="grid grid-cols-2 gap-3">
           <Input
@@ -170,7 +193,6 @@ const MyDetails = () => {
         </div>
       </Field>
 
-      {/* Email */}
       <Field label="Email address">
         <Input
           placeholder="Email"
@@ -184,7 +206,6 @@ const MyDetails = () => {
         />
       </Field>
 
-      {/* Role */}
       <Field label="Role">
         <Input
           placeholder="Role"
@@ -193,7 +214,6 @@ const MyDetails = () => {
         />
       </Field>
 
-      {/* Level */}
       <Field label="Level">
         <div className="relative">
           <select
@@ -214,13 +234,13 @@ const MyDetails = () => {
   )
 }
 
-// Password Tab 
-const Password = () => {
-  const [current, setCurrent] = useState('')
-  const [newPass, setNewPass] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error,   setError]   = useState('')
-  const [success, setSuccess] = useState(false)
+// ── Password Tab ───────────────────────────────────────────────
+const Password: React.FC = () => {
+  const [current, setCurrent] = useState<string>('')
+  const [newPass, setNewPass] = useState<string>('')
+  const [confirm, setConfirm] = useState<string>('')
+  const [error,   setError]   = useState<string>('')
+  const [success, setSuccess] = useState<boolean>(false)
 
   const handleUpdate = () => {
     if (newPass.length < 8) { setError('Your new password must be more than 8 characters.'); return }
@@ -232,36 +252,24 @@ const Password = () => {
 
   return (
     <div>
-      {/* Header */}
       <div className="pb-6 border-b border-gray-100 mb-2">
         <h2 className="text-[16px] font-bold text-gray-900">Password</h2>
         <p className="text-[13px] text-gray-400 mt-1">Please enter your current password to change your password.</p>
       </div>
 
-      {/* Password fields */}
-      <PasswordField
-        label="Current password"
-        value={current}
-        onChange={(e) => setCurrent(e.target.value)}
-      />
+      <PasswordField label="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} />
       <PasswordField
         label="New password"
         value={newPass}
         onChange={(e) => { setNewPass(e.target.value); setError('') }}
         hint={error || 'Your new password must be more than 8 characters.'}
       />
-      <PasswordField
-        label="Confirm new password"
-        value={confirm}
-        onChange={(e) => setConfirm(e.target.value)}
-      />
+      <PasswordField label="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
 
-      {/* Success */}
       {success && (
         <p className="text-[12px] text-[#1a7a3f] font-medium mt-3">Password updated successfully ✓</p>
       )}
 
-      {/* Update button*/}
       <div className="flex justify-end mt-6 pb-6 border-b border-gray-100">
         <button
           onClick={handleUpdate}
@@ -271,7 +279,6 @@ const Password = () => {
         </button>
       </div>
 
-      {/* Where you're logged in */}
       <div className="mt-8">
         <div className="flex items-start justify-between mb-1">
           <div>
@@ -300,22 +307,20 @@ const Password = () => {
   )
 }
 
-// Main Settings Page 
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState('details')
+// ── Main Settings Page ─────────────────────────────────────────
+export default function Settings(): React.ReactElement {
+  const [activeTab, setActiveTab] = useState<'details' | 'password'>('details')
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-6 py-10">
-
-        {/* Tabs */}
         <div className="flex gap-8 border-b border-gray-200 mb-8">
-          {[
+          {([
             { id: 'details',  label: 'My details' },
             { id: 'password', label: 'Password' },
-          ].map((tab) => (
+          ] as const).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -335,7 +340,6 @@ export default function Settings() {
 
         {activeTab === 'details'  && <MyDetails />}
         {activeTab === 'password' && <Password />}
-
       </main>
 
       <Footer />

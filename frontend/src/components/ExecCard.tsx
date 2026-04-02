@@ -1,14 +1,22 @@
 import { UserStar, Building2, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function ExecCard({ name, position, level, bio, image }) {
+interface ExecCardProps {
+  name: string;
+  position: string;
+  level: string;
+  bio: string;
+  image: string;
+}
+
+export default function ExecCard({ name, position, level, bio, image }: ExecCardProps) {
   return (
     <motion.div
       whileHover={{ y: -6 }}
       className="rounded-2xl overflow-hidden bg-white border shadow-sm hover:shadow-xl transition"
     >
       <div className="relative h-[260px]">
-        <img src={image} className="w-full h-full object-cover" />
+        <img src={image} className="w-full h-full object-cover" alt={name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
         <div className="absolute bottom-4 left-4 text-white">

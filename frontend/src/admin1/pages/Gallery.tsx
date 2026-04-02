@@ -1,21 +1,45 @@
-// src/admin1/pages/Gallery.jsx
-import React, { useState, useRef } from 'react'
+// src/admin1/pages/Gallery.tsx
+
+import React, { useState, useRef, ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import Navbar from '../components/Navbar.jsx'
-import { Footer } from '../../components/Footer.tsx'
+import Navbar from '../components/Navbar'
+import { Footer } from '../../components/Footer'
 import { api } from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const CATEGORIES = ['Hackathons', 'Workshops', 'Socials', 'Others']
+// ─── Types ────────────────────────────────────────────────────────────────────
+type GalleryCategory = 'Hackathons' | 'Workshops' | 'Socials' | 'Others'
+
+interface GalleryImage {
+  id: number
+  caption?: string
+  alt_text?: string
+  category: GalleryCategory
+  display_order: number
+  is_published: boolean
+  resolved_url?: string
+  image_url_field?: string
+}
+
+interface GalleryFormData {
+  caption: string
+  alt_text: string
+  category: GalleryCategory
+  display_order: number
+  is_published: boolean
+  image_url_field: string
+}
+
+const CATEGORIES: GalleryCategory[] = ['Hackathons', 'Workshops', 'Socials', 'Others']
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
-const fetchAllGallery = () =>
+const fetchAllGallery = (): Promise<GalleryImage[]> =>
   api.get('/gallery/').then(r => {
     const data = r.data
     return Array.isArray(data) ? data : (data?.results ?? [])
   })
 
-const EMPTY_FORM = {
+const EMPTY_FORM: GalleryFormData = {
   caption: '',
   alt_text: '',
   category: 'Others',
@@ -25,7 +49,14 @@ const EMPTY_FORM = {
 }
 
 // ─── Three-dot menu ───────────────────────────────────────────────────────────
-const DotsMenu = ({ open, onToggle, onEdit, onDelete }) => (
+interface DotsMenuProps {
+  open: boolean
+  onToggle: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete }) => (
   <div className="relative">
     <button
       onClick={onToggle}
@@ -57,8 +88,14 @@ const DotsMenu = ({ open, onToggle, onEdit, onDelete }) => (
 )
 
 // ─── Gallery card ─────────────────────────────────────────────────────────────
-const GalleryCard = ({ image, onEdit, onDelete }) => {
-  const [menuOpen, setMenuOpen] = useState(false)
+interface GalleryCardProps {
+  image: GalleryImage
+  onEdit: (image: GalleryImage) => void
+  onDelete: (id: number) => void
+}
+
+const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) => {
+  const [menuOpen, setMenuOpen] = useState<boolean>(false)
 
   return (
     <div
@@ -96,7 +133,7 @@ const GalleryCard = ({ image, onEdit, onDelete }) => {
         </span>
       )}
 
-      {/* Three-dot menu — outside overflow so it isn't clipped */}
+      {/* Three-dot menu */}
       <div className="absolute top-2 right-2 z-20" onClick={e => e.stopPropagation()}>
         <DotsMenu
           open={menuOpen}
@@ -110,8 +147,15 @@ const GalleryCard = ({ image, onEdit, onDelete }) => {
 }
 
 // ─── Image upload / URL input ─────────────────────────────────────────────────
-const ImageInput = ({ previewUrl, onFileChange, onUrlChange, urlValue }) => {
-  const fileRef = useRef(null)
+interface ImageInputProps {
+  previewUrl: string | null
+  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void
+  onUrlChange: (url: string) => void
+  urlValue: string
+}
+
+const ImageInput: React.FC<ImageInputProps> = ({ previewUrl, onFileChange, onUrlChange, urlValue }) => {
+  const fileRef = useRef<HTMLInputElement>(null)
 
   return (
     <div className="space-y-2">
@@ -159,41 +203,50 @@ const ImageInput = ({ previewUrl, onFileChange, onUrlChange, urlValue }) => {
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
-const GalleryModal = ({ initial, onSave, onClose, isSaving }) => {
-  const [form, setForm] = useState(
+interface GalleryModalProps {
+  initial: GalleryImage | null
+  onSave: (fd: FormData) => void
+  onClose: () => void
+  isSaving: boolean
+}
+
+const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, isSaving }) => {
+  const [form, setForm] = useState<GalleryFormData>(
     initial
       ? {
-          caption: initial.caption ?? '',
-          alt_text: initial.alt_text ?? '',
-          category: initial.category ?? 'Others',
-          display_order: initial.display_order ?? 0,
-          is_published: initial.is_published ?? true,
-          image_url_field: initial.resolved_url ?? '',
+          caption:         initial.caption         ?? '',
+          alt_text:        initial.alt_text         ?? '',
+          category:        initial.category         ?? 'Others',
+          display_order:   initial.display_order    ?? 0,
+          is_published:    initial.is_published     ?? true,
+          image_url_field: initial.resolved_url     ?? '',
         }
       : EMPTY_FORM
   )
-  const [file, setFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState(initial?.resolved_url ?? null)
+  const [file, setFile]           = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initial?.resolved_url ?? null)
 
-  const set = (field, value) => setForm(f => ({ ...f, [field]: value }))
+  const set = <K extends keyof GalleryFormData>(field: K, value: GalleryFormData[K]): void =>
+    setForm(f => ({ ...f, [field]: value }))
 
-  const handleFileChange = e => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const f = e.target.files?.[0]
     if (!f) return
     setFile(f)
     setPreviewUrl(URL.createObjectURL(f))
-    set('image_url_field', '') // clear URL field when file chosen
+    set('image_url_field', '')
   }
 
-  const handleUrlChange = url => {
+  const handleUrlChange = (url: string): void => {
     set('image_url_field', url)
     setFile(null)
     setPreviewUrl(url || null)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     if (!file && !form.image_url_field && !initial?.resolved_url) {
-      return toast.error('Please upload an image or provide an image URL.')
+      toast.error('Please upload an image or provide an image URL.')
+      return
     }
 
     const fd = new FormData()
@@ -250,7 +303,7 @@ const GalleryModal = ({ initial, onSave, onClose, isSaving }) => {
             <label className="text-xs font-semibold text-gray-500 uppercase">Category</label>
             <select
               value={form.category}
-              onChange={e => set('category', e.target.value)}
+              onChange={e => set('category', e.target.value as GalleryCategory)}
               className="border p-2 rounded-lg text-sm w-full mt-1 bg-white"
             >
               {CATEGORIES.map(c => (
@@ -260,9 +313,7 @@ const GalleryModal = ({ initial, onSave, onClose, isSaving }) => {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase">
-              Display Order
-            </label>
+            <label className="text-xs font-semibold text-gray-500 uppercase">Display Order</label>
             <input
               type="number"
               min={0}
@@ -304,18 +355,18 @@ const GalleryModal = ({ initial, onSave, onClose, isSaving }) => {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-const Gallery = () => {
+const Gallery: React.FC = () => {
   const qc = useQueryClient()
-  const [modal, setModal] = useState(null)    // null | 'add' | { ...image }
-  const [filterCat, setFilterCat] = useState('All')
+  const [modal, setModal]       = useState<'add' | GalleryImage | null>(null)
+  const [filterCat, setFilterCat] = useState<string>('All')
 
-  const { data: images = [], isLoading, error, refetch } = useQuery({
+  const { data: images = [], isLoading, error, refetch } = useQuery<GalleryImage[]>({
     queryKey: ['admin-gallery'],
     queryFn: fetchAllGallery,
   })
 
   const createMutation = useMutation({
-    mutationFn: fd =>
+    mutationFn: (fd: FormData) =>
       api.post('/gallery/', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-gallery'] })
@@ -327,7 +378,7 @@ const Gallery = () => {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, fd }) =>
+    mutationFn: ({ id, fd }: { id: number; fd: FormData }) =>
       api.patch(`/gallery/${id}/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-gallery'] })
@@ -339,7 +390,7 @@ const Gallery = () => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: id => api.delete(`/gallery/${id}/`),
+    mutationFn: (id: number) => api.delete(`/gallery/${id}/`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-gallery'] })
       qc.invalidateQueries({ queryKey: ['gallery'] })
@@ -348,15 +399,15 @@ const Gallery = () => {
     onError: () => toast.error('Failed to delete image.'),
   })
 
-  const handleSave = fd => {
+  const handleSave = (fd: FormData): void => {
     if (modal === 'add') {
       createMutation.mutate(fd)
-    } else {
-      updateMutation.mutate({ id: modal.id, fd })
+    } else if (modal && typeof modal === 'object') {
+      updateMutation.mutate({ id: (modal as GalleryImage).id, fd })
     }
   }
 
-  const handleDelete = id => {
+  const handleDelete = (id: number): void => {
     if (window.confirm('Delete this image? This cannot be undone.')) {
       deleteMutation.mutate(id)
     }
@@ -364,8 +415,11 @@ const Gallery = () => {
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
-  const displayed =
+  const displayed: GalleryImage[] =
     filterCat === 'All' ? images : images.filter(img => img.category === filterCat)
+
+  const editInitial: GalleryImage | null =
+    modal && modal !== 'add' ? (modal as GalleryImage) : null
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -392,7 +446,7 @@ const Gallery = () => {
 
         {/* Category filter */}
         <div className="flex gap-2 flex-wrap mb-6">
-          {['All', ...CATEGORIES].map(cat => (
+          {(['All', ...CATEGORIES] as string[]).map(cat => (
             <button
               key={cat}
               onClick={() => setFilterCat(cat)}
@@ -465,7 +519,7 @@ const Gallery = () => {
       {/* Modal */}
       {modal && (
         <GalleryModal
-          initial={modal === 'add' ? null : modal}
+          initial={editInitial}
           onSave={handleSave}
           onClose={() => setModal(null)}
           isSaving={isSaving}

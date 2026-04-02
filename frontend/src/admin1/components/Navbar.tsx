@@ -1,18 +1,19 @@
+// src/admin1/components/Navbar.tsx
+
 import React, { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/nacos_logo.png'
 import profileImg from '../../assets/profile.png'
 
-const Navbar = () => {
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef(null)
+const Navbar: React.FC = () => {
+  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false)
       }
     }
@@ -28,15 +29,15 @@ const Navbar = () => {
         <h1 className="text-[15px] md:text-[18px] font-bold text-black tracking-wide">NACOS ABUAD</h1>
       </div>
 
-      {/* Nav Links — hidden on mobile, shown md+ */}
+      {/* Nav Links */}
       <ul className="hidden md:flex items-center gap-6 lg:gap-8">
         {[
           { label: 'Home',      to: '/admin' },
           { label: 'Events',    to: '/admin/events' },
           { label: 'Metrics',   to: '/admin/metrics' },
           { label: 'Approvals', to: '/admin/approvals' },
-          { label: 'Gallery',   to: '/admin/gallery'},
-          {label: 'Inquiries',  to: '/admin/inquiries'},
+          { label: 'Gallery',   to: '/admin/gallery' },
+          { label: 'Inquiries', to: '/admin/inquiries' },
         ].map(({ label, to }) => (
           <li key={label}>
             <NavLink
@@ -65,7 +66,6 @@ const Navbar = () => {
           <img src={profileImg} alt="Profile" className="w-full h-full object-cover" />
         </button>
 
-        {/* Dropdown Card */}
         {dropdownOpen && (
           <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
             {/* Profile Info */}
@@ -76,7 +76,6 @@ const Navbar = () => {
                   alt="James Bayo"
                   className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
                 />
-                {/* Green checkmark badge */}
                 <span className="absolute bottom-0 right-0 w-5 h-5 bg-[#1a7a3f] rounded-full flex items-center justify-center border-2 border-white">
                   <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

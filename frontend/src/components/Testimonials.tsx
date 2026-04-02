@@ -1,10 +1,6 @@
 import SectionHeader from "./SectionHeader";
 import TestimonialCard from "./TestimonialCard";
 import { PartnerCTA } from "./PartnerCta";
-import logo1 from '../assets/sponsor1.png';
-import logo2 from '../assets/sponsor2.jpg';
-import logo3 from '../assets/sponsor3.jpg';
-import logo4 from '../assets/sponsor4.jpg';
 
 export default function Testimonials() {
   return (
