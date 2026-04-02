@@ -1,25 +1,69 @@
-// src/admin1/pages/Event.jsx  — full CRUD wired to API
+// src/admin1/pages/Event.tsx
+
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import Navbar from '../components/Navbar.jsx'
-import { Footer } from '../../components/Footer.tsx'
+import Navbar from '../components/Navbar'
+import { Footer } from '../../components/Footer'
 import { api } from '../../lib/api'
 import toast from 'react-hot-toast'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+type EventStatus = 'upcoming' | 'ongoing' | 'completed'
+
+interface EventMedia {
+  poster?: string
+}
+
+interface EventItem {
+  id: number
+  title: string
+  start_time: string
+  end_time?: string | null
+  location?: string
+  is_remote: boolean
+  poster_url?: string
+  description?: string
+  registration_url?: string
+  contact_email?: string
+  is_published: boolean
+  status?: EventStatus
+  media?: EventMedia
+}
+
+interface EventFormData {
+  title: string
+  start_time: string
+  end_time: string
+  location: string
+  is_remote: boolean
+  poster_url: string
+  description: string
+  registration_url: string
+  contact_email: string
+  is_published: boolean
+}
+
 // ─── API helpers ──────────────────────────────────────────────────────────────
-const fetchEvents = () => api.get('/events/').then(r => {
+const fetchEvents = (): Promise<EventItem[]> => api.get('/events/').then(r => {
   const data = r.data
   return Array.isArray(data) ? data : (data?.results ?? [])
 })
 
-const EMPTY_FORM = {
+const EMPTY_FORM: EventFormData = {
   title: '', start_time: '', end_time: '', location: '',
   is_remote: false, poster_url: '', description: '',
   registration_url: '', contact_email: '', is_published: true,
 }
 
 // ─── Three-dot menu ───────────────────────────────────────────────────────────
-const DotsMenu = ({ open, onToggle, onEdit, onDelete }) => (
+interface DotsMenuProps {
+  open: boolean
+  onToggle: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete }) => (
   <div className="relative">
     <button
       onClick={(e) => { e.stopPropagation(); onToggle() }}
@@ -39,25 +83,30 @@ const DotsMenu = ({ open, onToggle, onEdit, onDelete }) => (
 )
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
-const StatusBadge = ({ status }) => {
-  const map = {
+const StatusBadge: React.FC<{ status?: EventStatus }> = ({ status }) => {
+  const map: Record<string, string> = {
     upcoming:  'bg-blue-100 text-blue-700',
     ongoing:   'bg-green-100 text-green-700',
     completed: 'bg-gray-100 text-gray-600',
   }
   return (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${map[status] ?? 'bg-gray-100 text-gray-500'}`}>
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status ? (map[status] ?? 'bg-gray-100 text-gray-500') : 'bg-gray-100 text-gray-500'}`}>
       {status}
     </span>
   )
 }
 
 // ─── Event card ───────────────────────────────────────────────────────────────
-const EventCard = ({ event, onEdit, onDelete }) => {
-  const [menuOpen, setMenuOpen] = useState(false)
+interface EventCardProps {
+  event: EventItem
+  onEdit: (event: EventItem) => void
+  onDelete: (event: EventItem) => void
+}
 
-  // smarter click handling: only close menu if it's open AND click is outside the menu
-  const handleCardClick = () => {
+const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete }) => {
+  const [menuOpen, setMenuOpen] = useState<boolean>(false)
+
+  const handleCardClick = (): void => {
     if (menuOpen) setMenuOpen(false)
   }
 
@@ -66,7 +115,6 @@ const EventCard = ({ event, onEdit, onDelete }) => {
       className="relative bg-[#eef6f3] rounded-lg flex flex-col max-w-[300px] w-full h-[420px] mb-8 mx-auto hover:shadow-md transition"
       onClick={handleCardClick}
     >
-      {/* Image — overflow-hidden stays here so image is still cropped */}
       <div className="relative overflow-hidden rounded-t-lg">
         {event.media?.poster ? (
           <img src={event.media.poster} alt={event.title} className="w-full h-48 object-cover" />
@@ -79,7 +127,6 @@ const EventCard = ({ event, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Three-dot menu — sits outside overflow-hidden container */}
         <div className="absolute top-3 right-3 z-50" onClick={e => e.stopPropagation()}>
           <DotsMenu
             open={menuOpen}
@@ -96,7 +143,6 @@ const EventCard = ({ event, onEdit, onDelete }) => {
         )}
       </div>
 
-      {/* Content */}
       <div className="p-4 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-2 gap-2">
           <h3 className="text-[15px] font-bold text-black line-clamp-2">{event.title}</h3>
@@ -116,19 +162,27 @@ const EventCard = ({ event, onEdit, onDelete }) => {
 }
 
 // ─── Event form modal ─────────────────────────────────────────────────────────
-const EventModal = ({ initial, onSave, onClose, isSaving }) => {
-  const [form, setForm] = useState(initial ?? EMPTY_FORM)
-  const set = (field, value) => setForm(f => ({ ...f, [field]: value }))
+interface EventModalProps {
+  initial: EventFormData | null
+  onSave: (data: EventFormData) => void
+  onClose: () => void
+  isSaving: boolean
+}
 
-  const toLocal = iso => iso ? iso.slice(0, 16) : ''
-  const fromLocal = local => local ? new Date(local).toISOString() : ''
+const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSaving }) => {
+  const [form, setForm] = useState<EventFormData>(initial ?? EMPTY_FORM)
+  const set = <K extends keyof EventFormData>(field: K, value: EventFormData[K]): void =>
+    setForm(f => ({ ...f, [field]: value }))
 
-  const handleSubmit = () => {
-    if (!form.title || !form.start_time) return toast.error('Title and start time are required.')
+  const toLocal = (iso: string): string => iso ? iso.slice(0, 16) : ''
+  const fromLocal = (local: string): string => local ? new Date(local).toISOString() : ''
+
+  const handleSubmit = (): void => {
+    if (!form.title || !form.start_time) return void toast.error('Title and start time are required.')
     onSave({
       ...form,
       start_time: fromLocal(form.start_time),
-      end_time: form.end_time ? fromLocal(form.end_time) : null,
+      end_time: form.end_time ? fromLocal(form.end_time) : '',
     })
   }
 
@@ -212,7 +266,14 @@ const EventModal = ({ initial, onSave, onClose, isSaving }) => {
 }
 
 // ─── Delete Confirmation Modal ─────────────────────────────────────────────────
-const DeleteModal = ({ event, onConfirm, onCancel, isDeleting }) => (
+interface DeleteModalProps {
+  event: EventItem | null
+  onConfirm: () => void
+  onCancel: () => void
+  isDeleting: boolean
+}
+
+const DeleteModal: React.FC<DeleteModalProps> = ({ event, onConfirm, onCancel, isDeleting }) => (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
     <div className="bg-white rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
       <h3 className="font-bold text-lg mb-2">Delete Event?</h3>
@@ -237,47 +298,48 @@ const DeleteModal = ({ event, onConfirm, onCancel, isDeleting }) => (
 )
 
 // ─── Main component ───────────────────────────────────────────────────────────
-const Events = () => {
+const Events: React.FC = () => {
   const qc = useQueryClient()
-  const [modal, setModal]         = useState(null)   // null | 'add' | { ...event }
-  const [deleteTarget, setDeleteTarget] = useState(null) // null | event object
+  const [modal, setModal] = useState<'add' | EventItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<EventItem | null>(null)
 
-  const { data: events = [], isLoading, error, refetch } = useQuery({
+  const { data: events = [], isLoading, error, refetch } = useQuery<EventItem[]>({
     queryKey: ['admin-events'],
     queryFn: fetchEvents,
   })
 
   const createMutation = useMutation({
-    mutationFn: data => api.post('/events/', data).then(r => r.data),
+    mutationFn: (data: EventFormData) => api.post('/events/', data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-events'] }); setModal(null); toast.success('Event created!') },
     onError:   () => toast.error('Failed to create event.'),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.patch(`/events/${id}/`, data).then(r => r.data),
+    mutationFn: ({ id, data }: { id: number; data: EventFormData }) =>
+      api.patch(`/events/${id}/`, data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-events'] }); setModal(null); toast.success('Event updated!') },
     onError:   () => toast.error('Failed to update event.'),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: id => api.delete(`/events/${id}/`),
+    mutationFn: (id: number) => api.delete(`/events/${id}/`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-events'] });
-      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ['admin-events'] })
+      setDeleteTarget(null)
       toast.success('Event deleted.')
     },
-    onError:   () => toast.error('Failed to delete event.'),
+    onError: () => toast.error('Failed to delete event.'),
   })
 
-  const handleSave = (formData) => {
+  const handleSave = (formData: EventFormData): void => {
     if (modal === 'add') {
       createMutation.mutate(formData)
-    } else {
+    } else if (modal && typeof modal === 'object') {
       updateMutation.mutate({ id: modal.id, data: formData })
     }
   }
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = (): void => {
     if (deleteTarget?.id) {
       deleteMutation.mutate(deleteTarget.id)
     }
@@ -285,13 +347,20 @@ const Events = () => {
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
-  // Fix: Don't double-slice the datetime - API returns ISO, we only slice in toLocal
-  const editInitial = modal && modal !== 'add' ? {
-    ...modal,
-    // Keep full ISO strings, let toLocal handle the slicing
-    start_time: modal.start_time ?? '',
-    end_time:   modal.end_time ?? '',
-  } : null
+  const editInitial: EventFormData | null = modal && modal !== 'add'
+    ? {
+        title:             (modal as EventItem).title ?? '',
+        start_time:        (modal as EventItem).start_time ?? '',
+        end_time:          (modal as EventItem).end_time ?? '',
+        location:          (modal as EventItem).location ?? '',
+        is_remote:         (modal as EventItem).is_remote ?? false,
+        poster_url:        (modal as EventItem).poster_url ?? '',
+        description:       (modal as EventItem).description ?? '',
+        registration_url:  (modal as EventItem).registration_url ?? '',
+        contact_email:     (modal as EventItem).contact_email ?? '',
+        is_published:      (modal as EventItem).is_published ?? true,
+      }
+    : null
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -316,14 +385,12 @@ const Events = () => {
           </button>
         </div>
 
-        {/* State: loading */}
         {isLoading && (
           <div className="flex justify-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1a7a3f]" />
           </div>
         )}
 
-        {/* State: error */}
         {error && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">Failed to load events.</p>
@@ -333,7 +400,6 @@ const Events = () => {
           </div>
         )}
 
-        {/* State: empty */}
         {!isLoading && !error && events.length === 0 && (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
             <p className="text-gray-500 mb-4">No events yet.</p>
@@ -343,7 +409,6 @@ const Events = () => {
           </div>
         )}
 
-        {/* Grid */}
         {!isLoading && events.length > 0 && (
           <>
             <p className="text-sm text-gray-500 mb-4">{events.length} event{events.length !== 1 ? 's' : ''}</p>
@@ -353,7 +418,7 @@ const Events = () => {
                   key={event.id}
                   event={event}
                   onEdit={setModal}
-                  onDelete={setDeleteTarget} // Now receives full event object
+                  onDelete={setDeleteTarget}
                 />
               ))}
             </div>
@@ -361,7 +426,6 @@ const Events = () => {
         )}
       </main>
 
-      {/* Add / Edit modal */}
       {modal && (
         <EventModal
           initial={editInitial}
@@ -371,7 +435,6 @@ const Events = () => {
         />
       )}
 
-      {/* Delete confirmation modal */}
       {deleteTarget && (
         <DeleteModal
           event={deleteTarget}

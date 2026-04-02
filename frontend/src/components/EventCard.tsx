@@ -1,5 +1,28 @@
 import { Link } from "react-router-dom";
 
+// ✅ Correct Event type based on backend
+export type EventStatus = "upcoming" | "ongoing" | "completed";
+
+export interface Event {
+  id: number;
+  title: string;
+  start_time: string;
+  end_time?: string | null;
+  location: string;
+  is_remote: boolean;
+  poster_url?: string;
+  description?: string;
+  registration_url?: string;
+  contact_email?: string;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+  status: EventStatus;
+  media?: {
+      poster?: string | null;
+      };
+}
+
 interface EventCardProps {
   event: Event;
 }
@@ -33,15 +56,16 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
-      {/* Poster Container - Square */}
-      {event.media.poster ? (
+      {/* Poster */}
+      {event.poster_url ? (
         <div className="relative overflow-hidden aspect-square bg-gray-100">
           <img
-            src={event.media.poster}
+            src={event.poster_url}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
+
           {/* Status Badge */}
           <div className="absolute top-4 right-4">
             <span
@@ -71,7 +95,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           {event.title}
         </h3>
 
-        {/* Date and Time */}
+        {/* Date & Time */}
         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mb-1">
           <div className="flex items-center gap-1.5">
             <CalendarIcon />
@@ -83,6 +107,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               })}
             </span>
           </div>
+
           <div className="flex items-center gap-1.5">
             <ClockIcon />
             <span>
@@ -97,14 +122,16 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         {/* Location */}
         <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-4">
           <LocationIcon />
-          <span className="truncate">{event.is_remote ? "Remote Event" : event.location}</span>
+          <span className="truncate">
+            {event.is_remote ? "Remote Event" : event.location}
+          </span>
         </div>
 
-        {/* Buttons */}
+        {/* Actions */}
         <div className="flex items-center justify-between gap-3 mt-auto pt-1">
           <Link
             to={`/events/${event.id}`}
-            className="text-green-600 hover:text-green-700 font-semibold text-sm inline-flex items-center gap-1 group/link transition-all"
+            className="text-green-600 hover:text-green-700 font-semibold text-sm inline-flex items-center gap-1 transition-all"
           >
             Learn More
             <ArrowRightIcon />

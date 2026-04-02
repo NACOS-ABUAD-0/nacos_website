@@ -1,12 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { projectsAPI, skillsAPI } from '../api';
+import type { Project, Skill } from '../../types';
 
 // Query hooks
 export const useProjects = (params = {}) => {
   return useQuery({
     queryKey: ['projects', params],
     queryFn: () => projectsAPI.getProjects(params).then(res => res.data),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,   // v5: keepPreviousData moved here
   });
 };
 
@@ -19,7 +20,7 @@ export const useProject = (id: string | number) => {
 };
 
 export const useSkills = () => {
-  return useQuery({
+  return useQuery<Skill[]>({               // explicit return type kills implicit any on skill
     queryKey: ['skills'],
     queryFn: () => skillsAPI.getSkills().then(res => res.data),
   });
@@ -30,7 +31,8 @@ export const useCreateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: any) => projectsAPI.createProject(data).then(res => res.data),
+    mutationFn: (data: Partial<Project>) =>
+      projectsAPI.createProject(data).then(res => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
@@ -41,7 +43,7 @@ export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string | number; data: any }) =>
+    mutationFn: ({ id, data }: { id: string | number; data: Partial<Project> }) =>
       projectsAPI.updateProject(id, data).then(res => res.data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -54,14 +56,14 @@ export const useDeleteProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string | number) => projectsAPI.deleteProject(id).then(res => res.data),
+    mutationFn: (id: string | number) =>
+      projectsAPI.deleteProject(id).then(res => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 };
 
-// Like/Unlike hooks
 export const useLikeProject = () => {
   const queryClient = useQueryClient();
 
@@ -69,7 +71,6 @@ export const useLikeProject = () => {
     mutationFn: (projectId: string | number) =>
       projectsAPI.likeProject(projectId).then(res => res.data),
     onSuccess: (_, projectId) => {
-      // Invalidate queries to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     },

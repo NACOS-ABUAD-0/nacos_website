@@ -28,6 +28,7 @@ export interface Project {
   // in the Django model, so project.featured was always undefined.
   is_featured: boolean;
   like_count?: number;
+  is_liked_by_user?: boolean;
   status?: 'draft' | 'published';
   created_at: string;
   updated_at: string;

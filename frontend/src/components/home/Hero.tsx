@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   motion,
-  AnimatePresence,
   useMotionValue,
   useTransform,
   useSpring,
@@ -107,11 +106,7 @@ const SlideDots: React.FC<{ total: number; current: number; onDotClick: (i: numb
 
 // ─── Hero component ───────────────────────────────────────────────────────────
 
-interface HeroProps {
-  showProfileBanner?: boolean;
-}
-
-export const Hero: React.FC<HeroProps> = ({ showProfileBanner = false }) => {
+export const Hero: React.FC<HeroProps> = ( ) => {
   const images = [
     "/heroImages/hero1.jpeg",
     "/heroImages/hero2.jpeg",

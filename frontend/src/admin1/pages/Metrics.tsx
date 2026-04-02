@@ -1,14 +1,17 @@
-// src/admin1/pages/Metrics.jsx
-import React from 'react'
-import Navbar from '../components/Navbar.jsx'
+// src/admin1/pages/Metrics.tsx
 
-const Metrics = () => {
+import React from 'react'
+import Navbar from '../components/Navbar'
+import { Footer } from '../../components/Footer'
+
+const Metrics: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f9fafb]">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <h2 className="text-[22px] md:text-[30px] font-semibold text-gray-900">Metrics</h2>
       </main>
+      <Footer />
     </div>
   )
 }

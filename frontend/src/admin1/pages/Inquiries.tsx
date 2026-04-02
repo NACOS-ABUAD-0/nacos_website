@@ -1,33 +1,70 @@
-// src/admin1/pages/Inquiries.jsx
+// src/admin1/pages/Inquiries.tsx
+
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import Navbar from '../components/Navbar.jsx'
-import { Footer } from '../../components/Footer.tsx'
+import Navbar from '../components/Navbar'
+import { Footer } from '../../components/Footer'
 import { api } from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const STATUS_COLORS = {
+// ── Types ──────────────────────────────────────────────────────
+interface Inquiry {
+  id: number
+  name: string
+  email: string
+  organization?: string
+  website_url?: string
+  budget_range?: string
+  package_interest?: string
+  subject?: string
+  message: string
+  type: 'general' | 'sponsorship' | 'partnership' | 'recruitment'
+  status: 'new' | 'read' | 'responded' | 'archived'
+  admin_notes?: string
+  created_at: string
+}
+
+const STATUS_COLORS: Record<string, string> = {
   new:       'bg-blue-100 text-blue-700',
   read:      'bg-yellow-100 text-yellow-700',
   responded: 'bg-green-100 text-green-700',
   archived:  'bg-gray-100 text-gray-500',
 }
 
-const TYPE_COLORS = {
+const TYPE_COLORS: Record<string, string> = {
   general:     'bg-purple-100 text-purple-700',
   sponsorship: 'bg-orange-100 text-orange-700',
   partnership: 'bg-teal-100 text-teal-700',
   recruitment: 'bg-pink-100 text-pink-700',
 }
 
-const STATUS_OPTIONS = ['new', 'read', 'responded', 'archived']
-const TYPE_FILTERS   = ['all', 'general', 'sponsorship', 'partnership', 'recruitment']
+const STATUS_OPTIONS = ['new', 'read', 'responded', 'archived'] as const
+const TYPE_FILTERS   = ['all', 'general', 'sponsorship', 'partnership', 'recruitment'] as const
 
-// ─── Detail drawer ────────────────────────────────────────────────────────────
-const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
-  const [status, setStatus]     = useState(inquiry.status)
-  const [notes, setNotes]       = useState(inquiry.admin_notes ?? '')
-  const [saving, setSaving]     = useState(false)
+// ── Row helper ─────────────────────────────────────────────────
+interface RowProps {
+  label: string
+  value: React.ReactNode
+}
+
+const Row: React.FC<RowProps> = ({ label, value }) => (
+  <div className="flex justify-between items-start gap-4 text-sm">
+    <span className="text-gray-400 font-medium shrink-0">{label}</span>
+    <span className="text-gray-800 font-medium text-right">{value}</span>
+  </div>
+)
+
+// ── Detail drawer ──────────────────────────────────────────────
+interface InquiryDrawerProps {
+  inquiry: Inquiry
+  onClose: () => void
+  onStatusUpdate: (id: number, status: string, notes: string) => Promise<void>
+}
+
+const InquiryDrawer: React.FC<InquiryDrawerProps> = ({ inquiry, onClose, onStatusUpdate }) => {
+  const [status, setStatus] = useState<string>(inquiry.status)
+  const [notes,  setNotes]  = useState<string>(inquiry.admin_notes ?? '')
+  const [saving, setSaving] = useState<boolean>(false)
 
   const handleSave = async () => {
     setSaving(true)
@@ -46,9 +83,8 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
     <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={onClose}>
       <div
         className="bg-white w-full max-w-lg h-full overflow-y-auto shadow-2xl flex flex-col"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="font-bold text-gray-900 text-lg">Inquiry Detail</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -59,7 +95,6 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
         </div>
 
         <div className="flex-1 px-6 py-5 space-y-5">
-          {/* Badges */}
           <div className="flex gap-2 flex-wrap">
             <span className={`text-xs font-bold px-3 py-1 rounded-full ${TYPE_COLORS[inquiry.type]}`}>
               {inquiry.type}
@@ -69,18 +104,16 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
             </span>
           </div>
 
-          {/* Sender info */}
           <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-            <Row label="Name"         value={inquiry.name} />
-            <Row label="Email"        value={<a href={`mailto:${inquiry.email}`} className="text-[#006E3A] underline">{inquiry.email}</a>} />
+            <Row label="Name"  value={inquiry.name} />
+            <Row label="Email" value={<a href={`mailto:${inquiry.email}`} className="text-[#006E3A] underline">{inquiry.email}</a>} />
             {inquiry.organization && <Row label="Organization" value={inquiry.organization} />}
-            {inquiry.website_url   && <Row label="Website"      value={<a href={inquiry.website_url} target="_blank" rel="noopener noreferrer" className="text-[#006E3A] underline truncate">{inquiry.website_url}</a>} />}
-            {inquiry.budget_range  && <Row label="Budget"       value={inquiry.budget_range} />}
-            {inquiry.package_interest && <Row label="Package"   value={inquiry.package_interest} />}
-            <Row label="Received"    value={new Date(inquiry.created_at).toLocaleString()} />
+            {inquiry.website_url  && <Row label="Website" value={<a href={inquiry.website_url} target="_blank" rel="noopener noreferrer" className="text-[#006E3A] underline truncate">{inquiry.website_url}</a>} />}
+            {inquiry.budget_range && <Row label="Budget"  value={inquiry.budget_range} />}
+            {inquiry.package_interest && <Row label="Package" value={inquiry.package_interest} />}
+            <Row label="Received" value={new Date(inquiry.created_at).toLocaleString()} />
           </div>
 
-          {/* Subject + Message */}
           {inquiry.subject && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Subject</p>
@@ -94,17 +127,16 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
             </p>
           </div>
 
-          {/* Admin controls */}
           <div className="border-t border-gray-100 pt-4 space-y-3">
             <p className="text-xs font-semibold text-gray-400 uppercase">Admin Actions</p>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
               <select
                 value={status}
-                onChange={e => setStatus(e.target.value)}
+                onChange={(e) => setStatus(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl p-2.5 text-sm bg-white focus:outline-none focus:border-[#006E3A]"
               >
-                {STATUS_OPTIONS.map(s => (
+                {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                 ))}
               </select>
@@ -113,7 +145,7 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Internal Notes</label>
               <textarea
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Add private notes here..."
                 className="w-full border border-gray-200 rounded-xl p-2.5 text-sm resize-none focus:outline-none focus:border-[#006E3A]"
@@ -122,7 +154,6 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
           </div>
         </div>
 
-        {/* Footer actions */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
           <a
             href={`mailto:${inquiry.email}?subject=Re: ${inquiry.subject || 'Your NACOS inquiry'}`}
@@ -147,15 +178,14 @@ const InquiryDrawer = ({ inquiry, onClose, onStatusUpdate }) => {
   )
 }
 
-const Row = ({ label, value }) => (
-  <div className="flex justify-between items-start gap-4 text-sm">
-    <span className="text-gray-400 font-medium shrink-0">{label}</span>
-    <span className="text-gray-800 font-medium text-right">{value}</span>
-  </div>
-)
+// ── Inquiry row card ───────────────────────────────────────────
+interface InquiryRowProps {
+  inquiry: Inquiry
+  onClick: () => void
+  onDelete: (id: number) => void
+}
 
-// ─── Inquiry row card ─────────────────────────────────────────────────────────
-const InquiryRow = ({ inquiry, onClick, onDelete }) => (
+const InquiryRow: React.FC<InquiryRowProps> = ({ inquiry, onClick, onDelete }) => (
   <div
     onClick={onClick}
     className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-[#006E3A] hover:shadow-md transition-all cursor-pointer group"
@@ -185,7 +215,7 @@ const InquiryRow = ({ inquiry, onClick, onDelete }) => (
           {new Date(inquiry.created_at).toLocaleDateString()}
         </span>
         <button
-          onClick={e => { e.stopPropagation(); onDelete(inquiry.id) }}
+          onClick={(e) => { e.stopPropagation(); onDelete(inquiry.id) }}
           className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-all p-1"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,32 +228,32 @@ const InquiryRow = ({ inquiry, onClick, onDelete }) => (
   </div>
 )
 
-// ─── Main component ───────────────────────────────────────────────────────────
-const Inquiries = () => {
+// ── Main component ─────────────────────────────────────────────
+const Inquiries: React.FC = () => {
   const qc = useQueryClient()
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [selected, setSelected] = useState(null)
+  const [typeFilter,   setTypeFilter]   = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selected,     setSelected]     = useState<Inquiry | null>(null)
 
-  const params = {}
+  const params: Record<string, string> = {}
   if (typeFilter   !== 'all') params.type   = typeFilter
   if (statusFilter !== 'all') params.status = statusFilter
 
-  const { data: inquiries = [], isLoading, error, refetch } = useQuery({
+  const { data: inquiries = [], isLoading, error, refetch } = useQuery<Inquiry[]>({
     queryKey: ['inquiries', params],
-    queryFn: () => api.get('/inquiries/', { params }).then(r =>
+    queryFn: () => api.get('/inquiries/', { params }).then((r) =>
       Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
     ),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status, admin_notes }) =>
-      api.patch(`/inquiries/${id}/update_status/`, { status, admin_notes }).then(r => r.data),
+    mutationFn: ({ id, status, admin_notes }: { id: number; status: string; admin_notes: string }) =>
+      api.patch(`/inquiries/${id}/update_status/`, { status, admin_notes }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['inquiries'] }),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: id => api.delete(`/inquiries/${id}/`),
+    mutationFn: (id: number) => api.delete(`/inquiries/${id}/`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inquiries'] })
       toast.success('Inquiry deleted.')
@@ -231,16 +261,15 @@ const Inquiries = () => {
     onError: () => toast.error('Failed to delete.'),
   })
 
-  const handleDelete = id => {
+  const handleDelete = (id: number) => {
     if (window.confirm('Delete this inquiry?')) deleteMutation.mutate(id)
   }
 
-  const handleStatusUpdate = (id, status, admin_notes) =>
+  const handleStatusUpdate = (id: number, status: string, admin_notes: string): Promise<void> =>
     updateMutation.mutateAsync({ id, status, admin_notes })
 
-  // Stats
-  const newCount       = inquiries.filter(i => i.status === 'new').length
-  const sponsorCount   = inquiries.filter(i => i.type === 'sponsorship' || i.type === 'partnership').length
+  const newCount     = inquiries.filter((i) => i.status === 'new').length
+  const sponsorCount = inquiries.filter((i) => i.type === 'sponsorship' || i.type === 'partnership').length
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -276,7 +305,7 @@ const Inquiries = () => {
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex gap-2 flex-wrap">
             <span className="text-xs font-semibold text-gray-400 self-center uppercase">Type:</span>
-            {TYPE_FILTERS.map(t => (
+            {TYPE_FILTERS.map((t) => (
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
@@ -292,7 +321,7 @@ const Inquiries = () => {
           </div>
           <div className="flex gap-2 flex-wrap">
             <span className="text-xs font-semibold text-gray-400 self-center uppercase">Status:</span>
-            {['all', ...STATUS_OPTIONS].map(s => (
+            {(['all', ...STATUS_OPTIONS] as string[]).map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -308,14 +337,12 @@ const Inquiries = () => {
           </div>
         </div>
 
-        {/* Loading */}
         {isLoading && (
           <div className="flex justify-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1a7a3f]" />
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">Failed to load inquiries.</p>
@@ -325,7 +352,6 @@ const Inquiries = () => {
           </div>
         )}
 
-        {/* Empty */}
         {!isLoading && !error && inquiries.length === 0 && (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
             <p className="text-2xl mb-2">📭</p>
@@ -333,10 +359,9 @@ const Inquiries = () => {
           </div>
         )}
 
-        {/* List */}
         {!isLoading && inquiries.length > 0 && (
           <div className="space-y-3">
-            {inquiries.map(inquiry => (
+            {inquiries.map((inquiry) => (
               <InquiryRow
                 key={inquiry.id}
                 inquiry={inquiry}
@@ -348,7 +373,6 @@ const Inquiries = () => {
         )}
       </main>
 
-      {/* Detail drawer */}
       {selected && (
         <InquiryDrawer
           inquiry={selected}

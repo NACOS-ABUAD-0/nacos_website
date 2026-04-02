@@ -27,7 +27,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const ownerName = project.owner?.full_name ?? 'Unknown';
   const ownerInitial = ownerName.charAt(0).toUpperCase();
 
-  const isLoading = likeMutation.isLoading || unlikeMutation.isLoading;
+  const isLoading = likeMutation.isPending || unlikeMutation.isPending;
 
   return (
     <Link

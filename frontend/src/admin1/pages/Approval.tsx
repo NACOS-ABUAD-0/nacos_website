@@ -1,21 +1,36 @@
-// src/admin1/pages/Approval.jsx
+// src/admin1/pages/Approval.tsx
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar.jsx'
-import { Footer } from '../../components/Footer.tsx'
+import Navbar from '../components/Navbar'
+import { Footer } from '../../components/Footer'
+
+// ── Types ──────────────────────────────────────────────────────
+type StudentStatus = 'Active' | 'Pending' | 'Banned'
+
+interface Student {
+  id: number
+  matricNo: string
+  fullName: string
+  email: string
+  level: number
+  dateRegistered: Date
+  status: StudentStatus
+}
+
+type ActionType = 'view' | 'ban' | 'unban'
 
 // ── Mock Data ──────────────────────────────────────────────────
-const NAMES = [
+const NAMES: string[] = [
   'Boluwatife Oluwabukola', 'Chukwuemeka Adebayo', 'Fatima Al-Hassan',
   'Oluwaseun Akinwale', 'Precious Nwosu', 'Samuel Okafor',
   'Amaka Eze', 'David Adeyemi', 'Grace Okonkwo', 'Ibrahim Musa',
   'Juliet Ogundele', 'Kelvin Nwachukwu', 'Lara Fashola',
   'Michael Afolabi', 'Ngozi Ike',
 ]
-const LEVELS = [100, 200, 300, 400]
+const LEVELS: number[] = [100, 200, 300, 400]
 
-const generateStudents = () =>
+const generateStudents = (): Student[] =>
   Array.from({ length: 45 }, (_, i) => ({
     id: i + 1,
     matricNo: `${20 + Math.floor(Math.random() * 4)}/SCI01/${String(i + 1).padStart(3, '0')}`,
@@ -23,12 +38,12 @@ const generateStudents = () =>
     email: `${NAMES[i % NAMES.length].split(' ')[0]}Nissi@gmail.com`,
     level: LEVELS[Math.floor(Math.random() * LEVELS.length)],
     dateRegistered: new Date(2024, 0, Math.floor(Math.random() * 28) + 1),
-    status: i < 35 ? 'Active' : i < 40 ? 'Pending' : 'Banned',
+    status: (i < 35 ? 'Active' : i < 40 ? 'Pending' : 'Banned') as StudentStatus,
   }))
 
-const ALL_STUDENTS = generateStudents()
+const ALL_STUDENTS: Student[] = generateStudents()
 
-const formatDate = (date) => {
+const formatDate = (date: Date): { date: string; time: string } => {
   const d = String(date.getDate()).padStart(2, '0')
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const y = date.getFullYear()
@@ -38,22 +53,27 @@ const formatDate = (date) => {
 const ITEMS_PER_PAGE = 7
 
 // ── Status Badge ───────────────────────────────────────────────
-const StatusBadge = ({ status }) => {
-  const styles = {
+const StatusBadge: React.FC<{ status: StudentStatus }> = ({ status }) => {
+  const styles: Record<StudentStatus, string> = {
     Active:  'bg-green-100 text-green-700',
     Pending: 'bg-yellow-100 text-yellow-700',
     Banned:  'bg-red-100 text-red-600',
   }
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || styles.Pending}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] ?? styles.Pending}`}>
       {status}
     </span>
   )
 }
 
 // ── Three-dot Action Menu ──────────────────────────────────────
-const ActionMenu = ({ student, onAction }) => {
-  const [open, setOpen] = useState(false)
+interface ActionMenuProps {
+  student: Student
+  onAction: (action: ActionType, student: Student) => void
+}
+
+const ActionMenu: React.FC<ActionMenuProps> = ({ student, onAction }) => {
+  const [open, setOpen] = useState<boolean>(false)
   const isBanned = student.status === 'Banned'
 
   return (
@@ -110,8 +130,14 @@ const ActionMenu = ({ student, onAction }) => {
 }
 
 // ── Pagination ─────────────────────────────────────────────────
-const Pagination = ({ currentPage, totalPages, onPageChange }) => {
-  const getPages = () => {
+interface PaginationProps {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}
+
+const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
+  const getPages = (): (number | string)[] => {
     if (totalPages <= 6) return Array.from({ length: totalPages }, (_, i) => i + 1)
     if (currentPage <= 3) return [1, 2, 3, '...', totalPages - 1, totalPages]
     if (currentPage >= totalPages - 2) return [1, 2, '...', totalPages - 2, totalPages - 1, totalPages]
@@ -140,7 +166,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           ) : (
             <button
               key={p}
-              onClick={() => onPageChange(p)}
+              onClick={() => onPageChange(p as number)}
               className={`w-8 h-8 rounded-lg text-[13px] font-medium transition-colors ${
                 p === currentPage
                   ? 'bg-[#1a7a3f] text-white'
@@ -168,7 +194,12 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 }
 
 // ── Toast ──────────────────────────────────────────────────────
-const Toast = ({ message, onClose }) => {
+interface ToastProps {
+  message: string
+  onClose: () => void
+}
+
+const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
   useState(() => { setTimeout(onClose, 3000) })
   return (
     <div className="fixed bottom-6 right-6 z-50 bg-[#1a7a3f] text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg animate-bounce-in">
@@ -178,29 +209,31 @@ const Toast = ({ message, onClose }) => {
 }
 
 // ── Main Component ─────────────────────────────────────────────
-export default function ApprovalPage() {
-  const navigate = useNavigate()
-  const [activeTab,    setActiveTab]    = useState('approved')
-  const [search,       setSearch]       = useState('')
-  const [levelFilter,  setLevelFilter]  = useState('all')
-  const [dateFilter,   setDateFilter]   = useState('all')
-  const [currentPage,  setCurrentPage]  = useState(1)
-  const [students,     setStudents]     = useState(ALL_STUDENTS)
-  const [toast,        setToast]        = useState(null)
+type TabType = 'approved' | 'banned'
 
-  const handleAction = (action, student) => {
+const ApprovalPage: React.FC = () => {
+  const navigate = useNavigate()
+  const [activeTab,    setActiveTab]    = useState<TabType>('approved')
+  const [search,       setSearch]       = useState<string>('')
+  const [levelFilter,  setLevelFilter]  = useState<string>('all')
+  const [dateFilter,   setDateFilter]   = useState<string>('all')
+  const [currentPage,  setCurrentPage]  = useState<number>(1)
+  const [students,     setStudents]     = useState<Student[]>(ALL_STUDENTS)
+  const [toast,        setToast]        = useState<string | null>(null)
+
+  const handleAction = (action: ActionType, student: Student): void => {
     if (action === 'ban') {
-      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: 'Banned' } : s))
+      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: 'Banned' as StudentStatus } : s))
       setToast(`${student.fullName} has been banned.`)
     } else if (action === 'unban') {
-      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: 'Active' } : s))
+      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: 'Active' as StudentStatus } : s))
       setToast(`${student.fullName} has been unbanned.`)
     } else if (action === 'view') {
       navigate(`/admin/approvals/${student.id}`, { state: { student } })
     }
   }
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo<Student[]>(() => {
     let list = students.filter((s) =>
       activeTab === 'approved' ? s.status !== 'Banned' : s.status === 'Banned'
     )
@@ -216,7 +249,7 @@ export default function ApprovalPage() {
     if (dateFilter !== 'all') {
       const now = new Date()
       list = list.filter((s) => {
-        const diff = (now - s.dateRegistered) / (1000 * 60 * 60 * 24)
+        const diff = (now.getTime() - s.dateRegistered.getTime()) / (1000 * 60 * 60 * 24)
         if (dateFilter === '7')  return diff <= 7
         if (dateFilter === '30') return diff <= 30
         if (dateFilter === '90') return diff <= 90
@@ -229,7 +262,7 @@ export default function ApprovalPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
   const paginated  = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
-  const handleTabChange = (tab) => { setActiveTab(tab); setCurrentPage(1) }
+  const handleTabChange = (tab: TabType): void => { setActiveTab(tab); setCurrentPage(1) }
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -391,10 +424,9 @@ export default function ApprovalPage() {
       </main>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-         <Footer />
+      <Footer />
     </div>
-
-    
   )
- 
 }
+
+export default ApprovalPage

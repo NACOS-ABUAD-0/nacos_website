@@ -63,29 +63,6 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
-// ─── RequireAdmin ─────────────────────────────────────────────────────────────
-const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Check if user has admin/staff privileges
-  if (!user?.is_staff) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
 
 // ─── PublicRoute ──────────────────────────────────────────────────────────────
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
