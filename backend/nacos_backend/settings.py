@@ -130,14 +130,14 @@ def _split_env_list(name, default_list):
 
 CORS_ALLOWED_ORIGINS = _split_env_list(
     "CORS_ALLOWED_ORIGINS",
-    ["http://localhost:5173", "http://127.0.0.1:5173"],
+    ["http://localhost:5173", "http://127.0.0.1:5173", "https://nacos-abuad0-website.vercel.app", ],
 )
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings (for any cookie-based operations)
 CSRF_TRUSTED_ORIGINS = _split_env_list(
     "CSRF_TRUSTED_ORIGINS",
-    ["http://localhost:5173", "http://127.0.0.1:5173"],
+    ["http://localhost:5173", "http://127.0.0.1:5173", "https://nacos-abuad0-website.vercel.app", ],
 )
 
 LANGUAGE_CODE = 'en-us'
@@ -162,7 +162,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment
 DEFAULT_FROM_EMAIL = 'nacos@abuad.edu.ng'  # Change to actual email
 
 # Frontend URL for email verification links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nacos-abuad0-website.vercel.app")
 
 # For development, use console backend instead:
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
