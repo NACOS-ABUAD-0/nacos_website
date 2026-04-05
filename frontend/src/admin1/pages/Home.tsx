@@ -15,7 +15,7 @@ import box from '../../assets/box.png'
 import prev from '../../assets/prev.png'
 import curr from '../../assets/current.png'
 
-// ── Types ──────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────
 interface GrowthDataPoint {
   day: string
   label: string
