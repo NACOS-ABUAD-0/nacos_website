@@ -250,9 +250,9 @@ export const Hero: React.FC<HeroProps> = ( ) => {
         {/* Stats */}
         <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 w-full max-w-5xl text-center justify-items-center">
           {[
-            { end: 1500, label: "Students", color: "text-[#006E3A]", barColor: "bg-[#006E3A]" },
-            { end: 150, label: "Events Hosted", color: "text-white", barColor: "bg-white" },
-            { end: 20, label: "Projects Built", color: "text-[#006E3A]", barColor: "bg-[#006E3A]" },
+            { end: 700, label: "Computing Students", color: "text-[#006E3A]", barColor: "bg-[#006E3A]" },
+            { end: 50, label: "Events Hosted", color: "text-white", barColor: "bg-white" },
+            { end: 10, label: "Projects Built", color: "text-[#006E3A]", barColor: "bg-[#006E3A]" },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
