@@ -394,14 +394,7 @@ const Navbar = () => {
               >
                 Sign In
               </NavLink>
-              <NavLink
-                to="/register"
-                onClick={() => setIsMobileOpen(false)}
-                className="flex items-center justify-center gap-2 mx-1 px-4 py-2.5 bg-[#006E3A] hover:bg-[#005a30] text-white rounded-lg text-sm font-semibold transition-all shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-                Join Now
-              </NavLink>
+
             </>
           )}
         </div>
