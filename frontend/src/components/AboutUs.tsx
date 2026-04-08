@@ -35,8 +35,8 @@ export default function About() {
   }, []);
 
   const logoSrc = logoIndex === 0
-    ? "/images/nacos_logo (1).png"
-    : "/images/abuadLogo.png";
+    ? "/images/nacos-abuad-logo.PNG"
+    : "/images/Bada.jpg";
 
   return (
     <section className="mt-36 px-6 md:px-12 lg:px-24 mb-20">
@@ -138,7 +138,6 @@ export default function About() {
             {[
               "Active Student Developers",
               "Professional Certificates",
-              "Award Winning Workshops",
               "24/7 Academic Support",
             ].map((strength) => (
               <div key={strength} className="flex items-center gap-3">
