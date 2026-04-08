@@ -11,8 +11,7 @@ import {
   Grid,
   Folder,
 } from "lucide-react";
-import NacosLogo from "/images/nacos_logo.png";
-import AbuadLogo from "../../public/images/abuadLogo.png";
+import NacosLogo from "/images/nacos-abuad-logo.PNG";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -101,7 +100,6 @@ const Navbar = () => {
       <div className="flex justify-between items-center px-6 md:px-12 py-4">
         {/* ── Logo ─────────────────────────────────────────────────────── */}
         <NavLink to="/" className="flex gap-3 items-center group">
-          <img src={AbuadLogo} alt="ABUAD Logo" className="w-7 md:w-9" />
           <img src={NacosLogo} alt="NACOS Logo" className="w-9 md:w-11" />
           <h1 className={`font-bold text-lg lg:text-2xl ${textBase}`}>
             NACOS ABUAD

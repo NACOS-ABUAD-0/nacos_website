@@ -208,14 +208,14 @@ const Homepage: React.FC = () => {
             </Section>
           </AnimatedSection>
 
+                    {/* Gallery */}
+          <AnimatedSection>
+            <Gallery isHome={true} />
+          </AnimatedSection>
+
           {/* Testimonials */}
           <AnimatedSection>
             <Testimonials />
-          </AnimatedSection>
-
-          {/* Gallery */}
-          <AnimatedSection>
-            <Gallery isHome={true} />
           </AnimatedSection>
         </main>
       </div>
