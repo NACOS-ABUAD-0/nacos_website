@@ -219,7 +219,7 @@ const Navbar = () => {
                           label: "Your Profile",
                         },
                         {
-                          to: "/projects/my-projects",
+                          to: "/my-projects",
                           icon: <Folder className="w-4 h-4" />,
                           label: "My Projects",
                         },
@@ -347,7 +347,7 @@ const Navbar = () => {
               {[
                 { to: "/dashboard", icon: <Grid className="w-4 h-4" />, label: "Dashboard" },
                 { to: "/profile", icon: <UserIcon className="w-4 h-4" />, label: "Profile" },
-                { to: "/projects/my-projects", icon: <Folder className="w-4 h-4" />, label: "My Projects" },
+                { to: "/my-projects", icon: <Folder className="w-4 h-4" />, label: "My Projects" },
               ].map(({ to, icon, label }) => (
                 <NavLink
                   key={to}
