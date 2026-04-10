@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar'
 import { Footer } from '../components/Footer'
 import { useSubmitInquiry, type InquiryType } from '../lib/hooks/useInquiries'
 import toast from 'react-hot-toast'
+import {FaSnapchat, FaTiktok} from 'react-icons/fa'
 
 import {
   Mail,
@@ -16,14 +17,13 @@ import {
   Target,
   CheckCircle,
   Send,
-  Download
+  Download,
 } from 'lucide-react'
 
 const TABS = [
   { label: 'General', value: 'general', icon: MessageSquare },
   { label: 'Sponsorship', value: 'sponsorship', icon: Handshake },
   { label: 'Partnership', value: 'partnership', icon: Link2 },
-  { label: 'Recruitment', value: 'recruitment', icon: Target },
 ]
 
 const BUDGET_OPTIONS = [
@@ -115,6 +115,8 @@ export default function ContactPage() {
               { icon: MapPin, label: 'Location', value: 'ABUAD, Ado-Ekiti' },
               { icon: Twitter, label: 'Twitter/X', value: '@nacos_abuad' },
               { icon: Instagram, label: 'Instagram', value: '@nacos_abuad' },
+              { icon: FaSnapchat, label: 'Snapchat', value: '@nacos_abuad'},
+              { icon: FaTiktok, label: 'Tiktok', value: '@nacos_abuad'}
             ].map((item, i) => (
               <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-start gap-4">
                 <item.icon className="w-5 h-5 text-[#006E3A]" />
@@ -246,11 +248,11 @@ export default function ContactPage() {
                   )}
 
                   <textarea
-                    rows={5}
+                    rows={15}
                     placeholder="Your message"
                     value={form.message}
                     onChange={e => set('message', e.target.value)}
-                    className="input resize-none"
+                    className="input w-full"
                   />
 
                   <button

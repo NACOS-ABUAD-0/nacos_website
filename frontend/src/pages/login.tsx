@@ -43,13 +43,8 @@ export const LoginPage: React.FC = () => {
           >
             <div className="flex gap-5 items-center p-6 rounded-2xl">
               <img
-                src="/images/nacos_logo (1).png"
+                src="/images/nacos-abuad-logo.PNG"
                 alt="NACOS Logo"
-                className="w-[80px] lg:w-[100px]"
-              />
-              <img
-                src="/images/abuadLogo.png"
-                alt="ABUAD Logo"
                 className="w-[80px] lg:w-[100px]"
               />
             </div>

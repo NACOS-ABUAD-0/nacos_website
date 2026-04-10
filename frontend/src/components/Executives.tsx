@@ -32,19 +32,18 @@ export default function Executives({ isHome }: ExecutivesProps) {
   }, [location]);
 
   const executives: Executive[] = [
-    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", bio: "+234 706 871 3177", image: "/images/Bada.jpg" },
-    { id: 2, name: "Amalaha Jeffrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", bio: "+234 913 166 5281", image: "/images/jeff2.jpg" },
-    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", bio: "+234 906 013 1167", image: "/images/victor.jpg" },
-    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", bio: "+234 816 575 2181", image: "/images/hassan.jpg" },
-    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", bio: "+234 802 533 7835", image: "/images/ifediba.png" },
-    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", bio: "+234 70 699 10 759", image: "/images/jamiu.png" },
-    { id: 7, name: "Nwezi Favour", position: "Financial Secretary", level: "Computer Science 300 Level", bio: "+234 816 786 1462", image: "/images/nwezi.png" },
-    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", bio: "+234 906 379 7057", image: "/images/akinkunmi.png" },
-    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", bio: "+234 813 197 6848", image: "/images/mj.png" },
-    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", bio: "+234 812 321 7365", image: "/images/tony.png" },
-    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", bio: "234 708 581 9394", image: "/images/oluhci.png" },
-    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", bio: "+234 705 563 8902", image: "/images/dotun.png" },
-    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", bio: "+234 902 369 6070", image: "/images/ebube.png" },
+    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", bio: "najeebahbada07@gmail.com", image: "/images/Bada.jpg" },
+    { id: 2, name: "Amalaha Jelfrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", bio: "jelfreyamalaha@gmail.com", image: "/images/jeff2.jpg" },
+    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", bio: "oyekunlevictor73@gmail.com", image: "/images/victor.jpg" },
+    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", bio: "feranmihassa97@gmail.com", image: "/images/hassan.jpg" },
+    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", bio: "chimdaluifediba@gmail.com", image: "/images/ifediba.png" },
+    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", bio: "jamiuabdulazeez689@gmail.com", image: "/images/jamiu.png" },
+    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", bio: "kunmiibitoye91@gmail.com", image: "/images/akinkunmi.png" },
+    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", bio: "developerssholotan@gmail.com", image: "/images/mj.png" },
+    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", bio: "juliustony05@gmail.com", image: "/images/tony.png" },
+    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", bio: "udutachyoluchi@gmail.com", image: "/images/oluhci.png" },
+    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", bio: "adedotunayinde07@gmail.com", image: "/images/dotun.png" },
+    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", bio: "chidiebubeiwuanyanwu859@gmail.com", image: "/images/ebube.png" },
   ];
 
   const [search, setSearch] = useState("");
