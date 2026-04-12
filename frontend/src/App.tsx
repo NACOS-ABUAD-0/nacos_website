@@ -1,4 +1,4 @@
-// frontend/src/App.tsx - COMPLETE WITH ALL ROUTES INCLUDING ADMIN
+// frontend/src/App.tsx
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -7,29 +7,31 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import RequireAdmin from "./components/RequireAdmin";
+
+// ── Page imports ───────────────────────────────────────────────────────────────
 import { LoginPage } from "./pages/login";
 import { RegisterPage } from "./pages/register";
 import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
-import MyProjectsPage from './pages/MyProjectsPage';
+import MyProjectsPage from "./pages/MyProjectsPage";
 import Executives from "./components/Executives";
 import { ProjectsGallery } from "./pages/ProjectsGallery";
 import { ProjectDetail } from "./pages/project-detail";
 import { ProjectFormPage } from "./pages/ProjectFormPage";
 import { ResourcesPage } from "./pages/resources";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// Events and Gallery imports
 import Events from "./pages/events";
 import EventDetail from "./pages/event-detail";
 import Gallery from "./pages/gallery";
 import ContactPage from "./pages/contact";
 
-// Admin imports
+// ── Admin page imports ─────────────────────────────────────────────────────────
 import AdminHome from "./admin1/pages/Home";
 import AdminApproval from "./admin1/pages/Approval";
 import AdminEvents from "./admin1/pages/Event";
@@ -38,6 +40,8 @@ import AdminStudentProfile from "./admin1/pages/StudentProfile";
 import AdminMetrics from "./admin1/pages/Metrics";
 import AdminGallery from "./admin1/pages/Gallery";
 import AdminInquiries from "./admin1/pages/Inquiries";
+
+// ─── Query Client ──────────────────────────────────────────────────────────────
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,7 +52,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// ─── RequireAuth ──────────────────────────────────────────────────────────────
+// ─── RequireAuth ───────────────────────────────────────────────────────────────
+// Guards routes that require any authenticated user (regardless of role).
+
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -63,8 +69,9 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
+// ─── PublicRoute ───────────────────────────────────────────────────────────────
+// Redirects already-authenticated users away from login/register pages.
 
-// ─── PublicRoute ──────────────────────────────────────────────────────────────
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -76,25 +83,21 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  return !isAuthenticated ? (
-    <>{children}</>
-  ) : (
-    <Navigate to="/dashboard" replace />
-  );
+  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
 };
+
+// ─── Routes ────────────────────────────────────────────────────────────────────
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* ── Fully public — anyone can visit, logged-in or not ──────────── */}
+      {/* ── Public — accessible by anyone ──────────────────────────────── */}
       <Route path="/" element={<Homepage />} />
       <Route path="/executives" element={<Executives isHome={false} />} />
       <Route path="/contact" element={<ContactPage />} />
 
-      {/* ── Projects routes — ORDER MATTERS! Specific routes before parameterized ones ──────────── */}
+      {/* ── Projects ───────────────────────────────────────────────────── */}
       <Route path="/projects" element={<ProjectsGallery />} />
-
-      {/* My Projects — MUST come before /projects/:id to avoid being caught as :id="my-projects" */}
       <Route
         path="/my-projects"
         element={
@@ -103,8 +106,6 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
-
-      {/* Create project — also before :id */}
       <Route
         path="/projects/new"
         element={
@@ -113,8 +114,6 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
-
-      {/* Edit project — explicit route with :id/edit pattern */}
       <Route
         path="/projects/:id/edit"
         element={
@@ -123,22 +122,20 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
-
-      {/* Project detail — MUST be last among /projects/* routes */}
       <Route path="/projects/:id" element={<ProjectDetail />} />
 
-      {/* Events routes */}
+      {/* ── Events ─────────────────────────────────────────────────────── */}
       <Route path="/events" element={<Events isHome={false} />} />
       <Route path="/events/:id" element={<EventDetail />} />
 
-      {/* Gallery route */}
-      <Route path="/gallery" element={<Gallery isHome={false}/>} />
+      {/* ── Gallery ────────────────────────────────────────────────────── */}
+      <Route path="/gallery" element={<Gallery isHome={false} />} />
 
-      {/* Verification routes */}
+      {/* ── Email Verification ─────────────────────────────────────────── */}
       <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-      {/* ── Auth pages — redirect to /dashboard if already logged in ────── */}
+      {/* ── Auth — redirect authenticated users to dashboard ───────────── */}
       <Route
         path="/login"
         element={
@@ -156,7 +153,7 @@ function AppRoutes() {
         }
       />
 
-      {/* ── Protected — must be logged in ──────────────────────────────── */}
+      {/* ── Protected — any authenticated user ─────────────────────────── */}
       <Route
         path="/dashboard"
         element={
@@ -182,62 +179,93 @@ function AppRoutes() {
         }
       />
 
-      {/* ── Admin Routes — must be logged in AND have staff privileges ──────────── */}
+      {/* ── Admin — REQUIRES admin role ─────────────────────────────────
+          RequireAdmin:
+            • If not authenticated → redirects to /login
+            • If authenticated but NOT admin → redirects silently to /
+            • If admin → renders the page
+          All backend endpoints independently enforce IsAdmin permission.
+      ──────────────────────────────────────────────────────────────────── */}
       <Route
         path="/admin"
         element={
+          <RequireAdmin>
             <AdminHome />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/dashboard"
         element={
+          <RequireAdmin>
             <AdminHome />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/approvals"
         element={
+          <RequireAdmin>
             <AdminApproval />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/approvals/:id"
         element={
+          <RequireAdmin>
             <AdminStudentProfile />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/events"
         element={
+          <RequireAdmin>
             <AdminEvents />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/settings"
         element={
+          <RequireAdmin>
             <AdminSettings />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/metrics"
         element={
+          <RequireAdmin>
             <AdminMetrics />
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/gallery"
         element={
+          <RequireAdmin>
             <AdminGallery />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/inquiries"
+        element={
+          <RequireAdmin>
+            <AdminInquiries />
+          </RequireAdmin>
         }
       />
 
-    <Route path="/admin/inquiries" element={<AdminInquiries />} />
       {/* ── Catch-all ──────────────────────────────────────────────────── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
+
+// ─── App ───────────────────────────────────────────────────────────────────────
 
 function App() {
   return (
