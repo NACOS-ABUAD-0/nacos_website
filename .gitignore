@@ -47,3 +47,18 @@ pnpm-lock.yaml
 .venv
 
 backend/db.sqlite3b
+backend/accounts/__pycache__/models.cpython-313.pyc
+backend/accounts/__pycache__/serializers.cpython-313.pyc
+backend/accounts/__pycache__/urls.cpython-313.pyc
+backend/accounts/__pycache__/views.cpython-313.pyc
+backend/gallery/__pycache__/models.cpython-313.pyc
+backend/gallery/__pycache__/serializers.cpython-313.pyc
+backend/gallery/__pycache__/urls.cpython-313.pyc
+backend/gallery/__pycache__/views.cpython-313.pyc
+backend/nacos_backend/__pycache__/settings.cpython-313.pyc
+backend/nacos_backend/__pycache__/urls.cpython-313.pyc
+backend/projects/__pycache__/models.cpython-313.pyc
+backend/projects/__pycache__/serializers.cpython-313.pyc
+backend/projects/__pycache__/views.cpython-313.pyc
+backend/resources/__pycache__/urls.cpython-313.pyc
+backend/resources/__pycache__/views.cpython-313.pyc
