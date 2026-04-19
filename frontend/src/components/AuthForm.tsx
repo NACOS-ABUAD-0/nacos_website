@@ -162,7 +162,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, o
                     name="matricNumber"
                     type="text"
                     className="relative block w-full px-4 py-3 border border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                    placeholder="Matric Number (optional)"
+                    placeholder="Matric Number"
                     value={formData.matricNumber}
                     onChange={handleChange}
                   />

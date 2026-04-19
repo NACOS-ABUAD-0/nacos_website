@@ -7,7 +7,6 @@ import time
 from datetime import datetime, timezone
 
 from django.core.management.base import BaseCommand
-from django.conf import settings
 from django.db import transaction
 
 from resources.models import Resource
@@ -19,10 +18,18 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 
 class Command(BaseCommand):
-    help = "Optimized sync from Google Drive (incremental + batched)"
+    help = "Optimized sync from Google Drive (incremental + batched, supports Shared Drives)"
 
     SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
     LAST_SYNC_FILE = "last_sync.json"
+
+    # Shared Drive parameters required on every files().list() call.
+    # Without these, the API silently returns 0 results for Shared Drive folders.
+    SHARED_DRIVE_PARAMS = {
+        "supportsAllDrives": True,
+        "includeItemsFromAllDrives": True,
+        "corpora": "allDrives",
+    }
 
     # ---------------------------
     # ARGUMENTS
@@ -86,7 +93,11 @@ class Command(BaseCommand):
         files = []
         page_token = None
 
-        query = f"'{folder_id}' in parents and trashed = false"
+        query = (
+            f"'{folder_id}' in parents"
+            f" and trashed = false"
+            f" and mimeType != 'application/vnd.google-apps.folder'"
+        )
 
         if last_sync:
             query += f" and modifiedTime > '{last_sync}'"
@@ -100,6 +111,7 @@ class Command(BaseCommand):
                     fields="nextPageToken, files(id, name, mimeType, modifiedTime, webViewLink)",
                     pageSize=500,
                     pageToken=page_token,
+                    **self.SHARED_DRIVE_PARAMS,
                 )
                 .execute()
             )
@@ -113,25 +125,42 @@ class Command(BaseCommand):
         return files
 
     # ---------------------------
-    # OPTIONAL: LIMITED RECURSION
+    # RECURSIVE SUBFOLDER TRAVERSAL
     # ---------------------------
-    def fetch_with_subfolders(self, service, folder_id, depth=0, max_depth=3):
+    def fetch_with_subfolders(self, service, folder_id, last_sync=None, depth=0, max_depth=3):
         if depth > max_depth:
             return []
 
         all_files = []
 
-        items = self.fetch_files(service, folder_id)
+        # Always traverse subfolders regardless of last_sync — a folder's
+        # modifiedTime does not update when its children change.
+        folder_query = (
+            f"'{folder_id}' in parents"
+            f" and trashed = false"
+            f" and mimeType = 'application/vnd.google-apps.folder'"
+        )
+        response = (
+            service.files()
+            .list(
+                q=folder_query,
+                spaces="drive",
+                fields="files(id, name, mimeType)",
+                **self.SHARED_DRIVE_PARAMS,
+            )
+            .execute()
+        )
+        subfolders = response.get("files", [])
 
-        for item in items:
-            if item["mimeType"] == "application/vnd.google-apps.folder":
-                all_files.extend(
-                    self.fetch_with_subfolders(
-                        service, item["id"], depth + 1, max_depth
-                    )
+        for subfolder in subfolders:
+            all_files.extend(
+                self.fetch_with_subfolders(
+                    service, subfolder["id"], last_sync, depth + 1, max_depth
                 )
-            else:
-                all_files.append(item)
+            )
+
+        # Fetch actual files in this folder (with incremental filter applied)
+        all_files.extend(self.fetch_files(service, folder_id, last_sync))
 
         return all_files
 
@@ -170,7 +199,6 @@ class Command(BaseCommand):
             course_code, year = self.extract_course_info(file_data["name"])
 
             if file_data["id"] in existing_objects:
-                # ✅ UPDATE existing object (has PK)
                 obj = existing_objects[file_data["id"]]
 
                 obj.title = file_data["name"]
@@ -185,7 +213,6 @@ class Command(BaseCommand):
                 to_update.append(obj)
 
             else:
-                # ✅ CREATE new object
                 to_create.append(
                     Resource(
                         drive_file_id=file_data["id"],
@@ -234,8 +261,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write("🆕 First full sync")
 
-            # Fetch files (you can switch to fetch_with_subfolders if needed)
-            files = self.fetch_files(service, folder_id, last_sync)
+            files = self.fetch_with_subfolders(service, folder_id, last_sync)
 
             self.stdout.write(f"📦 Found {len(files)} files")
 
@@ -243,15 +269,17 @@ class Command(BaseCommand):
                 self.stdout.write("✅ Nothing to sync")
                 return
 
-            # Progress logging
+            # Preview first 10 files
             for i, f in enumerate(files[:10], 1):
-                self.stdout.write(f"Preview {i}: {f['name']}")
+                self.stdout.write(f"  Preview {i}: {f['name']}")
 
             # Bulk DB operations
             with transaction.atomic():
                 created, updated = self.bulk_upsert(files)
 
-            self.save_last_sync()
+            # Only advance the sync window if something was actually written
+            if created or updated:
+                self.save_last_sync()
 
             duration = round(time.time() - start_time, 2)
 
