@@ -15,6 +15,7 @@ type Executive = {
   level: string;
   bio: string;
   image: string;
+  session: string;
 };
 
 interface ExecutivesProps {
@@ -32,18 +33,18 @@ export default function Executives({ isHome }: ExecutivesProps) {
   }, [location]);
 
   const executives: Executive[] = [
-    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", bio: "najeebahbada07@gmail.com", image: "/images/Bada.jpg" },
-    { id: 2, name: "Amalaha Jelfrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", bio: "jelfreyamalaha@gmail.com", image: "/images/jeff2.jpg" },
-    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", bio: "oyekunlevictor73@gmail.com", image: "/images/victor.jpg" },
-    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", bio: "feranmihassa97@gmail.com", image: "/images/hassan.jpg" },
-    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", bio: "chimdaluifediba@gmail.com", image: "/images/ifediba.png" },
-    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", bio: "jamiuabdulazeez689@gmail.com", image: "/images/jamiu.png" },
-    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", bio: "kunmiibitoye91@gmail.com", image: "/images/akinkunmi.png" },
-    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", bio: "developerssholotan@gmail.com", image: "/images/mj.png" },
-    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", bio: "juliustony05@gmail.com", image: "/images/tony.png" },
-    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", bio: "udutachyoluchi@gmail.com", image: "/images/oluhci.png" },
-    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", bio: "adedotunayinde07@gmail.com", image: "/images/dotun.png" },
-    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", bio: "chidiebubeiwuanyanwu859@gmail.com", image: "/images/ebube.png" },
+    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", bio: "najeebahbada07@gmail.com", image: "/images/Bada.jpg", session:"25/26" },
+    { id: 2, name: "Amalaha Jelfrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", bio: "jelfreyamalaha@gmail.com", image: "/images/jeff2.jpg", session:"25/26" },
+    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", bio: "oyekunlevictor73@gmail.com", image: "/images/victor.jpg", session:"25/26" },
+    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", bio: "feranmihassa97@gmail.com", image: "/images/hassan.jpg", session:"25/26" },
+    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", bio: "chimdaluifediba@gmail.com", image: "/images/ifediba.png", session:"25/26" },
+    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", bio: "jamiuabdulazeez689@gmail.com", image: "/images/jamiu.png", session:"25/26" },
+    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", bio: "kunmiibitoye91@gmail.com", image: "/images/akinkunmi.png", session:"25/26" },
+    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", bio: "developerssholotan@gmail.com", image: "/images/mj.png", session:"25/26" },
+    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", bio: "juliustony05@gmail.com", image: "/images/tony.png", session:"25/26" },
+    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", bio: "udutachyoluchi@gmail.com", image: "/images/oluhci.png", session:"25/26" },
+    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", bio: "adedotunayinde07@gmail.com", image: "/images/dotun.png", session:"25/26" },
+    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", bio: "chidiebubeiwuanyanwu859@gmail.com", image: "/images/ebube.png", session:"25/26" },
   ];
 
   const [search, setSearch] = useState("");
@@ -62,7 +63,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
   }, [currentPage]);
 
   const roles = [...new Set(executives.map(e => e.position))];
-  const levels = [...new Set(executives.map(e => e.level))];
+  const levels = [...new Set(executives.map(e => e.session))];
 
   const filteredExecutives = useMemo(() => {
     return executives.filter(e => {
@@ -72,7 +73,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
         e.level.toLowerCase().includes(search.toLowerCase());
 
       const matchesRole = roleFilter ? e.position === roleFilter : true;
-      const matchesLevel = levelFilter ? e.level === levelFilter : true;
+      const matchesLevel = levelFilter ? e.session === levelFilter : true;
 
       return matchesSearch && matchesRole && matchesLevel;
     });
@@ -127,7 +128,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
             onChange={(e) => setLevelFilter(e.target.value)}
             className="border rounded-xl px-3 py-2 text-sm"
           >
-            <option value="">All Levels</option>
+            <option value="">Session</option>
             {levels.map(l => <option key={l}>{l}</option>)}
           </select>
         </div>

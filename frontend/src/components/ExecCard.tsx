@@ -1,4 +1,4 @@
-import { UserStar, Building2, Phone } from "lucide-react";
+import { UserStar, Building2, Phone, CalendarRange } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface ExecCardProps {
@@ -7,9 +7,10 @@ interface ExecCardProps {
   level: string;
   bio: string;
   image: string;
+  session:string;
 }
 
-export default function ExecCard({ name, position, level, bio, image }: ExecCardProps) {
+export default function ExecCard({ name, position, level, bio, image, session }: ExecCardProps) {
   return (
     <motion.div
       whileHover={{ y: -6 }}
@@ -39,6 +40,10 @@ export default function ExecCard({ name, position, level, bio, image }: ExecCard
         <div className="flex items-center gap-2 font-medium">
           <Phone className="w-4 h-4 text-[#006E3A]" />
           {bio}
+        </div>
+        <div className="flex items-center gap-2 font-medium">
+          <CalendarRange className="w-4 h-4 text-[#006E3A]" />
+          {session}
         </div>
       </div>
     </motion.div>

@@ -22,7 +22,7 @@ export const Footer: React.FC = () => {
                 />
                 <img
                   className="w-7 transition-transform hover:scale-110 duration-300"
-                  src="/images/nacos_logo (1).png"
+                  src="/images/nacos_logo.png"
                   alt="NACOS Logo"
                 />
                 <span className="ml-1 font-bold text-lg tracking-tight">

@@ -43,10 +43,11 @@ export const LoginPage: React.FC = () => {
           >
             <div className="flex gap-5 items-center p-6 rounded-2xl">
               <img
-                src="/images/nacos-abuad-logo.PNG"
+                src="/images/nacos_logo.png"
                 alt="NACOS Logo"
                 className="w-[80px] lg:w-[100px]"
               />
+              <img src="/images/abuadLogo.png" alt="ABUAD" className="w-[80px] lg:w-[100px]" />
             </div>
           </div>
 
@@ -59,7 +60,7 @@ export const LoginPage: React.FC = () => {
             <div className="w-full max-w-md px-4">
               {/* Mobile logos */}
               <div className="flex lg:hidden gap-4 justify-center items-center mb-8">
-                <img src="/images/nacos_logo (1).png" alt="NACOS" className="w-12" />
+                <img src="/images/nacos_logo.png" alt="NACOS" className="w-12" />
                 <img src="/images/abuadLogo.png" alt="ABUAD" className="w-12" />
               </div>
 
