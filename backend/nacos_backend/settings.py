@@ -15,16 +15,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", 
 
 # Render provides RENDER_EXTERNAL_HOSTNAME, e.g. "your-service.onrender.com"
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
-ALLOWED_HOSTS = [
-    h
-    for h in [
-        RENDER_EXTERNAL_HOSTNAME,
-        "nacos-website-9g4v.onrender.com",
-        "localhost",
-        "127.0.0.1",
-    ]
-    if h
-]
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -90,8 +81,15 @@ WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'NACOSABUADpasswordisFri,Jan.2025',
+        'HOST': 'nacos-database.cr22cw2s8jih.eu-north-1.rds.amazonaws.com',
+        'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 
