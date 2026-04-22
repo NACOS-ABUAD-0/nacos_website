@@ -29,14 +29,19 @@ export default function About() {
   // Rotate logo image
   useEffect(() => {
     const logoInterval = setInterval(() => {
-      setLogoIndex((prev) => (prev === 0 ? 1 : 0));
+      setLogoIndex((prev) => (prev + 1) % images.length);
     }, 5000);
     return () => clearInterval(logoInterval);
   }, []);
 
-  const logoSrc = logoIndex === 0
-    ? "/images/nacos-abuad-logo.PNG"
-    : "/images/Bada.jpg";
+  const images = [
+      "/images/nacos-abuad-logo.PNG", "/images/Hod.jpg", "/images/Bada.jpg",
+      ];
+
+  const logoSrc = images[logoIndex];
+
+
+
 
   return (
     <section className="mt-36 px-6 md:px-12 lg:px-24 mb-20">
