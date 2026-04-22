@@ -1,4 +1,3 @@
-# backend/projects/views.py
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,9 +11,6 @@ from .permissions import IsOwnerOrReadOnly
 
 
 class SkillTagViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Read-only endpoint for listing skill tags.
-    """
     queryset = SkillTag.objects.all()
     serializer_class = SkillTagSerializer
     permission_classes = [AllowAny]
@@ -33,11 +29,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Project.objects.filter(status="published")
-
-        # Annotate with total like count
         queryset = queryset.annotate(like_count=Count('likes', distinct=True))
 
-        # Annotate with whether the current user liked it
         user = self.request.user
         if user.is_authenticated:
             queryset = queryset.annotate(
@@ -48,7 +41,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         else:
             queryset = queryset.annotate(is_liked_by_user=Value(False, output_field=BooleanField()))
 
-        # Apply filters (search, tag_names) – keep existing logic
         search_query = self.request.query_params.get("search", None)
         if search_query:
             queryset = queryset.filter(
@@ -86,6 +78,28 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated], url_path='liked')
+    def liked_projects(self, request):
+        """
+        Returns projects liked by the authenticated user,
+        ordered by most recently liked.
+        """
+        projects = (
+            Project.objects
+            .filter(likes__user=request.user)
+            .select_related("owner")
+            .prefetch_related("tags")
+            .annotate(like_count=Count('likes', distinct=True))
+            .annotate(is_liked_by_user=Value(True, output_field=BooleanField()))
+            .order_by("-likes__created_at")
+        )
+        page = self.paginate_queryset(projects)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(projects, many=True)
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
@@ -114,6 +128,5 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-
         serializer = self.get_serializer(projects, many=True)
         return Response(serializer.data)

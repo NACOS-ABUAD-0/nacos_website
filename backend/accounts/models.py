@@ -1,5 +1,3 @@
-# backend/accounts/models.py
-
 from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -34,13 +32,6 @@ class UserManager(BaseUserManager):
 
 
 # ─── Matric Number Validator ───────────────────────────────────────────────────
-#
-# Accepted formats (after normalization to uppercase):
-#   23/SCI01/002      → standard university matric
-#   202330217286FA    → JAMB registration number
-#
-# Note: validation in the serializer runs AFTER normalization,
-# so we validate against the uppercase form here.
 
 MATRIC_REGEX = RegexValidator(
     regex=r'^(\d{2}/[A-Z]{3}\d{2}/\d{3}|\d{12}[A-Z]{2})$',
@@ -54,35 +45,14 @@ MATRIC_REGEX = RegexValidator(
 # ─── Custom User Model ─────────────────────────────────────────────────────────
 
 class User(AbstractUser):
-    """
-    Custom user model.
-
-    Key design decisions:
-    ─────────────────────
-    • username is disabled — email is the unique identifier.
-    • matric_number is unique (NULL allowed so Django superusers can be
-      created via management command without a matric number; uniqueness
-      on NULLs is handled correctly by most databases).
-    • role drives access control. is_staff is kept in sync with role so
-      legacy code that checks is_staff continues to work.
-    • Matric numbers are always normalized (uppercase, stripped) before
-      storage via the overridden save() method.
-    """
-
     class Role(models.TextChoices):
         USER = "user", "User"
         ADMIN = "admin", "Admin"
 
-    # ── Core Identity Fields ───────────────────────────────────────────────
-    username = None  # Disable username; email is the login identifier.
+    username = None
     email = models.EmailField(unique=True, db_index=True)
     full_name = models.CharField(max_length=255)
 
-    # ── Matric Number ──────────────────────────────────────────────────────
-    # null=True  → allows Django management-command superusers without a matric.
-    # unique=True → enforced at DB level; most DBs treat multiple NULLs as distinct.
-    # blank=True  → allows admin panel / mgmt-command creation without matric.
-    # API-level enforcement (required for all normal sign-ups) is in the serializer.
     matric_number = models.CharField(
         max_length=20,
         unique=True,
@@ -92,7 +62,6 @@ class User(AbstractUser):
         help_text="Normalized format: '23/SCI01/002' or '202330217286FA'.",
     )
 
-    # ── Role ───────────────────────────────────────────────────────────────
     role = models.CharField(
         max_length=10,
         choices=Role.choices,
@@ -100,52 +69,84 @@ class User(AbstractUser):
         db_index=True,
     )
 
-    # ── Status Flags ───────────────────────────────────────────────────────
     is_active = models.BooleanField(default=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
-    # ── Auth Configuration ─────────────────────────────────────────────────
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]
 
     objects = UserManager()
 
-    # ── Properties ─────────────────────────────────────────────────────────
-
     @property
     def is_admin(self) -> bool:
-        """
-        True if the user holds any form of elevated access.
-        Checks both `role` and `is_staff` to stay resilient against
-        any future state drift.
-        """
         return self.role == self.Role.ADMIN or self.is_staff
 
     def __str__(self) -> str:
         return f"{self.full_name} <{self.email}>"
 
-    # ── Save Hook ──────────────────────────────────────────────────────────
-
     def save(self, *args, **kwargs) -> None:
-        """
-        Pre-save normalization and role/is_staff synchronization.
-
-        1. Normalize matric_number → strip whitespace, uppercase.
-        2. Sync is_staff ← role so legacy is_staff checks remain valid.
-           (Superusers keep is_staff=True regardless of role.)
-        """
-        # 1. Normalize matric number
         if self.matric_number:
             self.matric_number = self.matric_number.strip().upper()
-
-        # 2. Sync is_staff with role (superusers always retain is_staff)
         if not self.is_superuser:
             self.is_staff = self.role == self.Role.ADMIN
-
         super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "User"
         verbose_name_plural = "Users"
         ordering = ["-date_joined"]
+
+
+# ─── Student Profile (Excel Cache) ─────────────────────────────────────────────
+
+class StudentProfile(models.Model):
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="student_profile"
+    )
+    department = models.CharField(max_length=100, blank=True)
+    level = models.CharField(max_length=20, blank=True)
+    phone_number = models.CharField(max_length=20, blank=True)
+
+    # Audit trail back to Excel source of truth
+    excel_full_name = models.CharField(max_length=255, blank=True)
+    excel_matric_number = models.CharField(max_length=20, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_studentprofile"
+        verbose_name = "Student Profile"
+        verbose_name_plural = "Student Profiles"
+
+    def __str__(self) -> str:
+        return f"{self.user.full_name} Profile"
+
+
+# ─── Notification System ───────────────────────────────────────────────────────
+
+class Notification(models.Model):
+    class Type(models.TextChoices):
+        COMMITTEE = "committee", "Committee"
+        SYSTEM = "system", "System"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="notifications"
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(
+        max_length=20, choices=Type.choices, default=Type.COMMITTEE
+    )
+    is_read = models.BooleanField(default=False)
+    data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        db_table = "accounts_notification"
+
+    def __str__(self) -> str:
+        return f"Notification for {self.user.email}: {self.title}"

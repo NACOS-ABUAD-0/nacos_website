@@ -3,9 +3,10 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
     "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m",
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'events',
     'executives',
     'inquiries',
+    'committees',
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
@@ -159,7 +161,7 @@ EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # Set in environment variable
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment variable
-DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'  # Change to actual email
+DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'
 
 # Frontend URL for email verification links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nacos-abuad0-website.vercel.app")

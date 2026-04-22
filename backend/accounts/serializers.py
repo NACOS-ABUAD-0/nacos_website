@@ -9,7 +9,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 
-from .models import User
+from .models import User, StudentProfile, Notification
 from .admin_whitelist import normalize_matric, MAX_ADMINS
 
 # ─── Shared Constants ──────────────────────────────────────────────────────────
@@ -387,3 +387,33 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
         attrs["_user"] = user
         return attrs
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source="user.full_name", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    matric_number = serializers.CharField(source="user.matric_number", read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = [
+            "id", "full_name", "email", "matric_number",
+            "department", "level", "phone_number",
+            "last_synced_at", "created_at",
+        ]
+        read_only_fields = [
+            "id", "full_name", "email", "matric_number",
+            "department", "level", "last_synced_at", "created_at",
+        ]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            "id", "title", "message", "notification_type",
+            "is_read", "data", "created_at",
+        ]
+        read_only_fields = [
+            "id", "title", "message", "notification_type",
+            "data", "created_at",
+        ]

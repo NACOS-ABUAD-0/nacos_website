@@ -1,5 +1,4 @@
 # backend/accounts/views.py
-
 import logging
 
 from rest_framework import status, permissions, generics
@@ -12,14 +11,17 @@ from django.db import transaction
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django.utils import timezone
 
-from .models import User
+from .models import User, StudentProfile, Notification
 from .permissions import IsAdmin
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
     ProfileSerializer,
     UserSerializer,
+    StudentProfileSerializer,
+    NotificationSerializer,
     AdminRoleAssignSerializer,
     AdminRoleRevokeSerializer,
     CheckEmailSerializer,
@@ -29,6 +31,7 @@ from .serializers import (
 )
 from .utils import send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
+from .student_service import verify_student_identity
 
 logger = logging.getLogger(__name__)
 
@@ -219,6 +222,65 @@ class UserCountView(APIView):
 
     def get(self, request):
         return Response({"count": User.objects.count()})
+
+# Student Profile
+class StudentProfileView(APIView):
+    """
+    GET  → Returns the student's cached profile.
+            If missing or stale, syncs from the Excel roster via matric number.
+    PATCH→ Allows updating phone_number only.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        profile, created = StudentProfile.objects.get_or_create(user=user)
+
+        if created or not profile.last_synced_at:
+            if user.matric_number:
+                record = verify_student_identity(user.full_name, user.matric_number)
+                if record:
+                    profile.department = record.department
+                    profile.level = record.level
+                    profile.excel_full_name = record.full_name
+                    profile.excel_matric_number = record.matric_number
+                    profile.last_synced_at = timezone.now()
+                    profile.save()
+
+        serializer = StudentProfileSerializer(profile)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        profile = request.user.student_profile
+        serializer = StudentProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ─── Notifications ─────────────────────────────────────────────────────────────
+
+class NotificationListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        notifications = request.user.notifications.all()[:50]
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
+
+
+class NotificationMarkReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            notification = request.user.notifications.get(pk=pk)
+        except Notification.DoesNotExist:
+            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+        return Response({"status": "marked as read"})
 
 
 # ─── Admin Views ───────────────────────────────────────────────────────────────
@@ -490,6 +552,14 @@ def _send_password_reset_email(user: User, reset_url: str) -> None:
     """Send a password-reset email using Django's built-in email system."""
     from django.core.mail import send_mail
     from django.conf import settings
+
+    print("=" * 50)
+    print("EMAIL_HOST:", repr(getattr(settings, "EMAIL_HOST", "MISSING")))
+    print("EMAIL_PORT:", repr(getattr(settings, "EMAIL_PORT", "MISSING")))
+    print("EMAIL_USE_TLS:", repr(getattr(settings, "EMAIL_USE_TLS", "MISSING")))
+    print("EMAIL_HOST_USER:", repr(getattr(settings, "EMAIL_HOST_USER", "MISSING")))
+    print("EMAIL_BACKEND:", repr(getattr(settings, "EMAIL_BACKEND", "MISSING")))
+    print("=" * 50)
 
     subject = "Reset your NACOS ABUAD password"
     body = (

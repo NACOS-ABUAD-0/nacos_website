@@ -1,10 +1,8 @@
-# backend/accounts/urls.py
-
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
-    #  Auth
+    # Auth
     RegisterView,
     LoginView,
     LogoutView,
@@ -14,23 +12,24 @@ from .views import (
     ResendVerificationEmailView,
     # General
     UserCountView,
-
     # Multistep Verification pipeline
     CheckEmailView,
     VerifyStudentIdentityView,
-
     # Password reset
     PasswordResetRequestView,
     PasswordResetConfirmView,
-
-    #  Admin
+    # Admin
     AdminRoleAssignmentView,
     AdminListView,
     AdminUserListView,
+    # Student Profile & Notifications
+    StudentProfileView,
+    NotificationListView,
+    NotificationMarkReadView,
 )
 
 urlpatterns = [
-    #  Authentication
+    # Authentication
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
@@ -42,7 +41,7 @@ urlpatterns = [
     path("auth/check-email/", CheckEmailView.as_view(), name="check_email"),
     path("auth/verify-student/", VerifyStudentIdentityView.as_view(), name="verify_student"),
 
-    #  Email Verification
+    # Email Verification
     path("auth/verify-email/", VerifyEmailView.as_view(), name="verify_email"),
     path(
         "auth/resend-verification/",
@@ -50,32 +49,23 @@ urlpatterns = [
         name="resend_verification",
     ),
 
-    # password reset
-    path("auth/password-reset/",          PasswordResetRequestView.as_view(),  name="password_reset"),
-    path("auth/password-reset/confirm/",  PasswordResetConfirmView.as_view(),  name="password_reset_confirm"),
+    # Password reset
+    path("auth/password-reset/", PasswordResetRequestView.as_view(), name="password_reset"),
+    path("auth/password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
 
-    #  General
+    # Student Profile (Excel source of truth)
+    path("student/profile/", StudentProfileView.as_view(), name="student-profile"),
+
+    # Notifications
+    path("notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("notifications/<int:pk>/read/", NotificationMarkReadView.as_view(), name="notification-read"),
+
+    # General
     path("users/count/", UserCountView.as_view(), name="user-count"),
 
-    # ── Admin — Role Management ────────────────────────────────────────────
-    # POST   → assign admin role (body: { matric_number, full_name })
-    # DELETE → revoke admin role (body: { matric_number })
-    path(
-        "admin/roles/assign/",
-        AdminRoleAssignmentView.as_view(),
-        name="admin-role-assign",
-    ),
-
-    # Alias: DELETE to a separate URL for clarity (maps to same view)
-    path(
-        "admin/roles/revoke/",
-        AdminRoleAssignmentView.as_view(),
-        name="admin-role-revoke",
-    ),
-
-    # GET → list current admins + remaining slots
+    # Admin — Role Management
+    path("admin/roles/assign/", AdminRoleAssignmentView.as_view(), name="admin-role-assign"),
+    path("admin/roles/revoke/", AdminRoleAssignmentView.as_view(), name="admin-role-revoke"),
     path("admin/roles/", AdminListView.as_view(), name="admin-list"),
-
-    # GET → list all users (admin only)
     path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
 ]
