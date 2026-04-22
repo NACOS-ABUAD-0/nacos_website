@@ -12,6 +12,27 @@ def generate_verification_token(user):
     return default_token_generator.make_token(user)
 
 
+# ─── Internal Email Helper ─────────────────────────────────────────────────────
+
+def _send_email(subject: str, message: str, html_message: str, recipient: str) -> bool:
+    """
+    Thin wrapper around Django's send_mail().
+    Returns True if the email was sent successfully, False otherwise.
+    """
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nacosabuad.org"),
+            recipient_list=[recipient],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return True
+    except Exception:
+        return False
+
+
 def send_verification_email(user, request=None):
     """Send email verification email to user"""
     # If SMTP creds aren't configured (common on test deploys), skip sending to avoid timeouts.
@@ -20,11 +41,11 @@ def send_verification_email(user, request=None):
 
     token = generate_verification_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    
+
     # Get frontend URL from settings or use default
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
     verification_url = f"{frontend_url}/verify-email/{uid}/{token}/"
-    
+
     subject = "Verify your NACOS ABUAD account"
     message = f"""
 Hello {user.full_name},
@@ -40,7 +61,7 @@ If you didn't create an account, please ignore this email.
 Best regards,
 NACOS ABUAD Team
 """
-    
+
     # HTML version of the email
     html_message = f"""
 <!DOCTYPE html>
@@ -79,7 +100,7 @@ NACOS ABUAD Team
 </body>
 </html>
 """
-    
+
     try:
         send_mail(
             subject=subject,
@@ -102,10 +123,9 @@ def verify_email_token(uidb64, token):
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return None
-    
+
     if default_token_generator.check_token(user, token):
         user.is_email_verified = True
         user.save()
         return user
     return None
-

@@ -1,31 +1,18 @@
 // frontend/src/pages/login.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AuthForm } from "../components/AuthForm";
+import { RegisterFlow } from "../components/RegisterFlow";
 
 export const LoginPage: React.FC = () => {
-  const { login, register, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
 
   // ── Handles the LOGIN form ────────────────────────────────────────────────
   const handleLogin = async (data: any) => {
     await login(data.email, data.password);
-    navigate("/dashboard");
-  };
-
-  // ── Handles the REGISTER form ─────────────────────────────────────────────
-  // Previously this was also calling handleLogin — which sent registration
-  // data to /auth/login/ and got "unable to login with provided credentials".
-  const handleRegister = async (data: any) => {
-    await register(
-      data.email,
-      data.fullName,
-      data.matricNumber || "",
-      data.password,
-      data.password2
-    );
     navigate("/dashboard");
   };
 
@@ -65,20 +52,24 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {isLogin ? (
-                <AuthForm
-                  type="login"
-                  onSubmit={handleLogin}
-                  isLoading={isLoading}
-                  onNotRegistered={() => setIsLogin(false)}
-                />
+                <>
+                  <AuthForm
+                    type="login"
+                    onSubmit={handleLogin}
+                    isLoading={isLoading}
+                    onNotRegistered={() => setIsLogin(false)}
+                  />
+                  <div className="mt-4 text-center">
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                </>
               ) : (
-                // ✅ Now correctly calls handleRegister → register() → /auth/register/
-                <AuthForm
-                  type="register"
-                  onSubmit={handleRegister}
-                  isLoading={isLoading}
-                  onRegistered={() => setIsLogin(true)}
-                />
+                <RegisterFlow onRegistered={() => setIsLogin(true)} />
               )}
             </div>
           </div>

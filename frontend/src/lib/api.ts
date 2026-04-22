@@ -107,22 +107,35 @@ const handleApiError = (error: unknown) => {
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
+  // Step 1: Email gate
+  checkEmail: (email: string) =>
+    api.post("/auth/check-email/", { email }),
+
+  // Step 2: Student identity gate → returns { verification_token, student }
+  verifyStudent: (email: string, fullName: string, matricNumber: string) =>
+    api.post("/auth/verify-student/", {
+      email,
+      full_name: fullName,
+      matric_number: matricNumber,
+    }),
+
+  // Registration (now accepts optional verification token)
   register: (
     email: string,
     fullName: string,
-    matricNumber: string | undefined,
+    matricNumber: string,
     password: string,
-    password2: string
+    password2: string,
+    verificationToken?: string,
   ) =>
-    api
-      .post("/auth/register/", {
-        email,
-        full_name: fullName,
-        matric_number: matricNumber || null,
-        password,
-        password2,
-      })
-      .catch(handleApiError),
+    api.post("/auth/register/", {
+      email,
+      full_name: fullName,
+      matric_number: matricNumber,
+      password,
+      password2,
+      ...(verificationToken ? { verification_token: verificationToken } : {}),
+    }).catch(handleApiError),
 
   login: (email: string, password: string) =>
     api.post("/auth/login/", { email, password }).catch(handleApiError),
@@ -139,6 +152,22 @@ export const authAPI = {
 
   refreshToken: (refreshToken: string) =>
     api.post("/auth/token/refresh/", { refresh: refreshToken }),
+
+  // Forgot password — request reset link
+  requestPasswordReset: (email: string, matricNumber?: string) =>
+    api.post("/auth/password-reset/", {
+      email,
+      ...(matricNumber ? { matric_number: matricNumber } : {}),
+    }),
+
+  // Forgot password — confirm with token
+  confirmPasswordReset: (
+    uid: string,
+    token: string,
+    password: string,
+    password2: string,
+  ) =>
+    api.post("/auth/password-reset/confirm/", { uid, token, password, password2 }),
 };
 
 // ── USERS (count) ────────────────────────────────────────────────────────────

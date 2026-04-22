@@ -9,6 +9,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import login, logout
 from django.middleware.csrf import get_token
 from django.db import transaction
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from .models import User
 from .permissions import IsAdmin
@@ -19,6 +22,10 @@ from .serializers import (
     UserSerializer,
     AdminRoleAssignSerializer,
     AdminRoleRevokeSerializer,
+    CheckEmailSerializer,
+    VerifyStudentSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
 from .utils import send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
@@ -383,3 +390,140 @@ class AdminUserListView(APIView):
                 "total": users.count(),
             }
         )
+
+class CheckEmailView(APIView):
+    """
+    POST /auth/check-email/
+    Validates email format and confirms it is not already registered.
+    Gate 1 of the registration pipeline.
+    """
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = CheckEmailSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(
+                {"detail": "Email is valid and available."},
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyStudentIdentityView(APIView):
+    """
+    POST /auth/verify-student/
+    Matches (email, full_name, matric_number) against the Excel roster.
+    On success returns a signed verification_token consumed by /auth/register/.
+    Gate 2 of the registration pipeline.
+    """
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = VerifyStudentSerializer(data=request.data)
+        if serializer.is_valid():
+            record   = serializer.validated_data["_record"]
+            token    = serializer.generate_token()
+
+            return Response(
+                {
+                    "detail": "Identity verified successfully.",
+                    "verification_token": token,
+                    # Return verified details so the frontend can confirm to the user
+                    "student": {
+                        "full_name":   record.full_name,
+                        "department":  record.department,
+                        "level":       record.level,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PasswordResetRequestView(APIView):
+    """
+    POST /auth/password-reset/
+    Sends a password-reset email to the user if the supplied credentials match.
+    Always returns 200 to prevent email enumeration.
+    """
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            # Even on validation error, check if it's the "not found" sentinel
+            # (already returns a vague message) — otherwise return errors.
+            errors = serializer.errors
+            non_field = errors.get("non_field_errors", [])
+            if non_field and "reset link will be sent" in str(non_field):
+                # Email not found — return 200 to prevent enumeration
+                return Response(
+                    {"detail": "If this email is registered, a password-reset link has been sent."},
+                    status=status.HTTP_200_OK,
+                )
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user: User = serializer.validated_data["_user"]
+        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Re-use the existing email infrastructure
+        from .utils import _send_email   # internal helper — see note in utils.py
+        reset_url = f"{request.scheme}://{request.get_host()}/reset-password?uid={uid}&token={token}"
+
+        try:
+            _send_password_reset_email(user, reset_url)
+        except Exception:
+            logger.warning(
+                "Failed to send password-reset email to %s", user.email, exc_info=True
+            )
+            # Still return 200 — don't reveal server config issues
+
+        return Response(
+            {"detail": "If this email is registered, a password-reset link has been sent."},
+            status=status.HTTP_200_OK,
+        )
+
+
+def _send_password_reset_email(user: User, reset_url: str) -> None:
+    """Send a password-reset email using Django's built-in email system."""
+    from django.core.mail import send_mail
+    from django.conf import settings
+
+    subject = "Reset your NACOS ABUAD password"
+    body = (
+        f"Hi {user.full_name},\n\n"
+        "You requested a password reset. Click the link below to set a new password.\n"
+        "This link expires in 1 hour.\n\n"
+        f"{reset_url}\n\n"
+        "If you did not request this, please ignore this email.\n\n"
+        "— NACOS ABUAD"
+    )
+    send_mail(
+        subject,
+        body,
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        fail_silently=False,
+    )
+class PasswordResetConfirmView(APIView):
+    """
+    POST /auth/password-reset/confirm/
+    Validates the uid + token pair and sets a new password.
+    """
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            user: User = serializer.validated_data["_user"]
+            user.set_password(serializer.validated_data["password"])
+            user.save(update_fields=["password"])
+            logger.info("Password successfully reset for user: %s", user.email)
+            return Response(
+                {"detail": "Password has been reset successfully. You can now log in."},
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

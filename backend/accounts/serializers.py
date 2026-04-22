@@ -4,6 +4,10 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
+from django.core import signing
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
 
 from .models import User
 from .admin_whitelist import normalize_matric, MAX_ADMINS
@@ -47,10 +51,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         style={"input_type": "password"},
         label="Confirm password",
     )
+    verification_token = serializers.CharField(
+        write_only=True,
+        required=False,      # enforced conditionally in validate()
+        allow_blank=True,
+        help_text="Signed token from the student-identity verification step.",
+    )
 
     class Meta:
         model = User
-        fields = ("email", "full_name", "matric_number", "password", "password2")
+        fields = ("email", "full_name", "matric_number",
+                  "password", "password2", "verification_token")
         extra_kwargs = {
             # matric_number is REQUIRED for all API sign-ups.
             # null/blank is only allowed at model level for management commands.
@@ -89,6 +100,41 @@ class RegisterSerializer(serializers.ModelSerializer):
     # ── Object-level validation ────────────────────────────────────────────
 
     def validate(self, attrs: dict) -> dict:
+        from django.conf import settings
+        from django.core import signing
+        from .admin_whitelist import normalize_matric
+
+        if getattr(settings, "REQUIRE_STUDENT_VERIFICATION", True):
+            token = attrs.pop("verification_token", None)
+            if not token:
+                raise serializers.ValidationError(
+                    {"verification_token": "Identity verification is required before registration."}
+                )
+            try:
+                payload = signing.loads(
+                    token, salt="student-verification", max_age=900
+                )
+            except signing.SignatureExpired:
+                raise serializers.ValidationError(
+                    {"verification_token": "Verification session has expired. Please restart."}
+                )
+            except signing.BadSignature:
+                raise serializers.ValidationError(
+                    {"verification_token": "Invalid verification token. Please restart."}
+                )
+
+            # Bind token to the exact email + matric submitted
+            if payload.get("email") != attrs["email"]:
+                raise serializers.ValidationError(
+                    {"verification_token": "Token does not match the submitted email."}
+                )
+            if payload.get("matric") != normalize_matric(attrs.get("matric_number", "")):
+                raise serializers.ValidationError(
+                    {"verification_token": "Token does not match the submitted matric number."}
+                )
+        else:
+            attrs.pop("verification_token", None)   # dev mode: ignore token
+
         if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError(
                 {"password": "Password fields didn't match."}
@@ -213,3 +259,131 @@ class AdminRoleRevokeSerializer(serializers.Serializer):
 
     def validate_matric_number(self, value: str) -> str:
         return _validate_and_normalize_matric(value)
+
+
+class CheckEmailSerializer(serializers.Serializer):
+    """Step 1 — validate email format and confirm it is not already registered."""
+    email = serializers.EmailField()
+
+    def validate_email(self, value: str) -> str:
+        normalized = value.strip().lower()
+        if User.objects.filter(email__iexact=normalized).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists. Please log in instead."
+            )
+        return normalized
+
+
+class VerifyStudentSerializer(serializers.Serializer):
+    """
+    Step 2 — check that (email, full_name, matric_number) matches the Excel roster.
+    On success, issues a short-lived signed token the registration endpoint requires.
+    """
+    email        = serializers.EmailField()
+    full_name    = serializers.CharField(max_length=255)
+    matric_number = serializers.CharField(max_length=20)
+
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()
+
+    def validate_full_name(self, value: str) -> str:
+        return " ".join(value.strip().split())
+
+    def validate_matric_number(self, value: str) -> str:
+        return _validate_and_normalize_matric(value)
+
+    def validate(self, attrs: dict) -> dict:
+        from .student_service import verify_student_identity
+
+        record = verify_student_identity(attrs["full_name"], attrs["matric_number"])
+        if record is None:
+            raise serializers.ValidationError(
+                "We could not find a student matching the provided name "
+                "and matric number. Please check your details."
+            )
+        attrs["_record"] = record
+        return attrs
+
+    def generate_token(self) -> str:
+        """
+        Call after .is_valid(raise_exception=True).
+        Returns a TimestampSigner token valid for 15 minutes.
+        """
+        data = self.validated_data
+        return signing.dumps(
+            {"email": data["email"], "matric": data["matric_number"]},
+            salt="student-verification",
+            compress=True,
+        )
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    Forgot-password step 1.
+    Requires email. Optionally matric_number for extra identity assurance.
+    """
+    email         = serializers.EmailField()
+    matric_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()
+
+    def validate_matric_number(self, value: str) -> str:
+        if not value:
+            return value
+        return _validate_and_normalize_matric(value)
+
+    def validate(self, attrs: dict) -> dict:
+        email  = attrs["email"]
+        matric = attrs.get("matric_number", "")
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # Deliberately vague — prevents email enumeration
+            raise serializers.ValidationError(
+                "If this email is registered, a reset link will be sent."
+            )
+
+        if matric:
+            from .admin_whitelist import normalize_matric
+            if user.matric_number and normalize_matric(matric) != user.matric_number:
+                raise serializers.ValidationError(
+                    "The matric number does not match our records for this email."
+                )
+
+        attrs["_user"] = user
+        return attrs
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Forgot-password step 2 — supply uid, token, and new passwords."""
+    uid      = serializers.CharField()
+    token    = serializers.CharField()
+    password  = serializers.CharField(
+        write_only=True,
+        validators=[validate_password],
+        style={"input_type": "password"},
+    )
+    password2 = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["password"] != attrs["password2"]:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+
+        try:
+            uid  = force_str(urlsafe_base64_decode(attrs["uid"]))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError({"uid": "Invalid reset link."})
+
+        if not default_token_generator.check_token(user, attrs["token"]):
+            raise serializers.ValidationError(
+                {"token": "Reset link is invalid or has expired. Please request a new one."}
+            )
+
+        attrs["_user"] = user
+        return attrs

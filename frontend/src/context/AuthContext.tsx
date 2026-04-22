@@ -34,7 +34,8 @@ interface AuthContextType extends AuthState {
     fullName: string,
     matricNumber: string,
     password: string,
-    password2: string
+    password2: string,
+    verificationToken?: string,    // ← ADDED
   ) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -166,11 +167,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fullName: string,
     matricNumber: string,
     password: string,
-    password2: string
+    password2: string,
+    verificationToken?: string,    // ← ADDED
   ): Promise<void> => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const response = await authAPI.register(email, fullName, matricNumber, password, password2);
+      const response = await authAPI.register(
+        email, fullName, matricNumber, password, password2, verificationToken  // ← pass through
+      );
       localStorage.setItem("accessToken", response.data.access);
       localStorage.setItem("refreshToken", response.data.refresh);
       dispatch({

@@ -159,10 +159,12 @@ EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # Set in environment variable
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment variable
-DEFAULT_FROM_EMAIL = 'nacos@abuad.edu.ng'  # Change to actual email
+DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'  # Change to actual email
 
 # Frontend URL for email verification links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nacos-abuad0-website.vercel.app")
 
 # For development, use console backend instead:
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+REQUIRE_STUDENT_VERIFICATION = True

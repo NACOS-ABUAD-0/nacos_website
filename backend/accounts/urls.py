@@ -4,7 +4,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
-    # ── Auth ──────────────────────────────────────────────────────────────
+    #  Auth
     RegisterView,
     LoginView,
     LogoutView,
@@ -12,16 +12,25 @@ from .views import (
     CSRFTokenView,
     VerifyEmailView,
     ResendVerificationEmailView,
-    # ── General ───────────────────────────────────────────────────────────
+    # General
     UserCountView,
-    # ── Admin ─────────────────────────────────────────────────────────────
+
+    # Multistep Verification pipeline
+    CheckEmailView,
+    VerifyStudentIdentityView,
+
+    # Password reset
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
+
+    #  Admin
     AdminRoleAssignmentView,
     AdminListView,
     AdminUserListView,
 )
 
 urlpatterns = [
-    # ── Authentication ─────────────────────────────────────────────────────
+    #  Authentication
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
@@ -29,7 +38,11 @@ urlpatterns = [
     path("auth/csrf/", CSRFTokenView.as_view(), name="csrf_token"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
-    # ── Email Verification ─────────────────────────────────────────────────
+    # Multistep registration pipeline
+    path("auth/check-email/", CheckEmailView.as_view(), name="check_email"),
+    path("auth/verify-student/", VerifyStudentIdentityView.as_view(), name="verify_student"),
+
+    #  Email Verification
     path("auth/verify-email/", VerifyEmailView.as_view(), name="verify_email"),
     path(
         "auth/resend-verification/",
@@ -37,7 +50,11 @@ urlpatterns = [
         name="resend_verification",
     ),
 
-    # ── General ────────────────────────────────────────────────────────────
+    # password reset
+    path("auth/password-reset/",          PasswordResetRequestView.as_view(),  name="password_reset"),
+    path("auth/password-reset/confirm/",  PasswordResetConfirmView.as_view(),  name="password_reset_confirm"),
+
+    #  General
     path("users/count/", UserCountView.as_view(), name="user-count"),
 
     # ── Admin — Role Management ────────────────────────────────────────────

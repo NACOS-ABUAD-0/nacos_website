@@ -30,6 +30,9 @@ import Events from "./pages/events";
 import EventDetail from "./pages/event-detail";
 import Gallery from "./pages/gallery";
 import ContactPage from "./pages/contact";
+import { ForgotPasswordPage } from "./pages/forgot-password";
+import { ResetPasswordPage }  from "./pages/reset-password";
+
 
 // ── Admin page imports ─────────────────────────────────────────────────────────
 import AdminHome from "./admin1/pages/Home";
@@ -152,6 +155,17 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
+      
+      <Route
+        path="/forgot-password"
+        element={
+            <PublicRoute>
+        <ForgotPasswordPage />
+        </PublicRoute>
+            }
+        />
+
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* ── Protected — any authenticated user ─────────────────────────── */}
       <Route
@@ -178,6 +192,8 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+
+
 
       {/* ── Admin — REQUIRES admin role ─────────────────────────────────
           RequireAdmin:
