@@ -6,14 +6,17 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
-from rest_framework.permissions import AllowAny
-from rest_framework.views import APIView
-
 from .models import Resource, ResourceCategory, ResourceTag, ResourceDownload
 from .serializers import (
     ResourceSerializer, ResourceDetailSerializer,
     ResourceCategorySerializer, ResourceTagSerializer
 )
+
+import json
+from pathlib import Path
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 
 
 class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -91,9 +94,22 @@ class ResourceTagViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ResourceTagSerializer
     pagination_class = None
 
+
 class ResourceCountView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
         count = Resource.objects.count()
         return Response({'count': count})
+
+
+class DriveResourcesView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        json_path = Path(__file__).resolve().parent.parent / "resources_data.json"
+        if not json_path.exists():
+            return Response({"error": "Resources not yet synced."}, status=503)
+        with json_path.open() as f:
+            data = json.load(f)
+        return Response(data)

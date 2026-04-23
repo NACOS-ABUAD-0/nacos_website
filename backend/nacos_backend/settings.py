@@ -170,3 +170,17 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nacos-abuad0-website.vercel.ap
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 REQUIRE_STUDENT_VERIFICATION = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+    },
+    "loggers": {
+        "resources": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}

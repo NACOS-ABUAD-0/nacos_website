@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
+import api from "../lib/api";
 import { resourcesAPI } from "../lib/api";
+
 import {
   Search,
   Download,
@@ -74,35 +76,34 @@ export const ResourcesPage: React.FC = () => {
   }, [debouncedSearch]);
 
   const fetchResources = async (reset = false) => {
-    if (reset) setIsLoading(true);
-    else setIsLoadingMore(true);
+  if (reset) setIsLoading(true);
+  else setIsLoadingMore(true);
 
-    try {
-      const params: any = { page_size: pageSize };
-      if (debouncedSearch) params.search = debouncedSearch;
+  try {
+    if (reset) {
+      const response = await api.get("/resources/drive/");
+      let allData: Resource[] = response.data;
 
-      let response;
-      if (!reset && nextPageUrl) {
-        response = await resourcesAPI.getResourcesByUrl(nextPageUrl);
-      } else {
-        response = await resourcesAPI.getResources(params);
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
+        allData = allData.filter(
+          (r) =>
+            r.title.toLowerCase().includes(q) ||
+            r.description.toLowerCase().includes(q) ||
+            (r.course_code ?? "").toLowerCase().includes(q)
+        );
       }
 
-      const newData = response.data.results;
-      setNextPageUrl(response.data.next);
-
-      // Sort newData so CSC courses come first
-      const sortedNewData = sortCSCFirst(newData);
-
-      if (reset) setResources(sortedNewData);
-      else setResources(prev => [...prev, ...sortedNewData]);
-    } catch (err: any) {
-      setError(err.message || "Failed to load resources");
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
+      setResources(sortCSCFirst(allData));
+      setNextPageUrl(null);
     }
-  };
+  } catch (err: any) {
+    setError("Failed to load resources");
+  } finally {
+    setIsLoading(false);
+    setIsLoadingMore(false);
+  }
+};
 
   const filteredResources = useMemo(() => {
     // Already sorted by fetch, but just in case
