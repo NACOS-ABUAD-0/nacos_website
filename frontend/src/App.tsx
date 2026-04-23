@@ -1,4 +1,3 @@
-// frontend/src/App.tsx
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -33,6 +32,10 @@ import ContactPage from "./pages/contact";
 import { ForgotPasswordPage } from "./pages/forgot-password";
 import { ResetPasswordPage }  from "./pages/reset-password";
 
+// ── NEW: Student feature pages ─────────────────────────────────────────────────
+import { LikedProjectsPage } from "./pages/LikedProjectsPage";
+import { CommitteesPage } from "./pages/CommitteesPage";
+import { CommitteeApplicationPage } from "./pages/CommitteeApplicationPage";
 
 // ── Admin page imports ─────────────────────────────────────────────────────────
 import AdminHome from "./admin1/pages/Home";
@@ -43,6 +46,8 @@ import AdminStudentProfile from "./admin1/pages/StudentProfile";
 import AdminMetrics from "./admin1/pages/Metrics";
 import AdminGallery from "./admin1/pages/Gallery";
 import AdminInquiries from "./admin1/pages/Inquiries";
+// ── NEW: Admin committee applications ──────────────────────────────────────────
+import AdminCommitteeApplications from "./admin1/pages/CommitteeApplications";
 
 // ─── Query Client ──────────────────────────────────────────────────────────────
 
@@ -56,7 +61,6 @@ const queryClient = new QueryClient({
 });
 
 // ─── RequireAuth ───────────────────────────────────────────────────────────────
-// Guards routes that require any authenticated user (regardless of role).
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -73,7 +77,6 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 // ─── PublicRoute ───────────────────────────────────────────────────────────────
-// Redirects already-authenticated users away from login/register pages.
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -94,12 +97,12 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* ── Public — accessible by anyone ──────────────────────────────── */}
+      {/* ── Public ───────────────────────────────────────────────────── */}
       <Route path="/" element={<Homepage />} />
       <Route path="/executives" element={<Executives isHome={false} />} />
       <Route path="/contact" element={<ContactPage />} />
 
-      {/* ── Projects ───────────────────────────────────────────────────── */}
+      {/* ── Projects ─────────────────────────────────────────────────── */}
       <Route path="/projects" element={<ProjectsGallery />} />
       <Route
         path="/my-projects"
@@ -127,18 +130,46 @@ function AppRoutes() {
       />
       <Route path="/projects/:id" element={<ProjectDetail />} />
 
-      {/* ── Events ─────────────────────────────────────────────────────── */}
+      {/* ── NEW: Liked Projects ──────────────────────────────────────── */}
+      <Route
+        path="/liked-projects"
+        element={
+          <RequireAuth>
+            <LikedProjectsPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* ── NEW: Committees ──────────────────────────────────────────── */}
+      <Route
+        path="/committees"
+        element={
+          <RequireAuth>
+            <CommitteesPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/committees/:id/apply"
+        element={
+          <RequireAuth>
+            <CommitteeApplicationPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* ── Events ───────────────────────────────────────────────────── */}
       <Route path="/events" element={<Events isHome={false} />} />
       <Route path="/events/:id" element={<EventDetail />} />
 
-      {/* ── Gallery ────────────────────────────────────────────────────── */}
+      {/* ── Gallery ──────────────────────────────────────────────────── */}
       <Route path="/gallery" element={<Gallery isHome={false} />} />
 
-      {/* ── Email Verification ─────────────────────────────────────────── */}
+      {/* ── Email Verification ───────────────────────────────────────── */}
       <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-      {/* ── Auth — redirect authenticated users to dashboard ───────────── */}
+      {/* ── Auth ─────────────────────────────────────────────────────── */}
       <Route
         path="/login"
         element={
@@ -155,19 +186,17 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
-      
       <Route
         path="/forgot-password"
         element={
-            <PublicRoute>
-        <ForgotPasswordPage />
-        </PublicRoute>
-            }
-        />
-
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        }
+      />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      {/* ── Protected — any authenticated user ─────────────────────────── */}
+      {/* ── Protected ────────────────────────────────────────────────── */}
       <Route
         path="/dashboard"
         element={
@@ -193,15 +222,7 @@ function AppRoutes() {
         }
       />
 
-
-
-      {/* ── Admin — REQUIRES admin role ─────────────────────────────────
-          RequireAdmin:
-            • If not authenticated → redirects to /login
-            • If authenticated but NOT admin → redirects silently to /
-            • If admin → renders the page
-          All backend endpoints independently enforce IsAdmin permission.
-      ──────────────────────────────────────────────────────────────────── */}
+      {/* ── Admin ────────────────────────────────────────────────────── */}
       <Route
         path="/admin"
         element={
@@ -274,8 +295,17 @@ function AppRoutes() {
           </RequireAdmin>
         }
       />
+      {/* ── NEW: Admin Committee Applications ────────────────────────── */}
+      <Route
+        path="/admin/committee-applications"
+        element={
+          <RequireAdmin>
+            <AdminCommitteeApplications />
+          </RequireAdmin>
+        }
+      />
 
-      {/* ── Catch-all ──────────────────────────────────────────────────── */}
+      {/* ── Catch-all ────────────────────────────────────────────────── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

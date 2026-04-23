@@ -99,6 +99,50 @@ const handleApiError = (error: unknown) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TYPE INTERFACES (new)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StudentProfileData {
+  id: number;
+  full_name: string;
+  email: string;
+  matric_number: string;
+  department: string;
+  level: string;
+  phone_number: string;
+  last_synced_at: string;
+  created_at: string;
+}
+
+export interface CommitteeData {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface CommitteeApplicationData {
+  id: number;
+  committee: CommitteeData;
+  phone_number: string;
+  reason: string;
+  offer: string;
+  status: "pending" | "approved" | "rejected";
+  admin_note: string;
+  created_at: string;
+}
+
+export interface NotificationData {
+  id: number;
+  title: string;
+  message: string;
+  notification_type: "committee" | "system";
+  is_read: boolean;
+  data: Record<string, any>;
+  created_at: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT MODULES
 // Each group of related endpoints lives in its own exported object.
 // Import exactly what you need:
@@ -170,9 +214,16 @@ export const authAPI = {
     api.post("/auth/password-reset/confirm/", { uid, token, password, password2 }),
 };
 
-// ── USERS (count) ────────────────────────────────────────────────────────────
+// ── USERS ────────────────────────────────────────────────────────────────────
 export const usersAPI = {
   getCount: () => api.get("/users/count/"),
+};
+
+// ── STUDENT PROFILE (new) ────────────────────────────────────────────────────
+export const studentAPI = {
+  getProfile: () => api.get<StudentProfileData>("/student/profile/"),
+  updateProfile: (data: Partial<StudentProfileData>) =>
+    api.patch<StudentProfileData>("/student/profile/", data),
 };
 
 // ── PROJECTS ─────────────────────────────────────────────────────────────────
@@ -195,12 +246,43 @@ export const projectsAPI = {
 
   getMyProjects: () => api.get("/projects/my-projects/"),
 
+  // NEW: liked projects
+  getLiked: () => api.get("/projects/liked/"),
+
   toggleFeatured: (id: string | number) =>
     api.post(`/projects/${id}/toggle_featured/`),
 
-  // ADDED: like/unlike endpoints
   likeProject: (id: string | number) => api.post(`/projects/${id}/like/`),
   unlikeProject: (id: string | number) => api.post(`/projects/${id}/unlike/`),
+};
+
+// ── COMMITTEES (new) ─────────────────────────────────────────────────────────
+export const committeesAPI = {
+  getAll: () => api.get<CommitteeData[]>("/committees/"),
+  apply: (payload: {
+    committee_id: number;
+    phone_number: string;
+    reason: string;
+    offer: string;
+  }) => api.post("/committee-applications/", payload),
+  getMyApplications: () =>
+    api.get<CommitteeApplicationData[]>("/committee-applications/my-applications/"),
+};
+
+// ── NOTIFICATIONS (new) ──────────────────────────────────────────────────────
+export const notificationsAPI = {
+  getAll: () => api.get<NotificationData[]>("/notifications/"),
+  markRead: (id: number) => api.patch(`/notifications/${id}/read/`),
+};
+
+// ── ADMIN COMMITTEE (new) ────────────────────────────────────────────────────
+export const adminCommitteeAPI = {
+  getApplications: () =>
+    api.get<CommitteeApplicationData[]>("/admin/committee-applications/"),
+  approve: (id: number, admin_note?: string) =>
+    api.patch(`/admin/committee-applications/${id}/approve/`, { admin_note }),
+  reject: (id: number, admin_note?: string) =>
+    api.patch(`/admin/committee-applications/${id}/reject/`, { admin_note }),
 };
 
 // ── SKILLS / TAGS ─────────────────────────────────────────────────────────────
@@ -224,7 +306,7 @@ export const resourcesAPI = {
   trackDownload: (id: string | number) =>
     api.post(`/resources/${id}/track_download/`),
 
-  getCount: () => api.get("/resources/count/"),   // <-- ADDED
+  getCount: () => api.get("/resources/count/"),
 };
 
 // ── HOMEPAGE ─────────────────────────────────────────────────────────────────

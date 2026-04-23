@@ -32,12 +32,13 @@ const Navbar: React.FC = () => {
       {/* Nav Links */}
       <ul className="hidden md:flex items-center gap-6 lg:gap-8">
         {[
-          { label: 'Home',      to: '/admin' },
-          { label: 'Events',    to: '/admin/events' },
-          { label: 'Metrics',   to: '/admin/metrics' },
-          { label: 'Approvals', to: '/admin/approvals' },
-          { label: 'Gallery',   to: '/admin/gallery' },
-          { label: 'Inquiries', to: '/admin/inquiries' },
+          { label: 'Home',                   to: '/admin' },
+          { label: 'Events',                 to: '/admin/events' },
+          { label: 'Metrics',                to: '/admin/metrics' },
+          { label: 'Approvals',              to: '/admin/approvals' },
+          { label: 'Committee Applications', to: '/admin/committee-applications' },
+          { label: 'Gallery',                to: '/admin/gallery' },
+          { label: 'Inquiries',              to: '/admin/inquiries' },
         ].map(({ label, to }) => (
           <li key={label}>
             <NavLink

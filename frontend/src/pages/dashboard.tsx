@@ -7,13 +7,17 @@ import { useProjects } from '../lib/hooks/useProjects';
 import { useEvents } from '../lib/hooks/useEvents';
 import { useQuery } from '@tanstack/react-query';
 import { usersAPI, resourcesAPI } from '../lib/api';
+import { useStudentProfile } from '../lib/hooks/useStudentProfile';
+import { useLikedProjects } from '../lib/hooks/useLikedProjects';
+import { useNotifications, useMarkNotificationRead } from '../lib/hooks/useNotifications';
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { motion, AnimatePresence, useInView, easeInOut} from 'framer-motion';
+import { motion, AnimatePresence, useInView, easeInOut } from 'framer-motion';
 import {
   Mail, Code2, Plus, CalendarDays, BookOpen,
   Users, Rocket, Settings, ChevronRight,
   Bell, BadgeCheck, Hash, Moon, Sun,
+  Heart, ClipboardList, CheckCircle2, XCircle,
 } from 'lucide-react';
 
 // ========== Animation Variants ==========
@@ -73,11 +77,6 @@ const slideInRight = {
 const slideInLeft = {
   hidden: { opacity: 0, x: -30 },
   visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
-
-const scaleOnHover = {
-  hover: { scale: 1.02, transition: { duration: 0.2 } },
-  tap: { scale: 0.98 },
 };
 
 // ========== Theme Tokens (unchanged) ==========
@@ -164,7 +163,6 @@ const DARK = {
 type T = typeof LIGHT;
 
 const syne = { fontFamily: "'Syne', sans-serif" } as const;
-const ic = (l: string, d: string) => (isDark: boolean) => isDark ? d : l;
 
 // ========== Sub-components with Enhanced Animations ==========
 interface StatCardProps {
@@ -189,7 +187,6 @@ const StatCard: React.FC<StatCardProps> = ({ icon, value, label, trend, trendCls
       animate={isInView ? "visible" : "hidden"}
       variants={fadeUp}
       whileHover="hover"
-      variants={cardHover}
       className={`relative ${t.statCard} border rounded-2xl p-4 sm:p-5 overflow-hidden transition-all duration-200`}
     >
       <div className={`absolute inset-x-0 top-0 h-[2px] ${accent}`} />
@@ -306,11 +303,47 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ id, title, description, tags,
   </motion.div>
 );
 
+interface LikedProjectItemProps {
+  id: number;
+  title: string;
+  description: string;
+  t: T;
+}
+const LikedProjectItem: React.FC<LikedProjectItemProps> = ({ id, title, description, t }) => (
+  <motion.div whileHover="hover" whileTap="tap" variants={cardHover}>
+    <Link
+      to={`/projects/${id}`}
+      className={`flex items-start gap-3 p-3 border rounded-xl ${t.actCard} transition-all duration-200`}
+    >
+      <div className={`w-8 h-8 ${t.innerBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <Heart className={`w-4 h-4 text-red-500`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`text-sm font-semibold ${t.t1} truncate`}>{title}</div>
+        <div className={`text-[11px] ${t.t2} mt-0.5 line-clamp-2`}>{description}</div>
+      </div>
+      <ChevronRight className={`w-3.5 h-3.5 ${t.t3} ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity`} />
+    </Link>
+  </motion.div>
+);
+
 // ========== Main Component ==========
 export const DashboardPage: React.FC = () => {
   const { user, resendVerificationEmail, isLoading: authLoading } = useAuth();
   const { isDark, setIsDark } = useTheme();
   const t = isDark ? DARK : LIGHT;
+
+  // NEW: Student profile from Excel source of truth
+  const { data: studentProfile, isLoading: profileLoading } = useStudentProfile();
+
+  // NEW: Liked projects
+  const { data: likedProjects, isLoading: likedLoading } = useLikedProjects();
+
+  // NEW: Notifications
+  const { data: notifications, isLoading: notifLoading } = useNotifications();
+  const { mutate: markRead } = useMarkNotificationRead();
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
 
   // Fetch user's projects
   const [myProjects, setMyProjects] = useState<any[]>([]);
@@ -363,7 +396,6 @@ export const DashboardPage: React.FC = () => {
     ? new Date(user.date_joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : '—';
 
-  // Helper to format event date
   const formatEventDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return {
@@ -372,7 +404,6 @@ export const DashboardPage: React.FC = () => {
     };
   };
 
-  // Get greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -381,13 +412,17 @@ export const DashboardPage: React.FC = () => {
   };
   const greeting = getGreeting();
 
-  // Refs for scroll animations
   const statsRef = useRef(null);
   const leftColRef = useRef(null);
   const rightColRef = useRef(null);
   const statsInView = useInView(statsRef, { once: true, amount: 0.2 });
   const leftInView = useInView(leftColRef, { once: true, amount: 0.2 });
   const rightInView = useInView(rightColRef, { once: true, amount: 0.2 });
+
+  // Derived profile info (Excel source of truth)
+  const displayDept = studentProfile?.department || '—';
+  const displayLevel = studentProfile?.level || '—';
+  const displayPhone = studentProfile?.phone_number || '—';
 
   return (
     <div className={`min-h-screen flex flex-col font-dm ${t.page} transition-colors duration-300`}>
@@ -402,7 +437,6 @@ export const DashboardPage: React.FC = () => {
         style={{ background: `radial-gradient(circle,${t.glowClr} 0%,transparent 70%)` }}
         animate={{
           scale: [1, 1.1, 1],
-          opacity: [0.6, 0.8, 0.6],
           opacity: [0.6, 0.8, 0.6],
         }}
         transition={{
@@ -471,15 +505,70 @@ export const DashboardPage: React.FC = () => {
                   {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   <span className="hidden xs:inline">{isDark ? 'Light' : 'Dark'}</span>
                 </motion.button>
-                <motion.button
-                  className={`flex items-center gap-2 px-3.5 py-2 border rounded-xl text-sm font-medium transition-all duration-200 ${t.notif}`}
-                  whileHover="hover"
-                  whileTap="tap"
-                  variants={buttonPress}
-                >
-                  <Bell className="w-4 h-4" />
-                  <span className="hidden sm:inline">Notifications</span>
-                </motion.button>
+
+                {/* NEW: Notification Bell with Dropdown */}
+                <div className="relative">
+                  <motion.button
+                    onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                    className={`flex items-center gap-2 px-3.5 py-2 border rounded-xl text-sm font-medium transition-all duration-200 ${t.notif}`}
+                    whileHover="hover"
+                    whileTap="tap"
+                    variants={buttonPress}
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span className="hidden sm:inline">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </motion.button>
+
+                  <AnimatePresence>
+                    {showNotifDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{ duration: 0.2 }}
+                        className={`absolute right-0 mt-2 w-80 sm:w-96 ${t.card} border rounded-2xl shadow-xl z-50 overflow-hidden`}
+                      >
+                        <div className={`p-4 border-b ${t.divider}`}>
+                          <h3 className={`text-sm font-bold ${t.t1}`}>Notifications</h3>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                          {notifLoading ? (
+                            <div className="flex justify-center py-6">
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600" />
+                            </div>
+                          ) : !notifications || notifications.length === 0 ? (
+                            <p className={`text-sm ${t.t2} text-center py-6`}>No notifications yet.</p>
+                          ) : (
+                            notifications.slice(0, 20).map((n) => (
+                              <div
+                                key={n.id}
+                                onClick={() => { if (!n.is_read) markRead(n.id); }}
+                                className={`p-3 border-b ${t.divider} cursor-pointer transition-colors ${!n.is_read ? (isDark ? 'bg-white/[0.03]' : 'bg-green-50/50') : ''}`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${!n.is_read ? 'bg-green-500' : 'bg-transparent'}`} />
+                                  <div>
+                                    <p className={`text-xs font-semibold ${t.t1}`}>{n.title}</p>
+                                    <p className={`text-[11px] ${t.t2} mt-0.5 line-clamp-2`}>{n.message}</p>
+                                    <p className={`text-[10px] ${t.t3} mt-1`}>
+                                      {new Date(n.created_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 <motion.div whileHover="hover" whileTap="tap" variants={buttonPress}>
                   <Link
                     to="/projects/new"
@@ -497,55 +586,8 @@ export const DashboardPage: React.FC = () => {
         {/* PAGE BODY */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-5 sm:gap-6">
-            {/* Email verification banner with AnimatePresence */}
-            <AnimatePresence>
-              {user && !user.is_email_verified && (
-                <motion.div
-                  custom={2}
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
-                  className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border rounded-2xl p-4 ${t.alertBg} transition-colors duration-300`}
-                >
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <motion.div
-                      className={`w-8 h-8 ${isDark ? 'bg-amber-500/15' : 'bg-amber-100'} rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5`}
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <Mail className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-                    </motion.div>
-                    <div className="min-w-0">
-                      <p className={`text-sm font-semibold ${t.alertT}`}>Verify your email address</p>
-                      <p className={`text-xs mt-0.5 ${t.alertD} break-all sm:break-normal`}>
-                        We sent a link to <strong className={isDark ? 'text-slate-300' : 'text-amber-900'}>{user.email}</strong> — click it to activate your account.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0 pl-11 sm:pl-0">
-                    <motion.div whileHover="hover" whileTap="tap" variants={buttonPress}>
-                      <Link
-                        to="/verify-email"
-                        className={`px-3 py-1.5 border text-xs font-medium rounded-lg transition-colors ${t.alertBtn}`}
-                      >
-                        Verify Email
-                      </Link>
-                    </motion.div>
-                    <motion.button
-                      onClick={resendVerificationEmail}
-                      disabled={authLoading}
-                      className={`px-3 py-1.5 border text-xs font-medium rounded-lg transition-colors disabled:opacity-40 ${t.alertGhost}`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {authLoading ? 'Sending…' : 'Resend'}
-                    </motion.button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            {/* Stats row with scroll animation */}
+            {/* Stats row */}
             <motion.div
               ref={statsRef}
               initial="hidden"
@@ -584,17 +626,6 @@ export const DashboardPage: React.FC = () => {
                 iconBg={isDark ? 'bg-blue-500/10' : 'bg-blue-100'}
                 trendCls={isDark ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-700'}
                 icon={<BookOpen className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />}
-                t={t}
-              />
-              <StatCard
-                i={6}
-                value={usersLoading ? '...' : (activeMembersCount === '—' ? '250+' : activeMembersCount.toString())}
-                label="Active Members"
-                trend="+12 this week"
-                accent="bg-amber-500"
-                iconBg={isDark ? 'bg-amber-500/10' : 'bg-amber-100'}
-                trendCls={isDark ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-700'}
-                icon={<Users className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />}
                 t={t}
               />
             </motion.div>
@@ -678,6 +709,56 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </motion.div>
 
+                {/* NEW: Liked Projects */}
+                <motion.div variants={slideInLeft} className={`${t.card} border rounded-2xl overflow-hidden transition-colors duration-300`}>
+                  <div className="flex items-center justify-between p-5 sm:p-6">
+                    <div>
+                      <h2 className={`font-bold text-base sm:text-lg ${t.t1}`} style={syne}>Liked Projects</h2>
+                      <p className={`text-xs sm:text-sm ${t.t2} mt-0.5`}>Projects you've shown interest in</p>
+                    </div>
+                    <Link to="/liked-projects" className={`text-xs font-medium transition-colors ${t.link} whitespace-nowrap ml-4`}>
+                      View all →
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-white/[0.05] p-5 sm:p-6">
+                    {likedLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600" />
+                      </div>
+                    ) : !likedProjects || likedProjects.length === 0 ? (
+                      <div className="flex flex-col items-center text-center py-6">
+                        <div className={`w-12 h-12 ${t.emptyBox} border-2 border-dashed rounded-xl flex items-center justify-center mb-3`}>
+                          <Heart className={`w-5 h-5 ${t.emptyIco}`} />
+                        </div>
+                        <p className={`text-xs sm:text-sm ${t.t2} max-w-xs`}>
+                          You haven't liked any projects yet. Browse the gallery to find inspiring work.
+                        </p>
+                        <Link to="/projects" className={`text-xs font-medium ${t.link} mt-3`}>
+                          Browse projects →
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {likedProjects.slice(0, 4).map((project) => (
+                          <LikedProjectItem
+                            key={project.id}
+                            id={project.id}
+                            title={project.title}
+                            description={project.description}
+                            t={t}
+                          />
+                        ))}
+                        {likedProjects.length > 4 && (
+                          <Link to="/liked-projects" className={`block text-center text-xs font-medium ${t.link} mt-2`}>
+                            + {likedProjects.length - 4} more liked project{likedProjects.length - 4 !== 1 ? 's' : ''}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+
                 {/* Quick Actions */}
                 <motion.div variants={slideInLeft} className={`${t.card} border rounded-2xl p-5 sm:p-6 transition-colors duration-300`}>
                   <h2 className={`font-bold text-base sm:text-lg ${t.t1} mb-0.5`} style={syne}>Quick Actions</h2>
@@ -687,6 +768,8 @@ export const DashboardPage: React.FC = () => {
                     <ActionCard to="/events" iconBg={isDark ? 'bg-violet-500/10' : 'bg-violet-100'} label="Browse Events" desc="Workshops & meetups" icon={<CalendarDays className={`w-4 h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />} t={t} />
                     <ActionCard to="/resources" iconBg={isDark ? 'bg-blue-500/10' : 'bg-blue-100'} label="Resources" desc="Study materials" icon={<BookOpen className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />} t={t} />
                     <ActionCard to="/profile" iconBg={isDark ? 'bg-amber-500/10' : 'bg-amber-100'} label="Edit Profile" desc="Update your info" icon={<Settings className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />} t={t} />
+                    {/* NEW: Committees quick action */}
+                    <ActionCard to="/committees" iconBg={isDark ? 'bg-pink-500/10' : 'bg-pink-100'} label="Committees" desc="Join a committee" icon={<Users className={`w-4 h-4 ${isDark ? 'text-pink-400' : 'text-pink-600'}`} />} t={t} />
                   </div>
                 </motion.div>
 
@@ -739,7 +822,10 @@ export const DashboardPage: React.FC = () => {
                     <div className={`font-bold text-base sm:text-lg ${t.t1} leading-tight`} style={syne}>
                       {user?.full_name}
                     </div>
-                    <div className={`text-xs ${t.t2} mt-1 mb-3`}>300 Level · Computer Science</div>
+                    {/* NEW: Dynamic level & department from Excel source of truth */}
+                    <div className={`text-xs ${t.t2} mt-1 mb-3`}>
+                      {profileLoading ? 'Loading...' : `${displayLevel} · ${displayDept}`}
+                    </div>
                     <div className={`inline-flex items-center gap-1.5 border text-[11px] font-medium px-3 py-1 rounded-full ${t.badgeBg}`}>
                       <span className={`w-1.5 h-1.5 ${t.badgeDot} rounded-full`} />
                       Active Member
@@ -751,6 +837,8 @@ export const DashboardPage: React.FC = () => {
                       { icon: <Hash className="w-3 h-3" />, label: 'Matric No.', val: user?.matric_number },
                       { icon: <Mail className="w-3 h-3" />, label: 'Email', val: user?.email },
                       { icon: <BadgeCheck className="w-3 h-3" />, label: 'Member Since', val: memberSince },
+                      // NEW: Phone number from profile
+                      { icon: <Users className="w-3 h-3" />, label: 'Phone', val: displayPhone },
                     ].map(({ icon, label, val }) => (
                       <motion.div
                         key={label}
