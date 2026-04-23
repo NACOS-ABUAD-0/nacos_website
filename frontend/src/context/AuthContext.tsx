@@ -35,7 +35,7 @@ interface AuthContextType extends AuthState {
     matricNumber: string,
     password: string,
     password2: string,
-    verificationToken?: string,    // ← ADDED
+    verificationToken?: string,
   ) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -168,12 +168,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     matricNumber: string,
     password: string,
     password2: string,
-    verificationToken?: string,    // ← ADDED
+    verificationToken?: string,
   ): Promise<void> => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const response = await authAPI.register(
-        email, fullName, matricNumber, password, password2, verificationToken  // ← pass through
+        email, fullName, matricNumber, password, password2, verificationToken
       );
       localStorage.setItem("accessToken", response.data.access);
       localStorage.setItem("refreshToken", response.data.refresh);
@@ -195,7 +195,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = (): void => {
     const refreshToken = localStorage.getItem("refreshToken");
     if (refreshToken) {
-      authAPI.logout(refreshToken).catch(console.error);
+      // FIXED: authAPI.logout() expects 0 arguments, not the refresh token
+      authAPI.logout().catch(console.error);
     }
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
@@ -229,11 +230,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const verifyEmail = async (uid: string, token: string): Promise<void> => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
+      // FIXED: Added verifyEmail method to authAPI
       const response = await authAPI.verifyEmail(uid, token);
-      dispatch({ type: "UPDATE_USER", payload: response.data.user });
+      if (response.data.user) {
+        dispatch({ type: "UPDATE_USER", payload: response.data.user });
+      }
       toast.success("Email verified successfully!");
     } catch (err: any) {
-      toast.error(err?.error ?? "Failed to verify email. Please try again.");
+      toast.error(err?.error ?? err?.message ?? "Failed to verify email. Please try again.");
       throw err;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
@@ -245,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resendVerificationEmail = async (): Promise<void> => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
+      // FIXED: Added resendVerification method to authAPI
       await authAPI.resendVerification();
       toast.success("Verification email sent! Please check your inbox.");
     } catch (err: any) {

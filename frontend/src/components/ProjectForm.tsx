@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useSkills, useCreateProject, useUpdateProject } from '../lib/hooks/useProjects';
 import { cloudinaryAPI } from '../lib/api';
-import type { Project, Skill } from '../types';
+import type { Project, Skill, CollaborationNeed } from '../types';
 
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
@@ -66,7 +66,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
       tag_ids: project?.tags?.map((tag: Skill) => tag.id) || [],
       links: project?.links || {},
       images: project?.images || [],
-      collaboration_needs: project?.collaboration_needs || [],
+      collaboration_needs: project?.collaboration_needs?.map((need: CollaborationNeed) => ({
+        skill_type: need.skill_type,
+        custom_skill: need.custom_skill || '',
+        description: need.description || '',
+      })) || [],
     },
   });
 
@@ -86,10 +90,10 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
       setImageInputs(project.images);
     }
     if (project?.collaboration_needs) {
-      setCollabNeeds(project.collaboration_needs.map((n: any) => ({
-        skill_type: n.skill_type,
-        custom_skill: n.custom_skill || '',
-        description: n.description || '',
+      setCollabNeeds(project.collaboration_needs.map((need: CollaborationNeed) => ({
+        skill_type: need.skill_type,
+        custom_skill: need.custom_skill || '',
+        description: need.description || '',
       })));
     }
   }, [project]);
@@ -141,7 +145,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         return acc;
       }, {}),
       images: imageInputs.filter((url: string) => url.trim() !== ''),
-      collaboration_needs_data: collabNeeds.map(need => ({
+      collaboration_needs: collabNeeds.map(need => ({
         skill_type: need.skill_type,
         custom_skill: need.skill_type === 'others' ? need.custom_skill : '',
         description: need.description,
@@ -275,7 +279,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* ─── NEW: Collaboration Needs ─────────────────────────────────────── */}
+        {/* ─── Collaboration Needs ─────────────────────────────────────── */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
             <div>
@@ -304,7 +308,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                 <label className="block text-xs font-medium text-gray-700 mb-1">Skill Type</label>
                 <select
                   value={need.skill_type}
-                  onChange={(e) => updateCollabNeed(index, 'skill_type', e.target.value)}
+                  onChange={(e) => updateCollabNeed(index, 'skill_type', e.target.value as any)}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 bg-white"
                 >
                   {SKILL_OPTIONS.map(opt => (
@@ -401,7 +405,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* ─── NEW: Cloudinary Image Upload ───────────────────────────────── */}
+        {/* Cloudinary Image Upload */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-semibold text-gray-900">Project Images</label>

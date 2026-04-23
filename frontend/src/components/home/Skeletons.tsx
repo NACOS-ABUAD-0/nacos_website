@@ -1,6 +1,6 @@
 // src/components/home/Skeletons.tsx
 import React from "react";
-import { motion, easeInOut, cubicBezier } from "framer-motion";
+import { motion, easeInOut, cubicBezier, Easing } from "framer-motion";
 
 // ─── Shared shimmer keyframe via Tailwind (augmented with Framer stagger) ────
 
@@ -54,7 +54,7 @@ const staggerContainer = {
 
 const staggerChild = {
   hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: easeInOut } },
 };
 
 // ─── HeroSkeleton ─────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export const ResourceCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4, ease: "easeOut" }}
+    transition={{ duration: 0.4, ease: easeInOut }}
     className="p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
   >
     <div className="flex items-start justify-between mb-4">
@@ -260,7 +260,7 @@ export const NavigationSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
-    transition={{ duration: 0.4 }}
+    transition={{ duration: 0.4, ease: easeInOut }}
   >
     <div className="flex items-center justify-between p-4">
       <ShimmerBar className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-32" delay={0} />
@@ -289,7 +289,7 @@ export const EventDetailSkeleton = () => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
-    transition={{ duration: 0.5, ease: "easeOut" }}
+    transition={{ duration: 0.5, ease: easeInOut }}
     className="min-h-screen flex flex-col"
   >
     <div className="flex-grow flex flex-col lg:flex-row">

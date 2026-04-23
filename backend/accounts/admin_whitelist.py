@@ -18,7 +18,7 @@ class AdminEntry(TypedDict):
 # ─── DO NOT MODIFY WITHOUT AUTHORIZATION ──────────────────────────────────────
 ADMIN_WHITELIST: list[AdminEntry] = [
     {
-        "full_name": "Abdulazeez Jamiu Oladipupo",
+        "full_name": "Abdulazeez Jamiu",
         "matric_number": "23/SCI01/002",
     },
     {

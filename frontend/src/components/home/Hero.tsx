@@ -11,6 +11,18 @@ import {
   cubicBezier
 } from "framer-motion";
 
+// ─── Define HeroProps type ────────────────────────────────────────────────────
+
+interface HeroProps {
+  // Add any props your Hero component might need
+  // For now, it's empty since the component doesn't use any props
+  // You can add props like:
+  // title?: string;
+  // subtitle?: string;
+  // showStats?: boolean;
+  // etc.
+}
+
 // ─── Reusable variants ────────────────────────────────────────────────────────
 
 const slideTextVariants = {
@@ -107,7 +119,7 @@ const SlideDots: React.FC<{ total: number; current: number; onDotClick: (i: numb
 
 // ─── Hero component ───────────────────────────────────────────────────────────
 
-export const Hero: React.FC<HeroProps> = ( ) => {
+export const Hero: React.FC<HeroProps> = () => {
   const images = [
     "/heroImages/hero1.jpeg",
     "/heroImages/hero2.jpeg",

@@ -1,6 +1,7 @@
 // src/lib/hooks/useCommittees.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { committeesAPI } from '../api';
+import { extractPaginatedData } from '../utils/pagination';
 
 export interface CommitteeData {
   id: number;
@@ -25,7 +26,7 @@ export const useCommittees = () => {
     queryKey: ['committees'],
     queryFn: async () => {
       const res = await committeesAPI.getAll();
-      return res.data.results || res.data;
+      return extractPaginatedData<CommitteeData>(res.data);
     },
   });
 };
@@ -35,7 +36,7 @@ export const useCommitteeApplications = () => {
     queryKey: ['committee-applications'],
     queryFn: async () => {
       const res = await committeesAPI.getMyApplications();
-      return res.data.results || res.data;
+      return extractPaginatedData<CommitteeApplicationData>(res.data);
     },
   });
 };

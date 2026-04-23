@@ -1,6 +1,6 @@
 // src/pages/ProjectsGallery.tsx
 import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence, useInView } from 'framer-motion';
+import { motion, AnimatePresence, useInView, easeInOut, cubicBezier } from 'framer-motion';
 import { useProjects, useSkills } from '../lib/hooks/useProjects';
 import { ProjectCard } from '../components/ProjectCard';
 import Navbar from '../components/Navbar';
@@ -14,7 +14,7 @@ const fadeUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
+    transition: { duration: 0.5, ease: cubicBezier(0.25, 0.1, 0.25, 1) },
   },
 };
 
@@ -33,28 +33,30 @@ const cardHover = {
   hover: {
     y: -6,
     scale: 0.92,
-    transition: { duration: 0.2, ease: 'easeOut' },
+    transition: { duration: 0.2, ease: easeInOut },
   },
   tap: {
     scale: 0.98,
-    transition: { duration: 0.1 },
+    transition: { duration: 0.1, ease: easeInOut },
   },
 };
 
 const buttonPress = {
   hover: { scale: 1.02 },
   tap: { scale: 0.96 },
+  transition: { duration: 0.2, ease: easeInOut },
 };
 
 const tagButtonHover = {
   hover: { scale: 1.05 },
   tap: { scale: 0.95 },
+  transition: { duration: 0.2, ease: easeInOut },
 };
 
 const spinTransition = {
   repeat: Infinity,
   duration: 1,
-  ease: "linear",
+  ease: "linear" as const,
 };
 
 export const ProjectsGallery: React.FC = () => {
@@ -113,7 +115,7 @@ export const ProjectsGallery: React.FC = () => {
                 className="text-4xl font-bold tracking-tight text-gray-900"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
+                transition={{ delay: 0.2, duration: 0.5, ease: easeInOut }}
               >
                 Project Showcase
               </motion.h1>
@@ -121,14 +123,14 @@ export const ProjectsGallery: React.FC = () => {
                 className="text-lg text-gray-500 mt-1"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.3, duration: 0.5, ease: easeInOut }}
               >
                 Discover innovative projects built by ABUAD computing students
               </motion.p>
             </motion.div>
 
             {isAuthenticated && (
-              <motion.div variants={fadeUp} whileHover="hover" whileTap="tap" variants={buttonPress}>
+              <motion.div variants={fadeUp} whileHover="hover" whileTap="tap">
                 <Link
                   to="/projects/new"
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
@@ -147,7 +149,7 @@ export const ProjectsGallery: React.FC = () => {
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.1, duration: 0.5, ease: easeInOut }}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-12"
           >
             <form onSubmit={handleSearch} className="space-y-6">
@@ -219,6 +221,7 @@ export const ProjectsGallery: React.FC = () => {
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: easeInOut }}
                   >
                     Clear filters
                   </motion.button>
@@ -227,6 +230,7 @@ export const ProjectsGallery: React.FC = () => {
                     className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-teal-600 rounded-lg hover:shadow-md transition-all duration-200"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: easeInOut }}
                   >
                     Apply filters
                   </motion.button>
@@ -243,6 +247,7 @@ export const ProjectsGallery: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, ease: easeInOut }}
                 className="flex justify-center py-12"
               >
                 <div className="text-center">
@@ -262,6 +267,7 @@ export const ProjectsGallery: React.FC = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, ease: easeInOut }}
                 className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg"
               >
                 <div className="flex items-start">
@@ -284,7 +290,7 @@ export const ProjectsGallery: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.3, ease: easeInOut }}
               >
                 {/* Results header */}
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -293,7 +299,7 @@ export const ProjectsGallery: React.FC = () => {
                       className="text-lg font-semibold text-gray-900"
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 }}
+                      transition={{ delay: 0.1, duration: 0.4, ease: easeInOut }}
                     >
                       {projects.count || projects.length}
                       <span className="text-gray-500 font-normal ml-1">
@@ -305,7 +311,7 @@ export const ProjectsGallery: React.FC = () => {
                         className="text-sm text-gray-500 mt-1"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
+                        transition={{ delay: 0.2, duration: 0.4, ease: easeInOut }}
                       >
                         Matching "{filters.search}"
                       </motion.p>
@@ -327,7 +333,7 @@ export const ProjectsGallery: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4 }}
+                    transition={{ duration: 0.4, ease: easeInOut }}
                     className="text-center py-16 bg-white rounded-2xl border border-gray-100"
                   >
                     <div className="w-24 h-24 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -370,7 +376,6 @@ export const ProjectsGallery: React.FC = () => {
                         custom={index}
                         whileHover="hover"
                         whileTap="tap"
-                        variants={cardHover}
                       >
                         <ProjectCard project={project} />
                       </motion.div>

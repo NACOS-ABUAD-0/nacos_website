@@ -1,6 +1,6 @@
 // src/components/home/StatsStrip.tsx
 import React, { useRef } from "react";
-import { motion, useInView, easeInOut } from "framer-motion";
+import { motion, useInView, easeInOut, cubicBezier } from "framer-motion";
 import type { Stats } from "../../lib/hooks/useHomepage";
 import { StatsSkeleton } from "./Skeletons";
 
@@ -33,7 +33,7 @@ const statCardVariant = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.65, ease: cubicBezier(0.22, 1, 0.36, 1) },
   },
 };
 
@@ -42,7 +42,7 @@ const numberVariant = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.55, ease: cubicBezier(0.22, 1, 0.36, 1) },
   },
 };
 
@@ -51,7 +51,7 @@ const accentLineVariant = {
   visible: {
     scaleX: 1,
     opacity: 1,
-    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+    transition: { duration: 0.45, ease: cubicBezier(0.22, 1, 0.36, 1), delay: 0.15 },
   },
 };
 
@@ -60,7 +60,7 @@ const subtitleVariant = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: "easeOut", delay: 0.55 },
+    transition: { duration: 0.55, ease: easeInOut, delay: 0.55 },
   },
 };
 
@@ -77,14 +77,14 @@ const StatCard: React.FC<{ stat: StatItem }> = ({ stat }) => {
     <motion.div
       variants={statCardVariant}
       className="group relative cursor-default"
-      whileHover={{ y: -6, transition: { duration: 0.3, ease: "easeOut" } }}
+      whileHover={{ y: -6, transition: { duration: 0.3, ease: easeInOut } }}
     >
       {/* Hover glow card */}
       <motion.div
         className="absolute inset-0 bg-white rounded-2xl shadow-sm pointer-events-none"
         initial={{ opacity: 0, scale: 0.95 }}
         whileHover={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
+        transition={{ duration: 0.25, ease: easeInOut }}
         style={{ boxShadow: "0 8px 32px rgba(5,150,105,0.12)" }}
       />
 
@@ -101,7 +101,7 @@ const StatCard: React.FC<{ stat: StatItem }> = ({ stat }) => {
         <motion.div
           className="text-2xl mb-3"
           whileHover={{ scale: 1.25, rotate: [0, -8, 8, 0] }}
-          transition={{ duration: 0.45, ease: easeInOut as const }}
+          transition={{ duration: 0.45, ease: easeInOut }}
         >
           {stat.icon}
         </motion.div>
@@ -116,7 +116,7 @@ const StatCard: React.FC<{ stat: StatItem }> = ({ stat }) => {
           className="h-0.5 bg-gradient-to-r from-green-400 to-teal-400 rounded-full mx-auto mt-4 origin-center"
           initial={{ scaleX: 0, opacity: 0 }}
           whileHover={{ scaleX: 1, opacity: 1 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.3, ease: cubicBezier(0.22, 1, 0.36, 1) }}
           style={{ width: "2rem" }}
         />
       </div>
@@ -148,7 +148,7 @@ export const StatsStrip: React.FC<StatsStripProps> = ({ stats, isLoading, error 
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.4, ease: easeInOut }}
             className="inline-flex items-center gap-3 text-gray-500 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-2xl border border-gray-200"
           >
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,12 +190,12 @@ export const StatsStrip: React.FC<StatsStripProps> = ({ stats, isLoading, error 
       <motion.div
         className="absolute top-4 left-10 w-3 h-3 bg-green-300 rounded-full pointer-events-none"
         animate={{ opacity: [0.2, 0.45, 0.2], y: [0, -8, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: easeInOut as const }}
+        transition={{ duration: 4, repeat: Infinity, ease: easeInOut }}
       />
       <motion.div
         className="absolute bottom-6 right-16 w-2 h-2 bg-teal-400 rounded-full pointer-events-none"
         animate={{ opacity: [0.3, 0.6, 0.3], y: [0, -6, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: easeInOut as const, delay: 1.5 }}
+        transition={{ duration: 5, repeat: Infinity, ease: easeInOut, delay: 1.5 }}
       />
 
       <div className="max-w-7xl mx-auto px-4 relative">

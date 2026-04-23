@@ -1,14 +1,15 @@
 // src/lib/hooks/useCollaboration.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collaborationAPI } from '../api';
-import type { CollaborationNeedData, CollaborationRequestData } from '../api';
+import { extractPaginatedData } from '../utils/pagination';
+import type { CollaborationRequestData } from '../api';
 
 export const useProjectsNeedingHelp = (skillType?: string) => {
   return useQuery({
     queryKey: ['projects-needing-help', skillType],
     queryFn: async () => {
       const res = await collaborationAPI.getProjectsNeedingHelp(skillType);
-      return (res.data.results || res.data) as any[];
+      return extractPaginatedData<any>(res.data);
     },
   });
 };
@@ -18,7 +19,7 @@ export const useMyCollaborations = () => {
     queryKey: ['my-collaborations'],
     queryFn: async () => {
       const res = await collaborationAPI.getMyCollaborations();
-      return (res.data.results || res.data) as any[];
+      return extractPaginatedData<any>(res.data);
     },
   });
 };
@@ -49,7 +50,7 @@ export const useCollaborationRequests = (projectId?: number | string) => {
     queryFn: async () => {
       if (!projectId) return [];
       const res = await collaborationAPI.getRequests(projectId);
-      return (res.data.results || res.data) as CollaborationRequestData[];
+      return extractPaginatedData<CollaborationRequestData>(res.data);
     },
     enabled: !!projectId,
   });

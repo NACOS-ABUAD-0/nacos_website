@@ -27,6 +27,7 @@ export interface Project {
   // ✅ API returns is_featured — the old field name "featured" never existed
   // in the Django model, so project.featured was always undefined.
   is_featured: boolean;
+  collaboration_needs: CollaborationNeed[];
   like_count?: number;
   is_liked_by_user?: boolean;
   status?: 'draft' | 'published';
@@ -39,4 +40,21 @@ export interface ProjectsResponse {
   next: string | null;
   previous: string | null;
   results: Project[];
+}
+
+export interface CollaborationNeed {
+  id?: number;
+  skill_type: 'frontend' | 'backend' | 'ui_ux' | 'ai_ml' | 'documentation' | 'others';
+  custom_skill?: string;
+  description?: string;
+  is_filled?: boolean;
+}
+
+export interface ProjectFormData {
+  title: string;
+  description: string;
+  tag_ids?: number[];
+  links?: Record<string, string>;
+  images?: string[];
+  collaboration_needs?: Omit<CollaborationNeed, 'id' | 'is_filled'>[];
 }

@@ -103,6 +103,14 @@ const handleApiError = (error: unknown) => {
 // TYPE INTERFACES
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Paginated response interface for DRF pagination
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export interface StudentProfileData {
   id: number;
   full_name: string;
@@ -237,6 +245,13 @@ export const authAPI = {
     password2: string,
   ) =>
     api.post("/auth/password-reset/confirm/", { uid, token, password, password2 }),
+
+  // ── NEW: Email verification methods ────────────────────────────────────────
+  verifyEmail: (uid: string, token: string) =>
+    api.post("/auth/verify-email/", { uid, token }).catch(handleApiError),
+
+  resendVerification: () =>
+    api.post("/auth/resend-verification/").catch(handleApiError),
 };
 
 // ── USERS ────────────────────────────────────────────────────────────────────
@@ -282,7 +297,7 @@ export const projectsAPI = {
 
 // ── COMMITTEES ───────────────────────────────────────────────────────────────
 export const committeesAPI = {
-  getAll: () => api.get<CommitteeData[]>("/committees/"),
+  getAll: () => api.get<PaginatedResponse<CommitteeData>>("/committees/"),
   apply: (payload: {
     committee_id: number;
     phone_number: string;
@@ -290,19 +305,19 @@ export const committeesAPI = {
     offer: string;
   }) => api.post("/committee-applications/", payload),
   getMyApplications: () =>
-    api.get<CommitteeApplicationData[]>("/committee-applications/my-applications/"),
+    api.get<PaginatedResponse<CommitteeApplicationData>>("/committee-applications/my-applications/"),
 };
 
 // ── NOTIFICATIONS ──────────────────────────────────────────────────────────────
 export const notificationsAPI = {
-  getAll: () => api.get<NotificationData[]>("/notifications/"),
+  getAll: () => api.get<PaginatedResponse<NotificationData>>("/notifications/"),
   markRead: (id: number) => api.patch(`/notifications/${id}/read/`),
 };
 
 // ── ADMIN COMMITTEE ──────────────────────────────────────────────────────────
 export const adminCommitteeAPI = {
   getApplications: () =>
-    api.get<CommitteeApplicationData[]>("/admin/committee-applications/"),
+    api.get<PaginatedResponse<CommitteeApplicationData>>("/admin/committee-applications/"),
   approve: (id: number, admin_note?: string) =>
     api.patch(`/admin/committee-applications/${id}/approve/`, { admin_note }),
   reject: (id: number, admin_note?: string) =>
@@ -340,7 +355,7 @@ export const collaborationAPI = {
 
   // Get collaboration requests for a project (owner only)
   getRequests: (projectId: number | string) =>
-    api.get<CollaborationRequestData[]>(`/projects/${projectId}/collaboration_requests/`),
+    api.get<PaginatedResponse<CollaborationRequestData>>(`/projects/${projectId}/collaboration_requests/`),
 
   // Accept a request
   acceptRequest: (projectId: number | string, requestId: number) =>

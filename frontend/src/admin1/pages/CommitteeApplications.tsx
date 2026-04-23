@@ -33,7 +33,8 @@ const AdminCommitteeApplications: React.FC = () => {
     queryKey: ['admin-committee-applications'],
     queryFn: async () => {
       const res = await adminCommitteeAPI.getApplications();
-      return (res.data.results || res.data) as CommitteeApplication[];
+      // Now the API is typed correctly with PaginatedResponse
+      return res.data.results;
     },
   });
 

@@ -82,7 +82,47 @@ const slideInLeft = {
 };
 
 // ========== Theme Tokens ==========
-const LIGHT = {
+type ThemeTokens = {
+  page: string;
+  card: string;
+  cardHov: string;
+  innerBg: string;
+  t1: string;
+  t2: string;
+  t3: string;
+  divider: string;
+  field: string;
+  fLabel: string;
+  fVal: string;
+  actCard: string;
+  emptyBox: string;
+  emptyIco: string;
+  heroBg: string;
+  heroSub: string;
+  statCard: string;
+  comVal: string;
+  comLbl: string;
+  evItem: string;
+  ring: string;
+  btnGhost: string;
+  btnPrimary: string;
+  alertBg: string;
+  alertT: string;
+  alertD: string;
+  alertBtn: string;
+  alertGhost: string;
+  badgeBg: string;
+  badgeDot: string;
+  profHero: string;
+  link: string;
+  notif: string;
+  toggle: string;
+  newProj: string;
+  gridClr: string;
+  glowClr: string;
+};
+
+const LIGHT: ThemeTokens = {
   page:        'bg-gray-50',
   card:        'bg-white border-gray-100 shadow-sm',
   cardHov:     'hover:border-green-200 hover:shadow-md',
@@ -120,9 +160,9 @@ const LIGHT = {
   newProj:     'bg-white text-green-700 hover:bg-green-50 hover:shadow-green-200',
   gridClr:     'rgba(22,163,74,0.04)',
   glowClr:     'rgba(22,163,74,0.06)',
-} as const;
+};
 
-const DARK = {
+const DARK: ThemeTokens = {
   page:        'bg-[#0a0f1e]',
   card:        'bg-[#161d2e] border-white/[0.07]',
   cardHov:     'hover:border-white/[0.14]',
@@ -160,9 +200,10 @@ const DARK = {
   newProj:     'bg-green-600 hover:bg-green-500 text-white hover:shadow-green-900/40',
   gridClr:     'rgba(22,163,74,0.025)',
   glowClr:     'rgba(22,163,74,0.07)',
-} as const;
+};
 
-type T = typeof LIGHT;
+// Remove the old type T definition and replace with:
+type T = ThemeTokens;
 
 const syne = { fontFamily: "'Syne', sans-serif" } as const;
 

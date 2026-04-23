@@ -1,6 +1,7 @@
 // src/lib/hooks/useNotifications.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsAPI } from '../api';
+import { extractPaginatedData } from '../utils/pagination';
 
 export interface NotificationData {
   id: number;
@@ -17,7 +18,7 @@ export const useNotifications = () => {
     queryKey: ['notifications'],
     queryFn: async () => {
       const res = await notificationsAPI.getAll();
-      return res.data.results || res.data;
+      return extractPaginatedData<NotificationData>(res.data);
     },
   });
 };
