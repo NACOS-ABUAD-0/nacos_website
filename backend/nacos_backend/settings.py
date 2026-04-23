@@ -17,10 +17,16 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", 
 # Render provides RENDER_EXTERNAL_HOSTNAME, e.g. "your-service.onrender.com"
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 ALLOWED_HOSTS = [
-    "13.60.96.128",
-    "localhost",
-    "127.0.0.1",
+    h
+    for h in [
+        RENDER_EXTERNAL_HOSTNAME,
+        "nacos-website-9g4v.onrender.com",
+        "localhost",
+        "127.0.0.1",
+    ]
+    if h
 ]
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -85,19 +91,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'NACOSABUADpasswordisFri,Jan.2025',
-        'HOST': 'nacos-database.cr22cw2s8jih.eu-north-1.rds.amazonaws.com',
-        'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
-    }
-}
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -185,4 +179,18 @@ LOGGING = {
     "loggers": {
         "resources": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
+}
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'NACOSABUADpasswordisFri,Jan.2025',
+        'HOST': 'nacos-database.cr22cw2s8jih.eu-north-1.rds.amazonaws.com',
+        'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+    }
 }
