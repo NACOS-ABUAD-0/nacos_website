@@ -6,8 +6,24 @@ import type { Project, Skill } from '../../types';
 export const useProjects = (params = {}) => {
   return useQuery({
     queryKey: ['projects', params],
-    queryFn: () => projectsAPI.getProjects(params).then(res => res.data),
-    placeholderData: keepPreviousData,   // v5: keepPreviousData moved here
+    queryFn: async () => {
+      const res = await projectsAPI.getProjects(params);
+      // ✅ Normalize: always return the results array
+      return res.data?.results ?? [];
+    },
+    placeholderData: keepPreviousData,
+  });
+};
+
+// Separate hook for user's own projects (if API has dedicated endpoint)
+export const useMyProjects = () => {
+  return useQuery({
+    queryKey: ['my-projects'],
+    queryFn: async () => {
+      const res = await projectsAPI.getMyProjects();
+      // ✅ Normalize to array
+      return res.data?.results ?? [];
+    },
   });
 };
 
@@ -20,7 +36,7 @@ export const useProject = (id: string | number) => {
 };
 
 export const useSkills = () => {
-  return useQuery<Skill[]>({               // explicit return type kills implicit any on skill
+  return useQuery<Skill[]>({
     queryKey: ['skills'],
     queryFn: () => skillsAPI.getSkills().then(res => res.data),
   });
