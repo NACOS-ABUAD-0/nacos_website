@@ -16,7 +16,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 SCOPES        = ["https://www.googleapis.com/auth/drive.readonly"]
-FOLDER_ID     = "1aY0l8s1lOGwZWOGZgGsQ2zPAlK8dWxdR"
+FOLDER_ID     = "1-NfXxcgYrvdbLaaj7bDlMP2h5qGDCAgB"
 OUTPUT_FILE   = Path(__file__).parent / "resources_data.json"
 CREDS_FILE    = Path(__file__).parent / "credentials.json"
 TOKEN_FILE    = Path(__file__).parent / "token.json"
