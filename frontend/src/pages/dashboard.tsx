@@ -13,11 +13,13 @@ import { useNotifications, useMarkNotificationRead } from '../lib/hooks/useNotif
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { motion, AnimatePresence, useInView, easeInOut } from 'framer-motion';
+import { useMyCollaborations } from '../lib/hooks/useCollaboration';
 import {
   Mail, Code2, Plus, CalendarDays, BookOpen,
   Users, Rocket, Settings, ChevronRight,
   Bell, BadgeCheck, Hash, Moon, Sun,
   Heart, ClipboardList, CheckCircle2, XCircle,
+  ArrowRight
 } from 'lucide-react';
 
 // ========== Animation Variants ==========
@@ -79,7 +81,7 @@ const slideInLeft = {
   visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
-// ========== Theme Tokens (unchanged) ==========
+// ========== Theme Tokens ==========
 const LIGHT = {
   page:        'bg-gray-50',
   card:        'bg-white border-gray-100 shadow-sm',
@@ -164,7 +166,7 @@ type T = typeof LIGHT;
 
 const syne = { fontFamily: "'Syne', sans-serif" } as const;
 
-// ========== Sub-components with Enhanced Animations ==========
+// ========== Sub-components ==========
 interface StatCardProps {
   icon: React.ReactNode;
   value: string;
@@ -333,13 +335,16 @@ export const DashboardPage: React.FC = () => {
   const { isDark, setIsDark } = useTheme();
   const t = isDark ? DARK : LIGHT;
 
-  // NEW: Student profile from Excel source of truth
+  // Student profile from Excel source of truth
   const { data: studentProfile, isLoading: profileLoading } = useStudentProfile();
 
-  // NEW: Liked projects
+  // Liked projects
   const { data: likedProjects, isLoading: likedLoading } = useLikedProjects();
 
-  // NEW: Notifications
+  // Collaborations
+  const { data: collaborations, isLoading: collabLoading } = useMyCollaborations();
+
+  // Notifications
   const { data: notifications, isLoading: notifLoading } = useNotifications();
   const { mutate: markRead } = useMarkNotificationRead();
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -506,7 +511,7 @@ export const DashboardPage: React.FC = () => {
                   <span className="hidden xs:inline">{isDark ? 'Light' : 'Dark'}</span>
                 </motion.button>
 
-                {/* NEW: Notification Bell with Dropdown */}
+                {/* Notification Bell with Dropdown */}
                 <div className="relative">
                   <motion.button
                     onClick={() => setShowNotifDropdown(!showNotifDropdown)}
@@ -709,7 +714,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </motion.div>
 
-                {/* NEW: Liked Projects */}
+                {/* Liked Projects */}
                 <motion.div variants={slideInLeft} className={`${t.card} border rounded-2xl overflow-hidden transition-colors duration-300`}>
                   <div className="flex items-center justify-between p-5 sm:p-6">
                     <div>
@@ -759,6 +764,57 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </motion.div>
 
+                {/* Collaborations */}
+                <motion.div variants={slideInLeft} className={`${t.card} border rounded-2xl overflow-hidden transition-colors duration-300`}>
+                  <div className="flex items-center justify-between p-5 sm:p-6">
+                    <div>
+                      <h2 className={`font-bold text-base sm:text-lg ${t.t1}`} style={syne}>Collaborations</h2>
+                      <p className={`text-xs sm:text-sm ${t.t2} mt-0.5`}>Projects you're contributing to</p>
+                    </div>
+                    <Link to="/collaboration-hub" className={`text-xs font-medium transition-colors ${t.link} whitespace-nowrap ml-4`}>
+                      Find more →
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-white/[0.05] p-5 sm:p-6">
+                    {collabLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600" />
+                      </div>
+                    ) : !collaborations || collaborations.length === 0 ? (
+                      <div className="flex flex-col items-center text-center py-6">
+                        <div className={`w-12 h-12 ${t.emptyBox} border-2 border-dashed rounded-xl flex items-center justify-center mb-3`}>
+                          <Users className={`w-5 h-5 ${t.emptyIco}`} />
+                        </div>
+                        <p className={`text-xs sm:text-sm ${t.t2} max-w-xs`}>
+                          You haven't joined any collaborations yet. Browse the hub to find projects that need your skills.
+                        </p>
+                        <Link to="/collaboration-hub" className={`text-xs font-medium ${t.link} mt-3`}>
+                          Browse collaboration hub →
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {collaborations.slice(0, 3).map((project: any) => (
+                          <ProjectItem
+                            key={project.id}
+                            id={project.id}
+                            title={project.title}
+                            description={project.description}
+                            tags={project.tags}
+                            t={t}
+                          />
+                        ))}
+                        {collaborations.length > 3 && (
+                          <Link to="/collaboration-hub" className={`block text-center text-xs font-medium ${t.link} mt-2`}>
+                            + {collaborations.length - 3} more collaboration{collaborations.length - 3 !== 1 ? 's' : ''}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+
                 {/* Quick Actions */}
                 <motion.div variants={slideInLeft} className={`${t.card} border rounded-2xl p-5 sm:p-6 transition-colors duration-300`}>
                   <h2 className={`font-bold text-base sm:text-lg ${t.t1} mb-0.5`} style={syne}>Quick Actions</h2>
@@ -768,7 +824,6 @@ export const DashboardPage: React.FC = () => {
                     <ActionCard to="/events" iconBg={isDark ? 'bg-violet-500/10' : 'bg-violet-100'} label="Browse Events" desc="Workshops & meetups" icon={<CalendarDays className={`w-4 h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />} t={t} />
                     <ActionCard to="/resources" iconBg={isDark ? 'bg-blue-500/10' : 'bg-blue-100'} label="Resources" desc="Study materials" icon={<BookOpen className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />} t={t} />
                     <ActionCard to="/profile" iconBg={isDark ? 'bg-amber-500/10' : 'bg-amber-100'} label="Edit Profile" desc="Update your info" icon={<Settings className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />} t={t} />
-                    {/* NEW: Committees quick action */}
                     <ActionCard to="/committees" iconBg={isDark ? 'bg-pink-500/10' : 'bg-pink-100'} label="Committees" desc="Join a committee" icon={<Users className={`w-4 h-4 ${isDark ? 'text-pink-400' : 'text-pink-600'}`} />} t={t} />
                   </div>
                 </motion.div>
@@ -778,21 +833,26 @@ export const DashboardPage: React.FC = () => {
                   <h2 className={`font-bold text-base sm:text-lg ${t.t1} mb-0.5`} style={syne}>Community Overview</h2>
                   <p className={`text-xs ${t.t2} mb-5`}>NACOS ABUAD at a glance</p>
                   <div className={`grid grid-cols-2 sm:grid-cols-4 ${t.divider} divide-x`}>
-                    {[['250+', 'Active Students'], ['120+', 'Projects'], ['36+', 'Events'], ['2000+', 'Resources']].map(([val, label]) => (
-                      <div key={label} className="text-center px-2 sm:px-4 py-2">
-                        <motion.div
-                          className={`font-extrabold text-xl sm:text-2xl ${t.comVal}`}
-                          style={syne}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4 }}
-                        >
-                          {val}
-                        </motion.div>
-                        <div className={`text-[11px] sm:text-xs ${t.comLbl} mt-1`}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
+  {[
+    ['250+', 'Active Students'],
+    ['120+', 'Projects'],
+    ['36+', 'Events'],
+    ['2000+', 'Resources']
+  ].map(([val, label]) => (
+    <div key={label} className="text-center px-2 sm:px-4 py-2">
+      <motion.div
+        className={`font-extrabold text-xl sm:text-2xl ${t.comVal}`}
+        style={syne}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        {val}
+      </motion.div>
+      <div className={`text-[11px] sm:text-xs ${t.comLbl} mt-1`}>{label}</div>
+    </div>
+  ))}
+</div>
                 </motion.div>
               </motion.div>
 
@@ -822,7 +882,6 @@ export const DashboardPage: React.FC = () => {
                     <div className={`font-bold text-base sm:text-lg ${t.t1} leading-tight`} style={syne}>
                       {user?.full_name}
                     </div>
-                    {/* NEW: Dynamic level & department from Excel source of truth */}
                     <div className={`text-xs ${t.t2} mt-1 mb-3`}>
                       {profileLoading ? 'Loading...' : `${displayLevel} · ${displayDept}`}
                     </div>
@@ -837,7 +896,6 @@ export const DashboardPage: React.FC = () => {
                       { icon: <Hash className="w-3 h-3" />, label: 'Matric No.', val: user?.matric_number },
                       { icon: <Mail className="w-3 h-3" />, label: 'Email', val: user?.email },
                       { icon: <BadgeCheck className="w-3 h-3" />, label: 'Member Since', val: memberSince },
-                      // NEW: Phone number from profile
                       { icon: <Users className="w-3 h-3" />, label: 'Phone', val: displayPhone },
                     ].map(({ icon, label, val }) => (
                       <motion.div

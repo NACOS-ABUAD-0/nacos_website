@@ -30,13 +30,19 @@ class Project(models.Model):
         default='published'
     )
 
-    # like_count = models.PositiveIntegerField(default=0)
-
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return self.title
+
+    @property
+    def has_collaboration_needs(self):
+        return self.collaboration_needs.exists()
+
+    @property
+    def open_collaboration_needs(self):
+        return self.collaboration_needs.filter(is_filled=False)
 
 
 class Like(models.Model):
@@ -45,7 +51,66 @@ class Like(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'project')  # prevents duplicate likes
+        unique_together = ('user', 'project')
 
     def __str__(self):
         return f"{self.user} likes {self.project}"
+
+
+# ─── Collaboration System ────────────────────────────────────────────────────
+
+class CollaborationNeed(models.Model):
+    SKILL_CHOICES = [
+        ('frontend', 'Frontend'),
+        ('backend', 'Backend'),
+        ('ui_ux', 'UI/UX'),
+        ('ai_ml', 'AI/ML'),
+        ('documentation', 'Documentation'),
+        ('others', 'Others'),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='collaboration_needs'
+    )
+    skill_type = models.CharField(max_length=20, choices=SKILL_CHOICES)
+    custom_skill = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    is_filled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.project.title} needs {self.get_skill_type_display()}"
+
+
+class CollaborationRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='collaboration_requests'
+    )
+    need = models.ForeignKey(
+        CollaborationNeed, on_delete=models.CASCADE,
+        related_name='requests', null=True, blank=True
+    )
+    applicant = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='collaboration_requests'
+    )
+    phone_number = models.CharField(max_length=20)
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('project', 'applicant')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.applicant.full_name} → {self.project.title}"

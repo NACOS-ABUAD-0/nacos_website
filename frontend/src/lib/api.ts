@@ -1,4 +1,5 @@
 // src/lib/api.ts
+
 import axios from "axios";
 
 // ─── URL CONSTRUCTION ────────────────────────────────────────────────────────
@@ -99,7 +100,7 @@ const handleApiError = (error: unknown) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TYPE INTERFACES (new)
+// TYPE INTERFACES
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface StudentProfileData {
@@ -140,6 +141,30 @@ export interface NotificationData {
   is_read: boolean;
   data: Record<string, any>;
   created_at: string;
+}
+
+export interface CollaborationNeedData {
+  id?: number;
+  skill_type: 'frontend' | 'backend' | 'ui_ux' | 'ai_ml' | 'documentation' | 'others';
+  custom_skill?: string;
+  description?: string;
+  is_filled?: boolean;
+}
+
+export interface CollaborationRequestData {
+  id: number;
+  project: number;
+  project_title: string;
+  need: number | null;
+  need_skill: string;
+  applicant: number;
+  applicant_name: string;
+  applicant_email: string;
+  phone_number: string;
+  message: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,7 +244,7 @@ export const usersAPI = {
   getCount: () => api.get("/users/count/"),
 };
 
-// ── STUDENT PROFILE (new) ────────────────────────────────────────────────────
+// ── STUDENT PROFILE ────────────────────────────────────────────────────────────
 export const studentAPI = {
   getProfile: () => api.get<StudentProfileData>("/student/profile/"),
   updateProfile: (data: Partial<StudentProfileData>) =>
@@ -246,7 +271,6 @@ export const projectsAPI = {
 
   getMyProjects: () => api.get("/projects/my-projects/"),
 
-  // NEW: liked projects
   getLiked: () => api.get("/projects/liked/"),
 
   toggleFeatured: (id: string | number) =>
@@ -256,7 +280,7 @@ export const projectsAPI = {
   unlikeProject: (id: string | number) => api.post(`/projects/${id}/unlike/`),
 };
 
-// ── COMMITTEES (new) ─────────────────────────────────────────────────────────
+// ── COMMITTEES ───────────────────────────────────────────────────────────────
 export const committeesAPI = {
   getAll: () => api.get<CommitteeData[]>("/committees/"),
   apply: (payload: {
@@ -269,13 +293,13 @@ export const committeesAPI = {
     api.get<CommitteeApplicationData[]>("/committee-applications/my-applications/"),
 };
 
-// ── NOTIFICATIONS (new) ──────────────────────────────────────────────────────
+// ── NOTIFICATIONS ──────────────────────────────────────────────────────────────
 export const notificationsAPI = {
   getAll: () => api.get<NotificationData[]>("/notifications/"),
   markRead: (id: number) => api.patch(`/notifications/${id}/read/`),
 };
 
-// ── ADMIN COMMITTEE (new) ────────────────────────────────────────────────────
+// ── ADMIN COMMITTEE ──────────────────────────────────────────────────────────
 export const adminCommitteeAPI = {
   getApplications: () =>
     api.get<CommitteeApplicationData[]>("/admin/committee-applications/"),
@@ -283,6 +307,57 @@ export const adminCommitteeAPI = {
     api.patch(`/admin/committee-applications/${id}/approve/`, { admin_note }),
   reject: (id: number, admin_note?: string) =>
     api.patch(`/admin/committee-applications/${id}/reject/`, { admin_note }),
+};
+
+// ── CLOUDINARY UPLOAD (new) ──────────────────────────────────────────────────
+export const cloudinaryAPI = {
+  upload: async (file: File, uploadPreset: string = 'nacos_projects') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    // Use your Cloudinary cloud name
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'your_cloud_name';
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      { method: 'POST', body: formData }
+    );
+
+    if (!response.ok) throw new Error('Upload failed');
+    return response.json();
+  },
+};
+
+// ── COLLABORATION (new) ──────────────────────────────────────────────────────
+export const collaborationAPI = {
+  // Apply to collaborate on a project
+  apply: (projectId: number | string, payload: {
+    need_id?: number;
+    phone_number: string;
+    message: string;
+  }) => api.post(`/projects/${projectId}/apply_collaborate/`, payload),
+
+  // Get collaboration requests for a project (owner only)
+  getRequests: (projectId: number | string) =>
+    api.get<CollaborationRequestData[]>(`/projects/${projectId}/collaboration_requests/`),
+
+  // Accept a request
+  acceptRequest: (projectId: number | string, requestId: number) =>
+    api.patch(`/projects/${projectId}/requests/${requestId}/accept/`),
+
+  // Reject a request
+  rejectRequest: (projectId: number | string, requestId: number) =>
+    api.patch(`/projects/${projectId}/requests/${requestId}/reject/`),
+
+  // Get projects needing help
+  getProjectsNeedingHelp: (skillType?: string) =>
+    api.get('/projects/', {
+      params: { needs_help: true, ...(skillType ? { skill_type: skillType } : {}) }
+    }),
+
+  // Get my collaborations
+  getMyCollaborations: () => api.get('/projects/my-collaborations/'),
 };
 
 // ── SKILLS / TAGS ─────────────────────────────────────────────────────────────

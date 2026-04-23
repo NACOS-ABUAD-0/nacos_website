@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+// src/components/ProjectForm.tsx
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useSkills, useCreateProject, useUpdateProject } from '../lib/hooks/useProjects';
+import { cloudinaryAPI } from '../lib/api';
 import type { Project, Skill } from '../types';
 
 const projectSchema = z.object({
@@ -11,9 +13,29 @@ const projectSchema = z.object({
   tag_ids: z.array(z.number()).optional(),
   links: z.record(z.string().url('Invalid URL')).optional(),
   images: z.array(z.string().url('Invalid URL')).optional(),
+  collaboration_needs: z.array(z.object({
+    skill_type: z.enum(['frontend', 'backend', 'ui_ux', 'ai_ml', 'documentation', 'others']),
+    custom_skill: z.string().optional(),
+    description: z.string().optional(),
+  })).optional(),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
+
+interface CollaborationNeedForm {
+  skill_type: 'frontend' | 'backend' | 'ui_ux' | 'ai_ml' | 'documentation' | 'others';
+  custom_skill: string;
+  description: string;
+}
+
+const SKILL_OPTIONS = [
+  { value: 'frontend', label: 'Frontend' },
+  { value: 'backend', label: 'Backend' },
+  { value: 'ui_ux', label: 'UI/UX' },
+  { value: 'ai_ml', label: 'AI/ML' },
+  { value: 'documentation', label: 'Documentation' },
+  { value: 'others', label: 'Others' },
+];
 
 interface ProjectFormProps {
   project?: Project;
@@ -44,11 +66,15 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
       tag_ids: project?.tags?.map((tag: Skill) => tag.id) || [],
       links: project?.links || {},
       images: project?.images || [],
+      collaboration_needs: project?.collaboration_needs || [],
     },
   });
 
   const [linkInputs, setLinkInputs] = useState<{ key: string; value: string }[]>([]);
   const [imageInputs, setImageInputs] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [collabNeeds, setCollabNeeds] = useState<CollaborationNeedForm[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (project?.links) {
@@ -59,9 +85,53 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     if (project?.images) {
       setImageInputs(project.images);
     }
+    if (project?.collaboration_needs) {
+      setCollabNeeds(project.collaboration_needs.map((n: any) => ({
+        skill_type: n.skill_type,
+        custom_skill: n.custom_skill || '',
+        description: n.description || '',
+      })));
+    }
   }, [project]);
 
   const selectedTags = watch('tag_ids') || [];
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    setUploadingImages(true);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const result = await cloudinaryAPI.upload(file);
+        uploadedUrls.push(result.secure_url);
+      }
+      const newImages = [...imageInputs, ...uploadedUrls];
+      setImageInputs(newImages);
+      setValue('images', newImages);
+    } catch (err) {
+      alert('Failed to upload images. Please try again.');
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const addCollabNeed = () => {
+    setCollabNeeds([...collabNeeds, { skill_type: 'frontend', custom_skill: '', description: '' }]);
+  };
+
+  const removeCollabNeed = (index: number) => {
+    setCollabNeeds(collabNeeds.filter((_, i) => i !== index));
+  };
+
+  const updateCollabNeed = (index: number, field: keyof CollaborationNeedForm, value: string) => {
+    const updated = [...collabNeeds];
+    updated[index] = { ...updated[index], [field]: value };
+    setCollabNeeds(updated);
+  };
 
   const handleFormSubmit = (data: ProjectFormData) => {
     const formattedData = {
@@ -71,6 +141,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         return acc;
       }, {}),
       images: imageInputs.filter((url: string) => url.trim() !== ''),
+      collaboration_needs_data: collabNeeds.map(need => ({
+        skill_type: need.skill_type,
+        custom_skill: need.skill_type === 'others' ? need.custom_skill : '',
+        description: need.description,
+      })),
     };
 
     if (project) {
@@ -84,25 +159,17 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   };
 
   const addLinkInput = () => setLinkInputs([...linkInputs, { key: '', value: '' }]);
-
-  const removeLinkInput = (index: number) =>
-    setLinkInputs(linkInputs.filter((_, i) => i !== index));
-
+  const removeLinkInput = (index: number) => setLinkInputs(linkInputs.filter((_, i) => i !== index));
   const updateLinkInput = (index: number, field: 'key' | 'value', newValue: string) => {
     const updated = [...linkInputs];
     updated[index][field] = newValue;
     setLinkInputs(updated);
   };
 
-  const addImageInput = () => setImageInputs([...imageInputs, '']);
-
-  const removeImageInput = (index: number) =>
-    setImageInputs(imageInputs.filter((_, i) => i !== index));
-
-  const updateImageInput = (index: number, newValue: string) => {
-    const updated = [...imageInputs];
-    updated[index] = newValue;
+  const removeImageInput = (index: number) => {
+    const updated = imageInputs.filter((_, i) => i !== index);
     setImageInputs(updated);
+    setValue('images', updated);
   };
 
   const toggleTag = (tagId: number) => {
@@ -112,7 +179,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     setValue('tag_ids', newTags);
   };
 
-  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const isLoading = createMutation.isPending || updateMutation.isPending || uploadingImages;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -208,8 +275,84 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
+        {/* ─── NEW: Collaboration Needs ─────────────────────────────────────── */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Collaboration Needs</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Specify what help you need from the community</p>
+            </div>
+            <span className="text-xs text-gray-500">Optional</span>
+          </div>
+
+          {collabNeeds.map((need, index) => (
+            <div key={index} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Need #{index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removeCollabNeed(index)}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Skill Type</label>
+                <select
+                  value={need.skill_type}
+                  onChange={(e) => updateCollabNeed(index, 'skill_type', e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 bg-white"
+                >
+                  {SKILL_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {need.skill_type === 'others' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Custom Skill</label>
+                  <input
+                    type="text"
+                    value={need.custom_skill}
+                    onChange={(e) => updateCollabNeed(index, 'custom_skill', e.target.value)}
+                    placeholder="e.g. DevOps, Mobile Development"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={need.description}
+                  onChange={(e) => updateCollabNeed(index, 'description', e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Need a React dev to build dashboard UI"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 resize-none"
+                />
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addCollabNeed}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all duration-200"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Collaboration Need
+          </button>
+        </div>
+
         {/* Links Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-semibold text-gray-900">Project Links</label>
             <span className="text-xs text-gray-500">GitHub, Demo, etc.</span>
@@ -258,45 +401,68 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Images Section */}
-        <div className="space-y-4">
+        {/* ─── NEW: Cloudinary Image Upload ───────────────────────────────── */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">Image URLs</label>
-            <span className="text-xs text-gray-500">Screenshots, mockups</span>
+            <label className="block text-sm font-semibold text-gray-900">Project Images</label>
+            <span className="text-xs text-gray-500">Upload screenshots</span>
           </div>
 
-          <div className="space-y-3">
-            {imageInputs.map((url: string, index: number) => (
-              <div key={index} className="flex gap-3">
-                <input
-                  type="url"
-                  placeholder="https://example.com/image.png"
-                  value={url}
-                  onChange={(e) => updateImageInput(index, e.target.value)}
-                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImageInput(index)}
-                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addImageInput}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all duration-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Image URL
-            </button>
-          </div>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+
+          {/* Upload button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImages}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all duration-200 disabled:opacity-50"
+          >
+            {uploadingImages ? (
+              <>
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Upload Images
+              </>
+            )}
+          </button>
+
+          {/* Image previews */}
+          {imageInputs.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {imageInputs.map((url, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={url}
+                    alt={`Project image ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImageInput(index)}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

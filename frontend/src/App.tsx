@@ -31,6 +31,7 @@ import Gallery from "./pages/gallery";
 import ContactPage from "./pages/contact";
 import { ForgotPasswordPage } from "./pages/forgot-password";
 import { ResetPasswordPage }  from "./pages/reset-password";
+import { CollaborationHubPage } from './pages/CollaborationHubPage';
 
 // ── NEW: Student feature pages ─────────────────────────────────────────────────
 import { LikedProjectsPage } from "./pages/LikedProjectsPage";
@@ -139,6 +140,13 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+
+      <Route path="/collaboration-hub" element={
+        <RequireAuth>
+        <CollaborationHubPage />
+        </RequireAuth>
+        }
+        />
 
       {/* ── NEW: Committees ──────────────────────────────────────────── */}
       <Route
