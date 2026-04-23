@@ -10,3 +10,6 @@ google-auth
 google-auth-oauthlib
 google-api-python-client
 qrcode
+psycopg[binary]
+dj-database-url
+django-anymail[sendgrid]

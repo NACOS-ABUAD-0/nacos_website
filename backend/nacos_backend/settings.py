@@ -3,6 +3,7 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+import dj_database_url  # type: ignore
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -80,17 +81,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'NACOSABUADpasswordisFri,Jan.2025',
-        'HOST': 'nacos-database.cr22cw2s8jih.eu-north-1.rds.amazonaws.com',
-        'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60")),
+        ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("1", "true", "yes", "y", "on"),
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -151,13 +146,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Change to SMTP server
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # Set in environment variable
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment variable
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+
+if SENDGRID_API_KEY:
+    EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
+    ANYMAIL = {
+        "SENDGRID_API_KEY": SENDGRID_API_KEY,
+    }
+else:
+    # Fallback SMTP (often blocked on many hosts). Prefer SendGrid on Render.
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes", "y", "on")
+    EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
 DEFAULT_FROM_EMAIL = 'nacos@abuad.edu.ng'  # Change to actual email
 
 # Frontend URL for email verification links
