@@ -1016,3 +1016,5 @@ export const DashboardPage: React.FC = () => {
 
       <Footer />
     </div>
+  );
+};
