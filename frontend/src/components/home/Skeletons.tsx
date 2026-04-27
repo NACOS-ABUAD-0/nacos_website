@@ -1,6 +1,6 @@
 // src/components/home/Skeletons.tsx
 import React from "react";
-import { motion, easeInOut, cubicBezier, Easing } from "framer-motion";
+import { motion, easeInOut, cubicBezier } from "framer-motion";
 
 // ─── Shared shimmer keyframe via Tailwind (augmented with Framer stagger) ────
 
