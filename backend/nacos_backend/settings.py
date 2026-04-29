@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'executives',
     'inquiries',
     'committees',
+    'face_auth',
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',

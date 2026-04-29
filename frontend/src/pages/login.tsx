@@ -4,10 +4,14 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AuthForm } from "../components/AuthForm";
 import { RegisterFlow } from "../components/RegisterFlow";
+import { ProfileFaceSetup } from "../components/ProfileFaceSetup";
+import { FaceLogin } from "../components/FaceLogin";
+import type { FaceLoginResponse } from "../services/faceAuthService";
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [authMethod, setAuthMethod] = useState<"password" | "face">("password");
   const navigate = useNavigate();
 
   // ── Handles the LOGIN form ────────────────────────────────────────────────
@@ -53,20 +57,59 @@ export const LoginPage: React.FC = () => {
 
               {isLogin ? (
                 <>
-                  <AuthForm
-                    type="login"
-                    onSubmit={handleLogin}
-                    isLoading={isLoading}
-                    onNotRegistered={() => setIsLogin(false)}
-                  />
-                  <div className="mt-4 text-center">
-                    <Link
-                      to="/forgot-password"
-                      className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
+                  {/* ── Auth Method Toggle ── */}
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setAuthMethod("password")}
+                      className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                        authMethod === "password"
+                          ? "bg-green-600 text-white"
+                          : "bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
                     >
-                      Forgot password?
-                    </Link>
+                      Password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMethod("face")}
+                      className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                        authMethod === "face"
+                          ? "bg-green-600 text-white"
+                          : "bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      👁 Face Login
+                    </button>
                   </div>
+
+                  {authMethod === "password" ? (
+                    <>
+                      <AuthForm
+                        type="login"
+                        onSubmit={handleLogin}
+                        isLoading={isLoading}
+                        onNotRegistered={() => setIsLogin(false)}
+                      />
+                      <div className="mt-4 text-center">
+                        <Link
+                          to="/forgot-password"
+                          className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                    </>
+                  ) : (
+                    <FaceLogin
+                      onSuccess={(data: FaceLoginResponse) => {
+                        localStorage.setItem("access_token", data.access);
+                        localStorage.setItem("refresh_token", data.refresh);
+                        navigate("/dashboard");
+                      }}
+                      onSwitchToPassword={() => setAuthMethod("password")}
+                    />
+                  )}
                 </>
               ) : (
                 <RegisterFlow onRegistered={() => setIsLogin(true)} />

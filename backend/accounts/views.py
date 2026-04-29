@@ -36,7 +36,7 @@ from .student_service import verify_student_identity
 logger = logging.getLogger(__name__)
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# Helpers
 
 def _sync_admin_status(user: User) -> bool:
     """
@@ -63,7 +63,7 @@ def _sync_admin_status(user: User) -> bool:
     return False
 
 
-# ─── Auth Views ────────────────────────────────────────────────────────────────
+# Auth Views
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -259,7 +259,7 @@ class StudentProfileView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ─── Notifications ─────────────────────────────────────────────────────────────
+# Notifications
 
 class NotificationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -283,7 +283,7 @@ class NotificationMarkReadView(APIView):
         return Response({"status": "marked as read"})
 
 
-# ─── Admin Views ───────────────────────────────────────────────────────────────
+# Admin Views
 
 class AdminRoleAssignmentView(APIView):
     """
@@ -297,7 +297,7 @@ class AdminRoleAssignmentView(APIView):
 
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
-    # ── Assign (POST) ──────────────────────────────────────────────────────
+    # Assign (POST)
     def post(self, request):
         serializer = AdminRoleAssignSerializer(data=request.data)
         if not serializer.is_valid():
@@ -307,7 +307,7 @@ class AdminRoleAssignmentView(APIView):
         full_name: str = serializer.validated_data["full_name"]
 
         with transaction.atomic():
-            # ── Enforce max-admin ceiling ──────────────────────────────────
+            # Enforce max-admin ceiling
             # select_for_update() locks the rows so concurrent promotions
             # can't race past the limit.
             current_admin_count = (
@@ -348,14 +348,14 @@ class AdminRoleAssignmentView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # ── Idempotency ────────────────────────────────────────────────
+            # Idempotency
             if target_user.role == User.Role.ADMIN:
                 return Response(
                     {"message": f"{target_user.full_name} is already an admin."},
                     status=status.HTTP_200_OK,
                 )
 
-            # ── Promote ────────────────────────────────────────────────────
+            #Promote
             target_user.role = User.Role.ADMIN
             target_user.save(update_fields=["role", "is_staff"])
 

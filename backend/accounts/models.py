@@ -1,3 +1,5 @@
+# backend/accounts/models.py
+
 from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -72,6 +74,12 @@ class User(AbstractUser):
     is_active = models.BooleanField(default=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+
+    # ── Face login ─────────────────────────────────────────────────────────────
+    face_login_enabled = models.BooleanField(
+        default=False,
+        help_text="Set to True when the user has enrolled face embeddings.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]

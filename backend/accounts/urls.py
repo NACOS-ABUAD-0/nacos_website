@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
@@ -68,4 +68,7 @@ urlpatterns = [
     path("admin/roles/revoke/", AdminRoleAssignmentView.as_view(), name="admin-role-revoke"),
     path("admin/roles/", AdminListView.as_view(), name="admin-list"),
     path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
+
+    # ── Face Authentication (NEW) ──────────────────────────────────────────────
+    path("face-auth/", include("face_auth.urls")),
 ]

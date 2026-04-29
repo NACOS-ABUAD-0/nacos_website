@@ -206,7 +206,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             "date_joined",
             "is_email_verified",
             "is_staff",
-            "role",          # ← new: exposes the RBAC role
+            "role",
+            "face_login_enabled",
         )
         read_only_fields = (
             "id",
@@ -214,8 +215,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             "date_joined",
             "is_email_verified",
             "is_staff",
-            "matric_number",  # ← immutable after registration
-            "role",           # ← changed only via AdminRoleAssignmentView
+            "matric_number",
+            "role",
+            "face_login_enabled",
         )
 
 
