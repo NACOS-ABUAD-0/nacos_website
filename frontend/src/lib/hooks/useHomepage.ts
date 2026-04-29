@@ -60,24 +60,56 @@ export interface Stats {
   resources: number;
 }
 
+export interface FeaturedProjectsResult {
+  results: ProjectItem[];
+  count: number;
+}
+
+// ─── Helper: normalize any API shape to a plain ProjectItem array ─────────────
+//
+// The Django REST Framework endpoint may return either:
+//   A) A paginated object: { count, next, previous, results: [...] }
+//   B) A plain array:      [...]
+//
+// This helper always produces a ProjectItem[] regardless of which shape arrives,
+// so callers never have to guard against undefined.
+// ─────────────────────────────────────────────────────────────────────────────
+function extractResults(data: unknown): ProjectItem[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data as ProjectItem[];
+  const paginated = data as { results?: ProjectItem[] };
+  if (Array.isArray(paginated.results)) return paginated.results;
+  return [];
+}
+
 // useFeaturedProjects
 // Try featured first; fall back to 6 most recent if none are featured.
 // This ensures the homepage always shows projects even before an admin
 // has manually featured any.
+//
+// Always returns { results: ProjectItem[], count: number } — never undefined
+// arrays — so downstream components can safely call .length and .map.
 export const useFeaturedProjects = () => {
-  return useQuery({
+  return useQuery<FeaturedProjectsResult>({
     queryKey: ['projects', 'homepage'],
     queryFn: async () => {
       const featuredRes = await api.get('/projects/', {
         params: { is_featured: true, page_size: 6 },
       });
-      if (featuredRes.data?.results?.length > 0) return featuredRes.data;
+
+      const featuredResults = extractResults(featuredRes.data);
+
+      if (featuredResults.length > 0) {
+        return { results: featuredResults, count: featuredResults.length };
+      }
 
       // Fallback: most recent published projects
       const recentRes = await api.get('/projects/', {
         params: { page_size: 6, ordering: '-created_at' },
       });
-      return recentRes.data;
+
+      const recentResults = extractResults(recentRes.data);
+      return { results: recentResults, count: recentResults.length };
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -87,7 +119,9 @@ export const useUpcomingEvents = () => {
   return useQuery({
     queryKey: ['events', 'upcoming'],
     queryFn: () =>
-      api.get('/events/', { params: { upcoming: true, page_size: 3 } }).then(r => r.data),
+      api
+        .get('/events/', { params: { upcoming: true, page_size: 3 } })
+        .then(r => r.data),
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -109,14 +143,14 @@ export const useLatestResources = () => {
   });
 };
 
-
 export const useLatestGallery = () => {
   return useQuery({
     queryKey: ['gallery', { page_size: 12 }],
     queryFn: () =>
-      api.get('/gallery/', { params: { page_size: 12 } }).then(r =>
-        Array.isArray(r.data) ? r.data : (r.data?.results ?? [])
-      ),
+      api.get('/gallery/', { params: { page_size: 12 } }).then(r => {
+        const data = r.data;
+        return Array.isArray(data) ? data : (data?.results ?? []);
+      }),
     staleTime: 5 * 60 * 1000,
   });
 };

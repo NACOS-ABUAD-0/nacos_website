@@ -29,24 +29,6 @@ const staggerContainer = {
   },
 };
 
-const cardHover = {
-  hover: {
-    y: -6,
-    scale: 0.92,
-    transition: { duration: 0.2, ease: easeInOut },
-  },
-  tap: {
-    scale: 0.98,
-    transition: { duration: 0.1, ease: easeInOut },
-  },
-};
-
-const buttonPress = {
-  hover: { scale: 1.02 },
-  tap: { scale: 0.96 },
-  transition: { duration: 0.2, ease: easeInOut },
-};
-
 const tagButtonHover = {
   hover: { scale: 1.05 },
   tap: { scale: 0.95 },
@@ -70,6 +52,14 @@ export const ProjectsGallery: React.FC = () => {
   const { data: projects, isLoading, error } = useProjects(filters);
   const { data: skills } = useSkills();
   const { isAuthenticated } = useAuth();
+
+  // Normalize projects data: handle both array and paginated object responses
+  const projectList = Array.isArray(projects)
+    ? projects
+    : projects?.results ?? [];
+  const projectCount = Array.isArray(projects)
+    ? projects.length
+    : (projects?.count ?? projects?.length ?? 0);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -301,9 +291,9 @@ export const ProjectsGallery: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.1, duration: 0.4, ease: easeInOut }}
                     >
-                      {projects.count || projects.length}
+                      {projectCount}
                       <span className="text-gray-500 font-normal ml-1">
-                        project{(projects.count || projects.length) !== 1 ? 's' : ''} found
+                        project{projectCount !== 1 ? 's' : ''} found
                       </span>
                     </motion.h2>
                     {filters.search && (
@@ -329,7 +319,7 @@ export const ProjectsGallery: React.FC = () => {
                 </div>
 
                 {/* Projects grid */}
-                {projects.results?.length === 0 ? (
+                {projectList.length === 0 ? (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -349,7 +339,7 @@ export const ProjectsGallery: React.FC = () => {
                       }
                     </p>
                     {isAuthenticated && !filters.search && selectedTags.length === 0 && (
-                      <motion.div whileHover="hover" whileTap="tap" variants={buttonPress}>
+                      <motion.div whileHover="hover" whileTap="tap">
                         <Link
                           to="/projects/new"
                           className="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
@@ -367,12 +357,12 @@ export const ProjectsGallery: React.FC = () => {
                     ref={cardsRef}
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                   >
-                    {projects.results?.map((project, index) => (
+                    {projectList.map((project, index) => (
                       <motion.div
                         key={project.id}
                         variants={fadeUp}
                         initial="hidden"
-                        animate={isCardsInView ? "visible" : "hidden"}
+                        animate={isCardsInView ? "visible" : "visible"}
                         custom={index}
                         whileHover="hover"
                         whileTap="tap"

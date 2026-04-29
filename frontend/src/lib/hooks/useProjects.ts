@@ -1,3 +1,4 @@
+// src/lib/hooks/useProjects.ts
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { projectsAPI, skillsAPI } from '../api';
 import type { Project, Skill } from '../../types';

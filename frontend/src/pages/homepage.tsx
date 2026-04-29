@@ -86,6 +86,11 @@ const Homepage: React.FC = () => {
     refetch: refetchProjects,
   } = useFeaturedProjects();
 
+  // Safely derive the results array. useFeaturedProjects always resolves to
+  // { results: ProjectItem[], count: number }, but we guard here too so that
+  // the component is robust even if the hook's return type ever changes.
+  const projectResults: ProjectItem[] = projects?.results ?? [];
+
   return (
     <Layout>
       <div className="min-h-screen flex flex-col bg-white">
@@ -147,7 +152,7 @@ const Homepage: React.FC = () => {
                       Try Again
                     </motion.button>
                   </motion.div>
-                ) : projects?.results?.length === 0 ? (
+                ) : projectResults.length === 0 ? (
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0, y: 12 }}
@@ -176,7 +181,8 @@ const Homepage: React.FC = () => {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <ProjectCarousel projects={projects.results} />
+                    {/* Pass the normalized array — never undefined */}
+                    <ProjectCarousel projects={projectResults} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -208,7 +214,7 @@ const Homepage: React.FC = () => {
             </Section>
           </AnimatedSection>
 
-                    {/* Gallery */}
+          {/* Gallery */}
           <AnimatedSection>
             <Gallery isHome={true} />
           </AnimatedSection>
@@ -317,6 +323,12 @@ interface ProjectCarouselProps {
 }
 
 const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
+  // ── Safety guard ────────────────────────────────────────────────────────────
+  // Even though useFeaturedProjects now always normalises to an array, this
+  // guard makes the component self-contained and crash-proof regardless of
+  // whatever a parent passes in.
+  if (!projects || projects.length === 0) return null;
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [direction, setDirection] = useState(0); // 1 = next, -1 = prev
@@ -337,7 +349,9 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
       setDirection(1);
       setCurrentSlide((prev) => (prev + 1) % totalSlides);
     }, 5000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [isPaused, totalSlides]);
 
   const goToNext = () => {
@@ -449,7 +463,7 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
                       {project.title}
                     </h3>
                     <p className="text-sm text-gray-600 mb-3">
-                      By {project.owner.full_name || "Anonymous"}
+                      By {project.owner?.full_name || "Anonymous"}
                     </p>
 
                     {project.skills && project.skills.length > 0 && (
@@ -489,7 +503,9 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
                         </motion.svg>
                       </Link>
                       <span className="text-xs text-gray-400">
-                        {project.updated_at ? new Date(project.updated_at).toLocaleDateString() : ""}
+                        {project.updated_at
+                          ? new Date(project.updated_at).toLocaleDateString()
+                          : ""}
                       </span>
                     </div>
                   </div>
