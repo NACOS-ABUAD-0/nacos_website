@@ -868,32 +868,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </motion.div>
 
-                {/* Community Overview */}
-                <motion.div variants={slideInLeft} className={`${t.card} border rounded-2xl p-5 sm:p-6 transition-colors duration-300`}>
-                  <h2 className={`font-bold text-base sm:text-lg ${t.t1} mb-0.5`} style={syne}>Community Overview</h2>
-                  <p className={`text-xs ${t.t2} mb-5`}>NACOS ABUAD at a glance</p>
-                  <div className={`grid grid-cols-2 sm:grid-cols-4 ${t.divider} divide-x`}>
-                    {[
-                      ['250+', 'Active Students'],
-                      ['120+', 'Projects'],
-                      ['36+', 'Events'],
-                      ['2000+', 'Resources']
-                    ].map(([val, label]) => (
-                      <div key={label} className="text-center px-2 sm:px-4 py-2">
-                        <motion.div
-                          className={`font-extrabold text-xl sm:text-2xl ${t.comVal}`}
-                          style={syne}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4 }}
-                        >
-                          {val}
-                        </motion.div>
-                        <div className={`text-[11px] sm:text-xs ${t.comLbl} mt-1`}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
+
               </motion.div>
 
               {/* RIGHT COLUMN */}
