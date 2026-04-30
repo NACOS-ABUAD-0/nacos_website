@@ -3,27 +3,43 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { projectsAPI, skillsAPI } from '../api';
 import type { Project, Skill } from '../../types';
 
-// Query hooks
+// ─── Helper: normalize any API shape to a plain array ────────────────────────
+//
+// Django REST Framework endpoints may return either:
+//   A) A paginated object: { count, next, previous, results: [...] }
+//   B) A plain array:      [...]
+//
+// This helper always produces T[] regardless of which shape arrives,
+// so every hook is safe to use directly without downstream guards.
+// ─────────────────────────────────────────────────────────────────────────────
+function extractArray<T>(data: unknown): T[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data as T[];
+  const paginated = data as { results?: T[] };
+  if (Array.isArray(paginated.results)) return paginated.results;
+  return [];
+}
+
+// ─── Query hooks ─────────────────────────────────────────────────────────────
+
 export const useProjects = (params = {}) => {
   return useQuery({
     queryKey: ['projects', params],
     queryFn: async () => {
       const res = await projectsAPI.getProjects(params);
-      // ✅ Normalize: always return the results array
-      return res.data?.results ?? [];
+      // Always resolve to a plain Project[] regardless of API response shape
+      return extractArray<Project>(res.data);
     },
     placeholderData: keepPreviousData,
   });
 };
 
-// Separate hook for user's own projects (if API has dedicated endpoint)
 export const useMyProjects = () => {
   return useQuery({
     queryKey: ['my-projects'],
     queryFn: async () => {
       const res = await projectsAPI.getMyProjects();
-      // ✅ Normalize to array
-      return res.data?.results ?? [];
+      return extractArray<Project>(res.data);
     },
   });
 };
@@ -39,11 +55,16 @@ export const useProject = (id: string | number) => {
 export const useSkills = () => {
   return useQuery<Skill[]>({
     queryKey: ['skills'],
-    queryFn: () => skillsAPI.getSkills().then(res => res.data),
+    queryFn: async () => {
+      const res = await skillsAPI.getSkills();
+      // Normalize: API may return { count, results: Skill[] } or Skill[]
+      return extractArray<Skill>(res.data);
+    },
   });
 };
 
-// Mutation hooks
+// ─── Mutation hooks ───────────────────────────────────────────────────────────
+
 export const useCreateProject = () => {
   const queryClient = useQueryClient();
 

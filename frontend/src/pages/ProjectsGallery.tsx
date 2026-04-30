@@ -53,21 +53,19 @@ export const ProjectsGallery: React.FC = () => {
   const { data: skills } = useSkills();
   const { isAuthenticated } = useAuth();
 
-  // Normalize projects data: handle both array and paginated object responses
-  const projectList = Array.isArray(projects)
-    ? projects
-    : projects?.results ?? [];
-  const projectCount = Array.isArray(projects)
-    ? projects.length
-    : (projects?.count ?? projects?.length ?? 0);
+  // useProjects and useSkills both normalize to plain arrays inside the hook,
+  // so we can use them directly here without any further shape-checking.
+  const projectList = projects ?? [];
+  const projectCount = projectList.length;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setFilters({
       search: searchTerm,
-      tag_names: selectedTags.map(id =>
-        skills?.find(s => s.id === id)?.name
-      ).filter(Boolean).join(','),
+      tag_names: selectedTags
+        .map(id => skills?.find(s => s.id === id)?.name)
+        .filter(Boolean)
+        .join(','),
     });
   };
 
@@ -134,7 +132,7 @@ export const ProjectsGallery: React.FC = () => {
             )}
           </motion.div>
 
-          {/* Filter Section with entrance animation */}
+          {/* Filter Section */}
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -171,6 +169,7 @@ export const ProjectsGallery: React.FC = () => {
                   Technologies & Skills
                 </label>
                 <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 min-h-16">
+                  {/* skills is always Skill[] from useSkills — safe to .map directly */}
                   {skills?.map((skill) => (
                     <motion.button
                       key={skill.id}
@@ -202,7 +201,8 @@ export const ProjectsGallery: React.FC = () => {
               {/* Action buttons */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                 <div className="text-sm text-gray-500">
-                  {selectedTags.length > 0 && `${selectedTags.length} skill${selectedTags.length !== 1 ? 's' : ''} selected`}
+                  {selectedTags.length > 0 &&
+                    `${selectedTags.length} skill${selectedTags.length !== 1 ? 's' : ''} selected`}
                 </div>
                 <div className="flex gap-3">
                   <motion.button
@@ -274,7 +274,7 @@ export const ProjectsGallery: React.FC = () => {
               </motion.div>
             )}
 
-            {projects && !isLoading && !error && (
+            {!isLoading && !error && (
               <motion.div
                 key="results"
                 initial={{ opacity: 0 }}
