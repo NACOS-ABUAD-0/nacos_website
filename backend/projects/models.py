@@ -1,4 +1,5 @@
 # backend/projects/models.py
+
 from django.db import models
 from accounts.models import User
 
@@ -15,6 +16,8 @@ class SkillTag(models.Model):
 
 
 class Project(models.Model):
+    STATUS_CHOICES = [('draft', 'Draft'), ('published', 'Published')]
+
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=255)
     description = models.TextField()
@@ -26,8 +29,8 @@ class Project(models.Model):
     is_featured = models.BooleanField(default=False)
     status = models.CharField(
         max_length=20,
-        choices=[('draft', 'Draft'), ('published', 'Published')],
-        default='published'
+        choices=STATUS_CHOICES,
+        default='published',
     )
 
     class Meta:
@@ -38,7 +41,7 @@ class Project(models.Model):
 
     @property
     def has_collaboration_needs(self):
-        return self.collaboration_needs.exists()
+        return self.collaboration_needs.filter(is_filled=False).exists()
 
     @property
     def open_collaboration_needs(self):
@@ -57,7 +60,7 @@ class Like(models.Model):
         return f"{self.user} likes {self.project}"
 
 
-# ─── Collaboration System ────────────────────────────────────────────────────
+# ─── Collaboration System ─────────────────────────────────────────────────────
 
 class CollaborationNeed(models.Model):
     SKILL_CHOICES = [
@@ -95,9 +98,15 @@ class CollaborationRequest(models.Model):
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name='collaboration_requests'
     )
+    # BUG FIX: Changed on_delete from CASCADE to SET_NULL.
+    # Previously, when serializer.update() rebuilt collaboration_needs
+    # (delete-all + recreate), it cascade-deleted every linked request.
     need = models.ForeignKey(
-        CollaborationNeed, on_delete=models.CASCADE,
-        related_name='requests', null=True, blank=True
+        CollaborationNeed,
+        on_delete=models.SET_NULL,
+        related_name='requests',
+        null=True,
+        blank=True,
     )
     applicant = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='collaboration_requests'
@@ -109,6 +118,11 @@ class CollaborationRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        # BUG 1 & 4 ROOT CAUSE FIX:
+        # Must be (project, applicant) — NOT just (applicant,).
+        # A single user must be allowed to apply to MULTIPLE different projects.
+        # If the DB currently has unique_together=('applicant',), run the
+        # 0002_fix_collaboration_constraints migration to correct it.
         unique_together = ('project', 'applicant')
         ordering = ['-created_at']
 

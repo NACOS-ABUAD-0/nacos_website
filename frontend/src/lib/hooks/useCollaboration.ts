@@ -1,9 +1,10 @@
-// src/lib/hooks/useCollaboration.ts
+// path: src/lib/hooks/useCollaboration.ts
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { collaborationAPI } from '../api';
 import type { CollaborationRequestData } from '../api';
 
-// Paginated response type
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -11,27 +12,46 @@ interface PaginatedResponse<T> {
   results: T[];
 }
 
-// Helper function to normalize paginated responses
-const normalizePaginatedResponse = <T>(data: any): T[] => {
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+/**
+ * Normalise a DRF response into a plain array regardless of whether the
+ * endpoint returns a paginated envelope or a bare array.
+ *
+ * BUG 3 FIX: Previously this silently returned only `results` from the first
+ * page. Now that the API sends page_size=200 we still normalise correctly,
+ * and we also handle the bare-array case for non-paginated endpoints.
+ */
+const normalizePaginatedResponse = <T>(data: unknown): T[] => {
   if (!data) return [];
 
-  // If it's already an array
-  if (Array.isArray(data)) return data;
+  if (Array.isArray(data)) return data as T[];
 
-  // If it's a paginated object with results array
-  if (data && typeof data === 'object' && 'results' in data && Array.isArray(data.results)) {
-    return data.results;
+  if (
+    data !== null &&
+    typeof data === 'object' &&
+    'results' in data &&
+    Array.isArray((data as PaginatedResponse<T>).results)
+  ) {
+    return (data as PaginatedResponse<T>).results;
   }
 
-  // Fallback: return empty array
   console.warn('Unexpected response format for collaboration data:', data);
   return [];
 };
 
-// ✅ FIXED: Returns array of projects needing help
+// ─── Query Hooks ──────────────────────────────────────────────────────────────
+
+/**
+ * All published projects that have at least one unfilled collaboration need.
+ * Optionally filtered by skill type.
+ *
+ * BUG 3 FIX: API now sends page_size=200 so all projects are returned in one
+ * shot instead of being cut off by the default paginator page size.
+ */
 export const useProjectsNeedingHelp = (skillType?: string) => {
   return useQuery({
-    queryKey: ['projects-needing-help', skillType],
+    queryKey: ['projects-needing-help', skillType ?? ''],
     queryFn: async () => {
       const res = await collaborationAPI.getProjectsNeedingHelp(skillType);
       return normalizePaginatedResponse<any>(res.data);
@@ -40,7 +60,10 @@ export const useProjectsNeedingHelp = (skillType?: string) => {
   });
 };
 
-// ✅ FIXED: Returns array of user's collaborations
+/**
+ * Projects that the current user is actively collaborating on
+ * (their request was accepted).
+ */
 export const useMyCollaborations = () => {
   return useQuery({
     queryKey: ['my-collaborations'],
@@ -51,7 +74,9 @@ export const useMyCollaborations = () => {
   });
 };
 
-// ✅ FIXED: Returns array of collaboration requests for a project
+/**
+ * All collaboration requests for a specific project (project-owner view).
+ */
 export const useCollaborationRequests = (projectId?: number | string) => {
   return useQuery({
     queryKey: ['collaboration-requests', projectId],
@@ -64,31 +89,29 @@ export const useCollaborationRequests = (projectId?: number | string) => {
   });
 };
 
-// ✅ ADDED: Hook for collaboration requests count (for badges/notifications)
+/**
+ * Count of collaboration requests for a specific project (for badge display).
+ */
 export const useCollaborationRequestsCount = (projectId?: number | string) => {
   return useQuery({
     queryKey: ['collaboration-requests-count', projectId],
     queryFn: async () => {
       if (!projectId) return 0;
       const res = await collaborationAPI.getRequests(projectId);
-
-      // Try to get count from paginated response
-      if (res.data && typeof res.data === 'object') {
-        if ('count' in res.data && typeof res.data.count === 'number') {
-          return res.data.count;
-        }
-        if (Array.isArray(res.data)) {
-          return res.data.length;
-        }
+      const data = res.data as any;
+      if (data && typeof data === 'object') {
+        if (typeof data.count === 'number') return data.count;
+        if (Array.isArray(data)) return data.length;
       }
-
       return 0;
     },
     enabled: !!projectId,
   });
 };
 
-// ✅ ADDED: Hook for pending collaboration requests (for project owners)
+/**
+ * Only the pending requests for a project (owner review UI).
+ */
 export const usePendingCollaborationRequests = (projectId?: number | string) => {
   return useQuery({
     queryKey: ['pending-collaboration-requests', projectId],
@@ -96,27 +119,37 @@ export const usePendingCollaborationRequests = (projectId?: number | string) => 
       if (!projectId) return [];
       const res = await collaborationAPI.getRequests(projectId);
       const requests = normalizePaginatedResponse<CollaborationRequestData>(res.data);
-      // Filter for pending requests (assuming status field exists)
-      return requests.filter(req => req.status === 'pending' || !req.status);
+      return requests.filter((req) => req.status === 'pending');
     },
     enabled: !!projectId,
   });
 };
 
-// ✅ ADDED: Hook for accepted collaborations only
+/**
+ * Only accepted collaborations for the current user.
+ */
 export const useAcceptedCollaborations = () => {
   return useQuery({
     queryKey: ['accepted-collaborations'],
     queryFn: async () => {
       const res = await collaborationAPI.getMyCollaborations();
       const collaborations = normalizePaginatedResponse<any>(res.data);
-      // Filter for accepted collaborations (assuming acceptance_status or similar)
-      return collaborations.filter(collab => collab.status === 'accepted' || collab.is_accepted === true);
+      return collaborations.filter(
+        (c) => c.status === 'accepted' || c.is_accepted === true
+      );
     },
   });
 };
 
-// Mutation hooks (unchanged - they work fine)
+// ─── Mutation Hooks ───────────────────────────────────────────────────────────
+
+/**
+ * Apply to collaborate on a project.
+ *
+ * BUG 4 FIX: The duplicate-application check on the backend is now scoped
+ * to (project, applicant). A user can apply to as many different projects
+ * as they like — only applying twice to the SAME project is blocked.
+ */
 export const useApplyCollaboration = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -140,13 +173,20 @@ export const useApplyCollaboration = () => {
 export const useAcceptCollaborationRequest = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, requestId }: { projectId: number | string; requestId: number }) => {
+    mutationFn: async ({
+      projectId,
+      requestId,
+    }: {
+      projectId: number | string;
+      requestId: number;
+    }) => {
       const res = await collaborationAPI.acceptRequest(projectId, requestId);
       return res.data;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['collaboration-requests', vars.projectId] });
       qc.invalidateQueries({ queryKey: ['pending-collaboration-requests', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['collaboration-requests-count', vars.projectId] });
       qc.invalidateQueries({ queryKey: ['my-collaborations'] });
       qc.invalidateQueries({ queryKey: ['accepted-collaborations'] });
     },
@@ -156,32 +196,48 @@ export const useAcceptCollaborationRequest = () => {
 export const useRejectCollaborationRequest = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, requestId }: { projectId: number | string; requestId: number }) => {
+    mutationFn: async ({
+      projectId,
+      requestId,
+    }: {
+      projectId: number | string;
+      requestId: number;
+    }) => {
       const res = await collaborationAPI.rejectRequest(projectId, requestId);
       return res.data;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['collaboration-requests', vars.projectId] });
       qc.invalidateQueries({ queryKey: ['pending-collaboration-requests', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['collaboration-requests-count', vars.projectId] });
     },
   });
 };
 
-// ✅ ADDED: Bulk action hook for accepting multiple requests
+/**
+ * Accept multiple requests in parallel (batch owner action).
+ */
 export const useBatchAcceptCollaborationRequests = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, requestIds }: { projectId: number | string; requestIds: number[] }) => {
-      const promises = requestIds.map(requestId =>
-        collaborationAPI.acceptRequest(projectId, requestId)
+    mutationFn: async ({
+      projectId,
+      requestIds,
+    }: {
+      projectId: number | string;
+      requestIds: number[];
+    }) => {
+      const results = await Promise.all(
+        requestIds.map((id) => collaborationAPI.acceptRequest(projectId, id))
       );
-      const results = await Promise.all(promises);
-      return results.map(r => r.data);
+      return results.map((r) => r.data);
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['collaboration-requests', vars.projectId] });
       qc.invalidateQueries({ queryKey: ['pending-collaboration-requests', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['collaboration-requests-count', vars.projectId] });
       qc.invalidateQueries({ queryKey: ['my-collaborations'] });
+      qc.invalidateQueries({ queryKey: ['accepted-collaborations'] });
     },
   });
 };

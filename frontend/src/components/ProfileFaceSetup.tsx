@@ -1,18 +1,10 @@
 // frontend/src/components/ProfileFaceSetup.tsx
 
-/**
- * ProfileFaceSetup — face-login enrollment section for the Profile page.
- *
- * States:
- *   • Disabled  → show "Enable Face Login" CTA
- *   • Enabled   → show status badge + "Re-enroll" / "Disable" actions
- *   • Enrolling → show <FaceCapture> camera UI
- */
 
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FaceCapture } from "./FaceCapture";
-import type { faceAuthService, FaceStatusResponse } from "../services/faceAuthService";
+import type { faceAuthService, FaceStatusResponse } from "../lib/hooks/faceAuthService";
 
 type PanelState = "loading" | "disabled" | "enabled" | "enrolling";
 
@@ -21,7 +13,7 @@ export const ProfileFaceSetup: React.FC = () => {
   const [status, setStatus] = useState<FaceStatusResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ── Fetch current status ───────────────────────────────────────────────────
+  // ── Fetch current status
 
   const fetchStatus = useCallback(async () => {
     try {

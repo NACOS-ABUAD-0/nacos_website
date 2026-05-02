@@ -3,11 +3,10 @@
 /**
  * FaceCapture — reusable camera capture component.
  *
- * Props:
- *   onCapture(dataUrls)  — called with array of base64 data URLs
- *   captureCount         — how many frames to capture (default 1)
- *   instruction          — custom instruction text shown above the camera
- *   onCancel             — called when user clicks Cancel
+ * Fix: removed manual video.play() call; autoPlay on the <video> element
+ * handles playback once the srcObject is set, eliminating the AbortError
+ * that occurred when play() raced with the browser's internal load request.
+ * A mounted-ref guard prevents state updates after unmount.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -29,7 +28,7 @@ type CameraState =
   | "error";
 
 const COUNTDOWN_FROM = 3;
-const INTER_FRAME_MS = 800; // gap between multi-frame captures
+const INTER_FRAME_MS = 800;
 
 export const FaceCapture: React.FC<FaceCaptureProps> = ({
   onCapture,
@@ -40,50 +39,81 @@ export const FaceCapture: React.FC<FaceCaptureProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const mountedRef = useRef(true); // ← guard: prevents setState after unmount
 
   const [cameraState, setCameraState] = useState<CameraState>("idle");
   const [countdown, setCountdown] = useState(COUNTDOWN_FROM);
   const [capturedCount, setCapturedCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // ── Teardown ───────────────────────────────────────────────────────────────
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+
+    // Detach srcObject so the browser releases the device immediately
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
   // ── Start camera ───────────────────────────────────────────────────────────
 
   const startCamera = useCallback(async () => {
+    if (!mountedRef.current) return;
     setCameraState("requesting");
+
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        },
         audio: false,
       });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      setCameraState("ready");
     } catch (err: unknown) {
+      if (!mountedRef.current) return; // component gone while awaiting
       const msg =
         err instanceof DOMException && err.name === "NotAllowedError"
           ? "Camera access denied. Please allow camera access and try again."
           : "Could not access camera. Please check your device settings.";
       setErrorMsg(msg);
       setCameraState("error");
+      return;
     }
+
+    if (!mountedRef.current) {
+      // Unmounted while getUserMedia was resolving — release the stream
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    streamRef.current = stream;
+
+    if (videoRef.current) {
+      // Assign stream; the `autoPlay` attribute triggers playback automatically.
+      // Do NOT call .play() here — that causes the AbortError.
+      videoRef.current.srcObject = stream;
+    }
+
+    setCameraState("ready");
   }, []);
 
-  // ── Stop camera ────────────────────────────────────────────────────────────
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  }, []);
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    mountedRef.current = true;
     startCamera();
-    return () => stopCamera();
+    return () => {
+      mountedRef.current = false;
+      stopCamera();
+    };
   }, [startCamera, stopCamera]);
 
-  // ── Capture frame from canvas ──────────────────────────────────────────────
+  // ── Capture a single frame ─────────────────────────────────────────────────
 
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
@@ -95,11 +125,38 @@ export const FaceCapture: React.FC<FaceCaptureProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Mirror horizontally to match the CSS mirror transform on the preview
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+    ctx.restore();
+
     return canvas.toDataURL("image/jpeg", 0.92);
   }, []);
 
-  // ── Countdown + multi-frame capture sequence ───────────────────────────────
+  // ── Countdown → capture sequence ───────────────────────────────────────────
+
+  const runCaptures = useCallback(async () => {
+    if (!mountedRef.current) return;
+    setCameraState("capturing");
+    const frames: string[] = [];
+
+    for (let i = 0; i < captureCount; i++) {
+      const frame = captureFrame();
+      if (frame) {
+        frames.push(frame);
+        if (mountedRef.current) setCapturedCount(i + 1);
+      }
+      if (i < captureCount - 1) {
+        await new Promise<void>((r) => setTimeout(r, INTER_FRAME_MS));
+      }
+    }
+
+    if (!mountedRef.current) return;
+    setCameraState("done");
+    stopCamera();
+    onCapture(frames);
+  }, [captureCount, captureFrame, onCapture, stopCamera]);
 
   const startCapture = useCallback(() => {
     if (cameraState !== "ready") return;
@@ -109,33 +166,13 @@ export const FaceCapture: React.FC<FaceCaptureProps> = ({
     let tick = COUNTDOWN_FROM;
     const timer = setInterval(() => {
       tick -= 1;
-      setCountdown(tick);
+      if (mountedRef.current) setCountdown(tick);
       if (tick === 0) {
         clearInterval(timer);
         runCaptures();
       }
     }, 1000);
-  }, [cameraState]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const runCaptures = useCallback(async () => {
-    setCameraState("capturing");
-    const frames: string[] = [];
-
-    for (let i = 0; i < captureCount; i++) {
-      const frame = captureFrame();
-      if (frame) {
-        frames.push(frame);
-        setCapturedCount(i + 1);
-      }
-      if (i < captureCount - 1) {
-        await new Promise((r) => setTimeout(r, INTER_FRAME_MS));
-      }
-    }
-
-    setCameraState("done");
-    stopCamera();
-    onCapture(frames);
-  }, [captureCount, captureFrame, onCapture, stopCamera]);
+  }, [cameraState, runCaptures]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -152,16 +189,24 @@ export const FaceCapture: React.FC<FaceCaptureProps> = ({
       </div>
 
       {/* Camera viewport */}
-      <div className="relative rounded-2xl overflow-hidden bg-gray-900 shadow-lg"
-           style={{ width: 320, height: 240 }}>
-
-        {/* Video feed */}
+      <div
+        className="relative rounded-2xl overflow-hidden bg-gray-900 shadow-lg"
+        style={{ width: 320, height: 240 }}
+      >
+        {/*
+          KEY CHANGE: autoPlay + playsInline + muted
+          - autoPlay   → browser starts playback as soon as srcObject is ready,
+                         with no manual .play() call that could race/abort.
+          - playsInline → required on iOS to prevent full-screen takeover.
+          - muted       → required for autoPlay to work without user gesture.
+        */}
         <video
           ref={videoRef}
-          muted
+          autoPlay
           playsInline
+          muted
           className="w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }} /* mirror for selfie UX */
+          style={{ transform: "scaleX(-1)" }}
         />
 
         {/* Face outline guide */}
@@ -216,7 +261,7 @@ export const FaceCapture: React.FC<FaceCaptureProps> = ({
         )}
       </div>
 
-      {/* Hidden canvas used for frame capture */}
+      {/* Hidden canvas — used only for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Error state */}

@@ -13,7 +13,9 @@ import { useNotifications, useMarkNotificationRead } from '../lib/hooks/useNotif
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { motion, AnimatePresence, useInView, easeInOut } from 'framer-motion';
-import { useMyCollaborations } from '../lib/hooks/useCollaboration';
+import { useMyCollaborations,
+    useAcceptCollaborationRequest,
+    useRejectCollaborationRequest } from '../lib/hooks/useCollaboration';
 import {
   Mail, Code2, Plus, CalendarDays, BookOpen,
   Users, Rocket, Settings, ChevronRight,
@@ -388,6 +390,8 @@ export const DashboardPage: React.FC = () => {
   const { data: notifications, isLoading: notifLoading } = useNotifications();
   const { mutate: markRead } = useMarkNotificationRead();
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const acceptMutation = useAcceptCollaborationRequest();
+  const rejectMutation = useRejectCollaborationRequest();
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
 
   // Fetch user's projects
@@ -589,24 +593,76 @@ export const DashboardPage: React.FC = () => {
                           ) : !notifications || notifications.length === 0 ? (
                             <p className={`text-sm ${t.t2} text-center py-6`}>No notifications yet.</p>
                           ) : (
-                            notifications.slice(0, 20).map((n) => (
+                          notifications.slice(0, 20).map((n) => {
+                            const isCollab = n.data?.type === 'collaboration_request';
+                            return (
                               <div
                                 key={n.id}
-                                onClick={() => { if (!n.is_read) markRead(n.id); }}
-                                className={`p-3 border-b ${t.divider} cursor-pointer transition-colors ${!n.is_read ? (isDark ? 'bg-white/[0.03]' : 'bg-green-50/50') : ''}`}
+                                onClick={() => { if (!n.is_read && !isCollab) markRead(n.id); }}
+                                className={`p-3 border-b ${t.divider} transition-colors ${!n.is_read ? (isDark ? 'bg-white/[0.03]' : 'bg-green-50/50') : ''} ${isCollab ? '' : 'cursor-pointer'}`}
                               >
                                 <div className="flex items-start gap-2">
                                   <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${!n.is_read ? 'bg-green-500' : 'bg-transparent'}`} />
-                                  <div>
+                                  <div className="flex-1 min-w-0">
                                     <p className={`text-xs font-semibold ${t.t1}`}>{n.title}</p>
                                     <p className={`text-[11px] ${t.t2} mt-0.5 line-clamp-2`}>{n.message}</p>
                                     <p className={`text-[10px] ${t.t3} mt-1`}>
                                       {new Date(n.created_at).toLocaleDateString()}
                                     </p>
+
+                                    {isCollab && (
+                                      <div className="flex items-center gap-2 mt-2.5">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            acceptMutation.mutate(
+                                              { projectId: n.data.project_id, requestId: n.data.request_id },
+                                              {
+                                                onSuccess: () => {
+                                                  markRead(n.id);
+                                                  setShowNotifDropdown(false);
+                                                },
+                                              }
+                                            );
+                                          }}
+                                          disabled={acceptMutation.isPending}
+                                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${
+                                            isDark
+                                              ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25 disabled:opacity-40'
+                                              : 'bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-40'
+                                          }`}
+                                        >
+                                          {acceptMutation.isPending ? '…' : 'Accept'}
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            rejectMutation.mutate(
+                                              { projectId: n.data.project_id, requestId: n.data.request_id },
+                                              {
+                                                onSuccess: () => {
+                                                  markRead(n.id);
+                                                  setShowNotifDropdown(false);
+                                                },
+                                              }
+                                            );
+                                          }}
+                                          disabled={rejectMutation.isPending}
+                                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${
+                                            isDark
+                                              ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40'
+                                              : 'bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40'
+                                          }`}
+                                        >
+                                          {rejectMutation.isPending ? '…' : 'Reject'}
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                            ))
+                            );
+                          })
                           )}
                         </div>
                       </motion.div>

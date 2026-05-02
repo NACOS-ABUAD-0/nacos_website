@@ -6,7 +6,7 @@ import { AuthForm } from "../components/AuthForm";
 import { RegisterFlow } from "../components/RegisterFlow";
 import { ProfileFaceSetup } from "../components/ProfileFaceSetup";
 import { FaceLogin } from "../components/FaceLogin";
-import type { FaceLoginResponse } from "../services/faceAuthService";
+import type { FaceLoginResponse } from "../lib/hooks/faceAuthService";
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth();

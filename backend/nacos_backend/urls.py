@@ -26,4 +26,6 @@ urlpatterns = [
     path('api/', include('gallery.urls')),
     path('api/', include('inquiries.urls')),
     path('api/', include('committees.urls')),
+    path('api/', include('face_auth.urls')),
+
 ]

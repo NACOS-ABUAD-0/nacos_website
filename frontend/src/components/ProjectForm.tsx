@@ -145,7 +145,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         return acc;
       }, {}),
       images: imageInputs.filter((url: string) => url.trim() !== ''),
-      collaboration_needs: collabNeeds.map(need => ({
+      collaboration_needs_data: collabNeeds.map(need => ({
         skill_type: need.skill_type,
         custom_skill: need.skill_type === 'others' ? need.custom_skill : '',
         description: need.description,
