@@ -271,6 +271,7 @@ export const committeesAPI = {
 export const notificationsAPI = {
   getAll: () => api.get<PaginatedResponse<NotificationData>>("/notifications/"),
   markRead: (id: number) => api.patch(`/notifications/${id}/read/`),
+  deleteNotification: (id: number) => api.delete(`/notifications/${id}/`),
 };
 
 // ─── ADMIN COMMITTEE ──────────────────────────────────────────────────────────

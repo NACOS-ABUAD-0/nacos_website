@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usersAPI, resourcesAPI } from '../lib/api';
 import { useStudentProfile } from '../lib/hooks/useStudentProfile';
 import { useLikedProjects } from '../lib/hooks/useLikedProjects';
-import { useNotifications, useMarkNotificationRead } from '../lib/hooks/useNotifications';
+import { useNotifications, useMarkNotificationRead, useDeleteNotification } from '../lib/hooks/useNotifications';
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { motion, AnimatePresence, useInView, easeInOut } from 'framer-motion';
@@ -21,7 +21,7 @@ import {
   Users, Rocket, Settings, ChevronRight,
   Bell, BadgeCheck, Hash, Moon, Sun,
   Heart, ClipboardList, CheckCircle2, XCircle,
-  ArrowRight
+  ArrowRight, Trash2
 } from 'lucide-react';
 
 // ========== Animation Variants ==========
@@ -389,6 +389,7 @@ export const DashboardPage: React.FC = () => {
   // Notifications
   const { data: notifications, isLoading: notifLoading } = useNotifications();
   const { mutate: markRead } = useMarkNotificationRead();
+  const { mutate: deleteNotification } = useDeleteNotification();
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const acceptMutation = useAcceptCollaborationRequest();
   const rejectMutation = useRejectCollaborationRequest();
@@ -598,10 +599,24 @@ export const DashboardPage: React.FC = () => {
                             return (
                               <div
                                 key={n.id}
-                                onClick={() => { if (!n.is_read && !isCollab) markRead(n.id); }}
-                                className={`p-3 border-b ${t.divider} transition-colors ${!n.is_read ? (isDark ? 'bg-white/[0.03]' : 'bg-green-50/50') : ''} ${isCollab ? '' : 'cursor-pointer'}`}
+                                className={`relative p-3 border-b ${t.divider} transition-colors ${!n.is_read ? (isDark ? 'bg-white/[0.03]' : 'bg-green-50/50') : ''}`}
                               >
-                                <div className="flex items-start gap-2">
+                                {/* Delete button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteNotification(n.id);
+                                  }}
+                                  className={`absolute top-2 right-2 p-1 rounded-md transition-colors ${isDark ? 'text-slate-500 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                                  title="Delete notification"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+
+                                <div
+                                  className={`flex items-start gap-2 pr-6 ${isCollab ? '' : 'cursor-pointer'}`}
+                                  onClick={() => { if (!n.is_read && !isCollab) markRead(n.id); }}
+                                >
                                   <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${!n.is_read ? 'bg-green-500' : 'bg-transparent'}`} />
                                   <div className="flex-1 min-w-0">
                                     <p className={`text-xs font-semibold ${t.t1}`}>{n.title}</p>
@@ -617,20 +632,11 @@ export const DashboardPage: React.FC = () => {
                                             e.stopPropagation();
                                             acceptMutation.mutate(
                                               { projectId: n.data.project_id, requestId: n.data.request_id },
-                                              {
-                                                onSuccess: () => {
-                                                  markRead(n.id);
-                                                  setShowNotifDropdown(false);
-                                                },
-                                              }
+                                              { onSuccess: () => { markRead(n.id); setShowNotifDropdown(false); } }
                                             );
                                           }}
                                           disabled={acceptMutation.isPending}
-                                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                                            isDark
-                                              ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25 disabled:opacity-40'
-                                              : 'bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-40'
-                                          }`}
+                                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${isDark ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25 disabled:opacity-40' : 'bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-40'}`}
                                         >
                                           {acceptMutation.isPending ? '…' : 'Accept'}
                                         </button>
@@ -639,20 +645,11 @@ export const DashboardPage: React.FC = () => {
                                             e.stopPropagation();
                                             rejectMutation.mutate(
                                               { projectId: n.data.project_id, requestId: n.data.request_id },
-                                              {
-                                                onSuccess: () => {
-                                                  markRead(n.id);
-                                                  setShowNotifDropdown(false);
-                                                },
-                                              }
+                                              { onSuccess: () => { markRead(n.id); setShowNotifDropdown(false); } }
                                             );
                                           }}
                                           disabled={rejectMutation.isPending}
-                                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                                            isDark
-                                              ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40'
-                                              : 'bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40'
-                                          }`}
+                                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40' : 'bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40'}`}
                                         >
                                           {rejectMutation.isPending ? '…' : 'Reject'}
                                         </button>
@@ -867,8 +864,8 @@ export const DashboardPage: React.FC = () => {
                       <h2 className={`font-bold text-base sm:text-lg ${t.t1}`} style={syne}>Collaborations</h2>
                       <p className={`text-xs sm:text-sm ${t.t2} mt-0.5`}>Projects you're contributing to</p>
                     </div>
-                    <Link to="/collaboration-hub" className={`text-xs font-medium transition-colors ${t.link} whitespace-nowrap ml-4`}>
-                      Find more →
+                    <Link to="/my-collaborations" className={`text-xs font-medium transition-colors ${t.link} whitespace-nowrap ml-4`}>
+                      View all →
                     </Link>
                   </div>
 
@@ -921,6 +918,14 @@ export const DashboardPage: React.FC = () => {
                     <ActionCard to="/resources" iconBg={isDark ? 'bg-blue-500/10' : 'bg-blue-100'} label="Resources" desc="Study materials" icon={<BookOpen className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />} t={t} />
                     <ActionCard to="/profile" iconBg={isDark ? 'bg-amber-500/10' : 'bg-amber-100'} label="Edit Profile" desc="Update your info" icon={<Settings className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />} t={t} />
                     <ActionCard to="/committees" iconBg={isDark ? 'bg-pink-500/10' : 'bg-pink-100'} label="Committees" desc="Join a committee" icon={<Users className={`w-4 h-4 ${isDark ? 'text-pink-400' : 'text-pink-600'}`} />} t={t} />
+                    <ActionCard
+  to="/collaboration-requests"
+  iconBg={isDark ? 'bg-orange-500/10' : 'bg-orange-100'}
+  label="Review Requests"
+  desc="Accept or reject applicants"
+  icon={<ClipboardList className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />}
+  t={t}
+/>
                   </div>
                 </motion.div>
 

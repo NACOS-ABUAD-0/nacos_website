@@ -23,6 +23,14 @@ export const useNotifications = () => {
   });
 };
 
+export const useDeleteNotification = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => notificationsAPI.deleteNotification(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+};
+
 export const useMarkNotificationRead = () => {
   const qc = useQueryClient();
   return useMutation({
