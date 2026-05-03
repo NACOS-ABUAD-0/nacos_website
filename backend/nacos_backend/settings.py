@@ -4,17 +4,24 @@ from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+
+#  SECRET KEY
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
     "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m",
 )
 
+#  Prevent insecure production deploy
+if not os.getenv("DJANGO_DEBUG") and not os.getenv("DJANGO_SECRET_KEY"):
+    raise Exception("DJANGO_SECRET_KEY must be set in production")
+
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", "on")
 
-# Render provides RENDER_EXTERNAL_HOSTNAME, e.g. "your-service.onrender.com"
+# Hosts
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 ALLOWED_HOSTS = [
     h
@@ -27,6 +34,7 @@ ALLOWED_HOSTS = [
     if h
 ]
 
+#  Apps
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -35,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_filters',
+
     # local apps
     'accounts',
     'projects',
@@ -45,15 +54,15 @@ INSTALLED_APPS = [
     'inquiries',
     'committees',
     'face_auth',
-    # Third party apps
+
+    # third party
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 ]
 
-# 🔥 CRITICAL FIX: Remove IsAuthenticated as default
-# This was blocking registration and login endpoints
+#  DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -62,6 +71,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+#  Middleware
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -92,82 +102,80 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-
+#  Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# JWT Settings
+#  JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # 🔥 Increased from 5 to 60 minutes
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # 🔥 Increased from 1 to 7 days
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# 🔥 CRITICAL: CORS must allow credentials for cookies (even though you're using JWT)
+#  CORS / CSRF
 def _split_env_list(name, default_list):
     raw = os.getenv(name)
     if not raw:
         return default_list
     return [x.strip() for x in raw.split(",") if x.strip()]
 
-
 CORS_ALLOWED_ORIGINS = _split_env_list(
     "CORS_ALLOWED_ORIGINS",
-    ["http://localhost:5173", "http://127.0.0.1:5173", "https://nacos-abuad0-website.vercel.app", ],
+    [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://nacos-abuad0-website.vercel.app",
+    ],
 )
+
 CORS_ALLOW_CREDENTIALS = True
 
-# CSRF Settings (for any cookie-based operations)
 CSRF_TRUSTED_ORIGINS = _split_env_list(
     "CSRF_TRUSTED_ORIGINS",
-    ["http://localhost:5173", "http://127.0.0.1:5173", "https://nacos-abuad0-website.vercel.app", ],
+    [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://nacos-abuad0-website.vercel.app",
+    ],
 )
 
+# General
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'
 
-# Email Configuration
+# 📧 Email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Change to SMTP server
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # Set in environment variable
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Set in environment variable
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'
 
-# Frontend URL for email verification links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nacos-abuad0-website.vercel.app")
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "https://nacos-abuad0-website.vercel.app"
+)
 
-# For development, use console backend instead:
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
+# Custom flags
 REQUIRE_STUDENT_VERIFICATION = True
 
+# Logging
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -182,28 +190,19 @@ LOGGING = {
     },
 }
 
-USE_SQLITE = os.getenv("USE_SQLITE", "TRUE") == "TRUE"
+# DATABASE (Final Clean Version)
 
-if USE_SQLITE:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3'
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-        }
-    }
+if DATABASE_URL:
+    print("Using production database (Render/AWS)")
 else:
+    print("Using local SQLite database")
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'postgres',
-            'USER': 'postgres',
-            'PASSWORD': 'NACOSABUADpasswordisFri,Jan.2025',
-            'HOST': 'nacos-database.cr22cw2s8jih.eu-north-1.rds.amazonaws.com',
-            'PORT': '5432',
-            'OPTIONS': {
-                'sslmode': 'require',
-            },
-        }
-    }
+DATABASES = {
+    'default': dj_database_url.config(
+        default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=60,
+        ssl_require=bool(DATABASE_URL),
+    )
+}
