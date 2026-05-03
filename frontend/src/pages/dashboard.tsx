@@ -867,6 +867,9 @@ export const DashboardPage: React.FC = () => {
                     <Link to="/my-collaborations" className={`text-xs font-medium transition-colors ${t.link} whitespace-nowrap ml-4`}>
                       View all →
                     </Link>
+                    <Link to="/collaboration-hub" className={`text-xs font-medium transition-colors ${t.link} whitespace-nowrap ml-4`}>
+                    more collaboration
+                    </Link>
                   </div>
 
                   <div className="border-t border-gray-100 dark:border-white/[0.05] p-5 sm:p-6">

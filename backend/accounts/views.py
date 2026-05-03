@@ -1,7 +1,8 @@
 # backend/accounts/views.py
 import logging
 
-from rest_framework import status, permissions, generics
+from rest_framework import status, permissions, generics, viewsets
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -261,26 +262,34 @@ class StudentProfileView(APIView):
 
 # Notifications
 
-class NotificationListView(APIView):
+
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for user notifications.
+    - list: GET /api/notifications/
+    - retrieve: GET /api/notifications/{id}/
+    - destroy: DELETE /api/notifications/{id}/
+    - read: PATCH /api/notifications/{id}/read/
+    """
+    serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        notifications = request.user.notifications.all()[:50]
-        serializer = NotificationSerializer(notifications, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return self.request.user.notifications.all()
 
-
-class NotificationMarkReadView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def patch(self, request, pk):
-        try:
-            notification = request.user.notifications.get(pk=pk)
-        except Notification.DoesNotExist:
-            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+    @action(detail=True, methods=['patch'], url_path='read')
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
         notification.is_read = True
         notification.save(update_fields=["is_read"])
         return Response({"status": "marked as read"})
+
+    def destroy(self, request, *args, **kwargs):
+        notification = self.get_object()
+        notification.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # Admin Views

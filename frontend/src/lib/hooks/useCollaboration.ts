@@ -241,3 +241,26 @@ export const useBatchAcceptCollaborationRequests = () => {
     },
   });
 };
+
+export const useDeleteCollaborationRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      requestId,
+    }: {
+      projectId: number | string;
+      requestId: number;
+    }) => {
+      const res = await collaborationAPI.deleteRequest(projectId, requestId);
+      return res.data;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['collaboration-requests', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['pending-collaboration-requests', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['collaboration-requests-count', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['my-collaborations'] });
+      qc.invalidateQueries({ queryKey: ['accepted-collaborations'] });
+    },
+  });
+};

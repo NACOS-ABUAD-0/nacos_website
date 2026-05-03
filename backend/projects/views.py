@@ -426,6 +426,34 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response({"status": "rejected"})
 
+    # ── Collaboration: Delete Request ─────────────────────────────────────────
+
+    @action(
+        detail=True, methods=['delete'],
+        permission_classes=[IsAuthenticated],
+        url_path=r'requests/(?P<request_id>[^/.]+)/delete',
+    )
+    def delete_request(self, request, pk=None, request_id=None):
+        """Project owner deletes a collaboration request permanently."""
+        project = self.get_object()
+
+        if project.owner != request.user and not request.user.is_staff:
+            return Response(
+                {"error": "Only the project owner can delete requests."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            collab_request = project.collaboration_requests.get(id=request_id)
+        except CollaborationRequest.DoesNotExist:
+            return Response(
+                {"error": "Collaboration request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        collab_request.delete()
+        return Response({"status": "deleted"}, status=status.HTTP_200_OK)
+
     # ── My Collaborations ─────────────────────────────────────────────────────
 
     @action(

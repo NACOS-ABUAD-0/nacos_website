@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework.routers import DefaultRouter
 
 from .views import (
     # Auth
@@ -24,8 +25,7 @@ from .views import (
     AdminUserListView,
     # Student Profile & Notifications
     StudentProfileView,
-    NotificationListView,
-    NotificationMarkReadView,
+    NotificationViewSet,
 )
 
 urlpatterns = [
@@ -56,10 +56,6 @@ urlpatterns = [
     # Student Profile (Excel source of truth)
     path("student/profile/", StudentProfileView.as_view(), name="student-profile"),
 
-    # Notifications
-    path("notifications/", NotificationListView.as_view(), name="notification-list"),
-    path("notifications/<int:pk>/read/", NotificationMarkReadView.as_view(), name="notification-read"),
-
     # General
     path("users/count/", UserCountView.as_view(), name="user-count"),
 
@@ -72,3 +68,6 @@ urlpatterns = [
     # ── Face Authentication (NEW) ──────────────────────────────────────────────
     path("face-auth/", include("face_auth.urls")),
 ]
+router = DefaultRouter()
+router.register(r"notifications", NotificationViewSet, basename="notification")
+urlpatterns += router.urls

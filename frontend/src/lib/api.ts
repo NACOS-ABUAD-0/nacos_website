@@ -311,6 +311,7 @@ export const collaborationAPI = {
     message: string;
   }) => api.post(`/projects/${projectId}/apply_collaborate/`, payload),
 
+
   getRequests: (projectId: number | string) =>
     api.get<PaginatedResponse<CollaborationRequestData>>(
       `/projects/${projectId}/collaboration_requests/`
@@ -321,6 +322,9 @@ export const collaborationAPI = {
 
   rejectRequest: (projectId: number | string, requestId: number) =>
     api.patch(`/projects/${projectId}/requests/${requestId}/reject/`),
+
+  deleteRequest: (projectId: number | string, requestId: number) =>
+    api.delete(`/projects/${projectId}/requests/${requestId}/delete/`),
 
   // BUG 3 FIX: Pass page_size=200 so pagination doesn't silently truncate
   // results to the first page (typically 10–20 items).
