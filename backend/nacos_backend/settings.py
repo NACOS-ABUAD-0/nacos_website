@@ -34,7 +34,7 @@ ALLOWED_HOSTS = [
     if h
 ]
 
-#  Apps
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

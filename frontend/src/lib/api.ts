@@ -1,8 +1,8 @@
-// path: src/lib/api.ts
+// src/lib/api.ts
 
 import axios from "axios";
 
-// ─── URL CONSTRUCTION ────────────────────────────────────────────────────────
+// URL CONSTRUCTION
 
 function buildBaseURL(): string {
   const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
@@ -13,14 +13,14 @@ function buildBaseURL(): string {
 
 const BASE_URL = buildBaseURL();
 
-// ─── AXIOS INSTANCE ──────────────────────────────────────────────────────────
+// AXIOS INSTANCE
 
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: false,
 });
 
-// ─── REQUEST INTERCEPTOR: attach JWT ─────────────────────────────────────────
+// REQUEST INTERCEPTOR: attach JWT
 
 api.interceptors.request.use(
   (config) => {
@@ -69,7 +69,7 @@ api.interceptors.response.use(
   }
 );
 
-// ─── ERROR UNWRAPPER ─────────────────────────────────────────────────────────
+// ERROR UNWRAPPER
 
 const handleApiError = (error: unknown) => {
   const axiosError = error as { response?: { data?: unknown } };
@@ -77,8 +77,7 @@ const handleApiError = (error: unknown) => {
   throw { detail: "Something went wrong. Please try again." };
 };
 
-// ─── TYPES ───────────────────────────────────────────────────────────────────
-
+// TYPES
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
