@@ -4,7 +4,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FaceCapture } from "./FaceCapture";
-import type { faceAuthService, FaceStatusResponse } from "../lib/hooks/faceAuthService";
+import { faceAuthService } from "../services/faceAuthService";
+import type { FaceStatusResponse } from "../services/faceAuthService";
 
 type PanelState = "loading" | "disabled" | "enabled" | "enrolling";
 

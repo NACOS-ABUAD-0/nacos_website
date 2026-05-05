@@ -1,27 +1,45 @@
-// frontend/src/services/faceAuthService.ts
 /**
  * Face Authentication API service.
- * Mirrors the pattern of whatever existing API client the project uses,
- * but implemented with plain fetch so it has zero extra dependencies.
+ * Uses the same base URL logic and localStorage keys as src/lib/api.ts.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+// ── Match the base URL logic from src/lib/api.ts exactly ──────────────────────
+function buildBaseURL(): string {
+  const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
+    .replace(/\/+$/, "")
+    .replace(/\/api$/, "");
+  return `${raw}/api`;
+}
 
+const API_BASE = buildBaseURL();
+
+// ── Token key MUST match AuthContext ("accessToken" not "access_token") ────────
 function authHeaders(): Record<string, string> {
-  const access = localStorage.getItem("access_token");
+  const access = localStorage.getItem("accessToken"); // ← camelCase, matches AuthContext
   return {
     "Content-Type": "application/json",
     ...(access ? { Authorization: `Bearer ${access}` } : {}),
   };
 }
 
+// ── Response handler ───────────────────────────────────────────────────────────
 async function handleResponse<T>(res: Response): Promise<T> {
-  const data = await res.json().catch(() => ({}));
+  let data: Record<string, unknown> = {};
+  try {
+    data = await res.json();
+  } catch {
+    // empty body
+  }
+
   if (!res.ok) {
     const message =
-      data?.error ?? data?.detail ?? data?.non_field_errors?.[0] ?? "Request failed.";
+      (data?.error as string) ??
+      (data?.detail as string) ??
+      (data?.non_field_errors as string[])?.[0] ??
+      `Request failed with status ${res.status}.`;
     throw new Error(message);
   }
+
   return data as T;
 }
 
@@ -43,14 +61,23 @@ export interface FaceRegisterResponse {
 export interface FaceLoginResponse {
   access: string;
   refresh: string;
-  user: Record<string, unknown>;
+  user: {
+    id: number;
+    email: string;
+    full_name: string;
+    matric_number: string;
+    date_joined: string;
+    is_email_verified: boolean;
+    is_staff: boolean;
+    role: "user" | "admin";
+    face_login_enabled: boolean;
+  };
   confidence: number;
 }
 
-// ── API calls ──────────────────────────────────────────────────────────────────
+// ── Service ────────────────────────────────────────────────────────────────────
 
 export const faceAuthService = {
-  /** GET /api/face-auth/status/ */
   async getStatus(): Promise<FaceStatusResponse> {
     const res = await fetch(`${API_BASE}/face-auth/status/`, {
       headers: authHeaders(),
@@ -58,10 +85,6 @@ export const faceAuthService = {
     return handleResponse<FaceStatusResponse>(res);
   },
 
-  /**
-   * POST /api/face-auth/register/
-   * @param images  Array of base64 data URL strings (1–5)
-   */
   async register(images: string[]): Promise<FaceRegisterResponse> {
     const res = await fetch(`${API_BASE}/face-auth/register/`, {
       method: "POST",
@@ -71,11 +94,6 @@ export const faceAuthService = {
     return handleResponse<FaceRegisterResponse>(res);
   },
 
-  /**
-   * POST /api/face-auth/login/
-   * @param email  User's email
-   * @param image  Single base64 data URL string
-   */
   async login(email: string, image: string): Promise<FaceLoginResponse> {
     const res = await fetch(`${API_BASE}/face-auth/login/`, {
       method: "POST",
@@ -85,7 +103,6 @@ export const faceAuthService = {
     return handleResponse<FaceLoginResponse>(res);
   },
 
-  /** DELETE /api/face-auth/delete/ */
   async deleteFaceData(): Promise<{ message: string; face_login_enabled: false }> {
     const res = await fetch(`${API_BASE}/face-auth/delete/`, {
       method: "DELETE",

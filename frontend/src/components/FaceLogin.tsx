@@ -19,7 +19,8 @@
 import React, { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import { FaceCapture } from "./FaceCapture";
-import type { faceAuthService, FaceLoginResponse } from "../lib/hooks/faceAuthService";
+import {faceAuthService} from "../services/faceAuthService";
+import type { FaceLoginResponse } from "../services/faceAuthService";
 
 type LoginStep = "form" | "camera" | "processing";
 
