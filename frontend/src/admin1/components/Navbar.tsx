@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/nacos_logo.png'
 import profileImg from '../../assets/profile.png'
 
+
 const Navbar: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -39,6 +40,7 @@ const Navbar: React.FC = () => {
           { label: 'Committee Applications', to: '/admin/committee-applications' },
           { label: 'Gallery',                to: '/admin/gallery' },
           { label: 'Inquiries',              to: '/admin/inquiries' },
+          { label: 'User Management',        to: '/admin/users' },
         ].map(({ label, to }) => (
           <li key={label}>
             <NavLink

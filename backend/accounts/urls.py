@@ -23,6 +23,7 @@ from .views import (
     AdminRoleAssignmentView,
     AdminListView,
     AdminUserListView,
+    AdminUserDeleteView,  # NEW
     # Student Profile & Notifications
     StudentProfileView,
     NotificationViewSet,
@@ -63,11 +64,15 @@ urlpatterns = [
     path("admin/roles/assign/", AdminRoleAssignmentView.as_view(), name="admin-role-assign"),
     path("admin/roles/revoke/", AdminRoleAssignmentView.as_view(), name="admin-role-revoke"),
     path("admin/roles/", AdminListView.as_view(), name="admin-list"),
-    path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
 
-    # ── Face Authentication (NEW) ──────────────────────────────────────────────
+    # Admin — User Management (NEW)
+    path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
+    path("admin/users/<int:pk>/delete/", AdminUserDeleteView.as_view(), name="admin-user-delete"),
+
+    # ── Face Authentication ──────────────────────────────────────────────
     path("face-auth/", include("face_auth.urls")),
 ]
+
 router = DefaultRouter()
 router.register(r"notifications", NotificationViewSet, basename="notification")
 urlpatterns += router.urls

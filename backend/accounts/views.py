@@ -1,6 +1,6 @@
 # backend/accounts/views.py
 import logging
-
+from django.db.models import Q
 from rest_framework import status, permissions, generics, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import APIView
@@ -13,7 +13,11 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.utils import timezone
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.shortcuts import get_object_or_404
 
+from . import models
 from .models import User, StudentProfile, Notification
 from .permissions import IsAdmin
 from .serializers import (
@@ -29,6 +33,8 @@ from .serializers import (
     VerifyStudentSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    AdminUserSerializer,
+    AdminUserDeleteSerializer,
 )
 from .utils import send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
@@ -445,22 +451,6 @@ class AdminListView(APIView):
         )
 
 
-class AdminUserListView(APIView):
-    """
-    GET /admin/users/
-    Returns all registered users. Only accessible by admins.
-    """
-
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
-    def get(self, request):
-        users = User.objects.all().order_by("-date_joined")
-        return Response(
-            {
-                "users": UserSerializer(users, many=True).data,
-                "total": users.count(),
-            }
-        )
 
 class CheckEmailView(APIView):
     """
@@ -606,3 +596,161 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ─── Admin User Management Views ─────────────────────────────────────────────
+
+class AdminUserListView(APIView):
+    """
+    GET /api/admin/users/
+
+    Returns a paginated list of all registered users.
+    Supports query parameters:
+      - page: Page number (default: 1)
+      - page_size: Items per page (default: 10, max: 100)
+      - search: Filter by matric_number or full_name (case-insensitive)
+      - level: Filter by student level
+      - role: Filter by user role ('user' or 'admin')
+
+    Only accessible by authenticated admins.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        # Base queryset with select_related to prevent N+1 queries
+        queryset = User.objects.select_related("student_profile").all().order_by("-date_joined")
+
+        # ── Filtering ──────────────────────────────────────────────────────
+        search_query = request.query_params.get("search", "").strip()
+        if search_query:
+            queryset = queryset.filter(
+                Q(full_name__icontains=search_query) |
+                Q(matric_number__icontains=search_query) |
+                Q(email__icontains=search_query)
+            )
+
+        level_filter = request.query_params.get("level", "").strip()
+        if level_filter:
+            queryset = queryset.filter(student_profile__level__iexact=level_filter)
+
+        role_filter = request.query_params.get("role", "").strip().lower()
+        if role_filter in ["user", "admin"]:
+            queryset = queryset.filter(role=role_filter)
+
+        # ── Pagination ─────────────────────────────────────────────────────
+        page_size = min(int(request.query_params.get("page_size", 10)), 100)
+        page_number = max(int(request.query_params.get("page", 1)), 1)
+
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        serializer = AdminUserSerializer(page_obj.object_list, many=True)
+
+        return Response({
+            "results": serializer.data,
+            "count": paginator.count,
+            "total_pages": paginator.num_pages,
+            "current_page": page_number,
+            "page_size": page_size,
+            "has_next": page_obj.has_next(),
+            "has_previous": page_obj.has_previous(),
+        })
+
+class AdminUserDeleteView(APIView):
+    """
+    DELETE /api/admin/users/<id>/delete/
+
+    Secure user deletion endpoint.
+
+    Request Body:
+        {
+            "matric_number": "23/SCI01/002",
+            "full_name": "John Doe"
+        }
+
+    Security measures:
+        - Only admins can access
+        - Must provide exact matric_number and full_name matching the target
+        - Cannot delete yourself
+        - Cannot delete other admins (safety measure)
+        - Atomic transaction ensures data consistency
+        - Returns 204 No Content on success
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def delete(self, request, pk=None):
+        # ── Validate input ─────────────────────────────────────────────────
+        serializer = AdminUserDeleteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"error": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        validated_matric = serializer.validated_data["matric_number"]
+        validated_name = serializer.validated_data["full_name"]
+
+        # ── Fetch target user ──────────────────────────────────────────────
+        try:
+            target_user = User.objects.select_related("student_profile").get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # ── Self-deletion guard ────────────────────────────────────────────
+        if target_user.id == request.user.id:
+            return Response(
+                {"error": "You cannot delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ── Admin deletion guard ───────────────────────────────────────────
+        if target_user.is_admin:
+            return Response(
+                {"error": "Cannot delete another admin account. Revoke admin privileges first."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # ── Strict credential verification ─────────────────────────────────
+        # Normalize stored values for exact comparison
+        stored_matric = (target_user.matric_number or "").strip().upper()
+        stored_name = " ".join(target_user.full_name.strip().split())
+
+        if stored_matric != validated_matric:
+            return Response(
+                {"error": "The provided matric number does not match our records for this user."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if stored_name != validated_name:
+            return Response(
+                {"error": "The provided full name does not match our records for this user."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ── Atomic deletion ────────────────────────────────────────────────
+        user_email = target_user.email
+        user_name = target_user.full_name
+        try:
+            with transaction.atomic():
+                # Delete related profiles first (if cascade isn't set)
+                StudentProfile.objects.filter(user=target_user).delete()
+                # Delete notifications
+                Notification.objects.filter(user=target_user).delete()
+                # Finally delete the user
+                target_user.delete()
+        except Exception as exc:
+            logger.error("Failed to delete user %s: %s", user_email, exc, exc_info=True)
+            return Response(
+                {"error": "An error occurred while deleting the user. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        logger.info(
+            "Admin '%s' successfully deleted user '%s' (matric: %s).",
+            request.user.email, user_email, validated_matric
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

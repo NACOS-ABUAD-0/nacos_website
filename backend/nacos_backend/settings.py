@@ -206,3 +206,12 @@ DATABASES = {
         ssl_require=bool(DATABASE_URL),
     )
 }
+
+
+# TEMPORARY DEBUG — REMOVE AFTER FIXING
+print(f"=" * 50)
+print(f"EMAIL_HOST_USER: '{EMAIL_HOST_USER}'")
+print(f"EMAIL_HOST_PASSWORD length: {len(EMAIL_HOST_PASSWORD)}")
+print(f"EMAIL_HOST_PASSWORD last 4 chars: '...{EMAIL_HOST_PASSWORD[-4:] if EMAIL_HOST_PASSWORD else 'EMPTY'}'")
+print(f"BASE_DIR .env exists: {(BASE_DIR / '.env').exists()}")
+print(f"=" * 50)

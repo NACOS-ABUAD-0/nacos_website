@@ -419,3 +419,57 @@ class NotificationSerializer(serializers.ModelSerializer):
             "id", "title", "message", "notification_type",
             "data", "created_at",
         ]
+
+# Admin User Management Serializers
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """
+    Full read-only representation of a user for admin dashboards.
+    Includes all fields needed for user management.
+    """
+    level = serializers.CharField(source="student_profile.level", read_only=True, default="")
+    department = serializers.CharField(source="student_profile.department", read_only=True, default="")
+    date_joined = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "email",
+            "full_name",
+            "matric_number",
+            "level",
+            "department",
+            "role",
+            "is_staff",
+            "is_active",
+            "is_email_verified",
+            "date_joined",
+            "face_login_enabled",
+        )
+        read_only_fields = fields
+
+
+class AdminUserDeleteSerializer(serializers.Serializer):
+    """
+    Validates deletion credentials for secure user removal.
+    Both matric_number and full_name must exactly match the target user.
+    """
+    matric_number = serializers.CharField(
+        max_length=20,
+        required=True,
+        help_text="Exact matric number of the user to delete."
+    )
+    full_name = serializers.CharField(
+        max_length=255,
+        required=True,
+        help_text="Exact full name of the user to delete."
+    )
+
+    def validate_matric_number(self, value: str) -> str:
+        """Normalize matric number to uppercase for exact matching."""
+        return str(value).strip().upper()
+
+    def validate_full_name(self, value: str) -> str:
+        """Normalize full name by collapsing whitespace for exact matching."""
+        return " ".join(value.strip().split())
