@@ -80,30 +80,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
-_default_sqlite_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
-_raw_database_url = (os.getenv("DATABASE_URL") or "").strip()
-
-# Guard against common misconfigurations like DATABASE_URL="://..."
-if not _raw_database_url or _raw_database_url.startswith("://"):
-    _raw_database_url = _default_sqlite_url
-
-try:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=_raw_database_url,
-            conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60")),
-            ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("1", "true", "yes", "y", "on"),
-        )
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'NACOSABUADpasswordisFri,Jan.2025',
+        'HOST': 'nacos-database.cr22cw2s8jih.eu-north-1.rds.amazonaws.com',
+        'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
-except Exception:
-    # Last-resort fallback so the app can start even if DATABASE_URL is invalid.
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=_default_sqlite_url,
-            conn_max_age=0,
-            ssl_require=False,
-        )
-    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
