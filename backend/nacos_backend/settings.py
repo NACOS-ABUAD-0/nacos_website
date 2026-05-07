@@ -80,13 +80,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60")),
-        ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("1", "true", "yes", "y", "on"),
-    )
-}
+_default_sqlite_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+_raw_database_url = (os.getenv("DATABASE_URL") or "").strip()
+
+# Guard against common misconfigurations like DATABASE_URL="://..."
+if not _raw_database_url or _raw_database_url.startswith("://"):
+    _raw_database_url = _default_sqlite_url
+
+try:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=_raw_database_url,
+            conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60")),
+            ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("1", "true", "yes", "y", "on"),
+        )
+    }
+except Exception:
+    # Last-resort fallback so the app can start even if DATABASE_URL is invalid.
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=_default_sqlite_url,
+            conn_max_age=0,
+            ssl_require=False,
+        )
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
