@@ -166,7 +166,8 @@ CORS_ALLOWED_ORIGINS = _split_env_list(
     [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://nacos-abuad0-website.vercel.app",
+        "https://nacosabuad.org",
+        "https://www.nacosabuad.org",
     ],
 )
 
@@ -177,7 +178,8 @@ CSRF_TRUSTED_ORIGINS = _split_env_list(
     [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://nacos-abuad0-website.vercel.app",
+        "https://nacosabuad.org",
+        "https://www.nacosabuad.org",
     ],
 )
 
@@ -204,7 +206,7 @@ DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'
 
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
-    "https://nacos-abuad0-website.vercel.app"
+    "https://nacosabuad.org",
 )
 
 # Custom flags

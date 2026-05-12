@@ -9,6 +9,8 @@
 
 import axios, { AxiosError } from 'axios'
 
+import { buildBaseURL } from '../lib/api'
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 export interface UserRecord {
@@ -62,7 +64,7 @@ export interface ApiErrorResponse {
  * Ensure this is the same instance used throughout your app.
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  baseURL: buildBaseURL(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

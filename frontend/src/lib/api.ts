@@ -4,7 +4,7 @@ import axios from "axios";
 
 // URL CONSTRUCTION
 
-function buildBaseURL(): string {
+export function buildBaseURL(): string {
   const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
     .replace(/\/+$/, "")
     .replace(/\/api$/, "");

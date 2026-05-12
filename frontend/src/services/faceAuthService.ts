@@ -3,13 +3,7 @@
  * Uses the same base URL logic and localStorage keys as src/lib/api.ts.
  */
 
-// ── Match the base URL logic from src/lib/api.ts exactly ──────────────────────
-function buildBaseURL(): string {
-  const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
-    .replace(/\/+$/, "")
-    .replace(/\/api$/, "");
-  return `${raw}/api`;
-}
+import { buildBaseURL } from "../lib/api";
 
 const API_BASE = buildBaseURL();
 

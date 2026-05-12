@@ -43,7 +43,7 @@ def send_verification_email(user, request=None):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
 
     # Get frontend URL from settings or use default
-    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://nacosabuad.org')
     verification_url = f"{frontend_url}/verify-email/{uid}/{token}/"
 
     subject = "Verify your NACOS ABUAD account"

@@ -57,8 +57,8 @@ export const useSEO = ({
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'NACOS ABUAD',
-      url: 'https://nacos-abuad.edu.ng',
-      logo: 'https://nacos-abuad.edu.ng/assets/nacos-logo.png',
+      url: 'https://nacosabuad.org',
+      logo: 'https://nacosabuad.org/assets/nacos-logo.png',
       description: 'NACOS ABUAD - Computing Innovation at ABUAD University',
       address: {
         '@type': 'PostalAddress',

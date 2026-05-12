@@ -1,7 +1,7 @@
 # Nacos Backend API Endpoints
 
 Base URL:
-- `https://<render-backend-host>/api/`
+- Production: `https://api.nacosabuad.org/api/`
 - Local dev (example): `http://localhost:8000/api/`
 
 Notes:
