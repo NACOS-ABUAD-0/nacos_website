@@ -3,36 +3,39 @@
 from datetime import timedelta
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-#  SECRET KEY
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m",
-)
-
-#  Prevent insecure production deploy
-if not os.getenv("DJANGO_DEBUG") and not os.getenv("DJANGO_SECRET_KEY"):
-    raise Exception("DJANGO_SECRET_KEY must be set in production")
-
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", "on")
 
-# Hosts
-RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
-ALLOWED_HOSTS = [
-    h
-    for h in [
-        RENDER_EXTERNAL_HOSTNAME,
-        "nacos-website-9g4v.onrender.com",
-        "localhost",
-        "127.0.0.1",
-    ]
-    if h
-]
+#  SECRET KEY — dev-only default; production must set DJANGO_SECRET_KEY
+_dev_secret = "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m"
+_secret_key = os.getenv("DJANGO_SECRET_KEY")
+if DEBUG:
+    SECRET_KEY = _secret_key or _dev_secret
+else:
+    if not _secret_key:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is disabled.")
+    SECRET_KEY = _secret_key
+
+
+def _allowed_hosts():
+    raw = os.getenv("DJANGO_ALLOWED_HOSTS")
+    if raw:
+        return [h.strip() for h in raw.split(",") if h.strip()]
+    if DEBUG:
+        return ["127.0.0.1", "localhost"]
+    raise ImproperlyConfigured(
+        "DJANGO_ALLOWED_HOSTS must be set (comma-separated hostnames) when DJANGO_DEBUG is disabled."
+    )
+
+
+ALLOWED_HOSTS = _allowed_hosts()
 
 
 INSTALLED_APPS = [
@@ -101,6 +104,38 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
+
+# Database: DATABASE_URL (recommended) or POSTGRES_* / DB_* discrete variables
+_database_url = os.getenv("DATABASE_URL")
+if _database_url:
+    _ssl_require = os.getenv("DATABASE_SSL_REQUIRE", "true").lower() in ("1", "true", "yes", "y", "on")
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=_database_url,
+            conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "600")),
+            ssl_require=_ssl_require,
+        ),
+    }
+else:
+    _db_name = os.getenv("POSTGRES_DB") or os.getenv("DB_NAME") or "postgres"
+    _db_user = os.getenv("POSTGRES_USER") or os.getenv("DB_USER") or "postgres"
+    _db_password = os.getenv("POSTGRES_PASSWORD") or os.getenv("DB_PASSWORD") or ""
+    _db_host = os.getenv("POSTGRES_HOST") or os.getenv("DB_HOST") or "localhost"
+    _db_port = os.getenv("POSTGRES_PORT") or os.getenv("DB_PORT") or "5432"
+    _local_hosts = {"localhost", "127.0.0.1", "::1"}
+    _default_sslmode = "prefer" if _db_host in _local_hosts else "require"
+    _sslmode = os.getenv("POSTGRES_SSLMODE", _default_sslmode)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _db_name,
+            "USER": _db_user,
+            "PASSWORD": _db_password,
+            "HOST": _db_host,
+            "PORT": _db_port,
+            "OPTIONS": {"sslmode": _sslmode},
+        },
+    }
 
 #  Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -189,29 +224,3 @@ LOGGING = {
         "resources": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
-
-# DATABASE (Final Clean Version)
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if DATABASE_URL:
-    print("Using production database (Render/AWS)")
-else:
-    print("Using local SQLite database")
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=60,
-        ssl_require=bool(DATABASE_URL),
-    )
-}
-
-
-# TEMPORARY DEBUG — REMOVE AFTER FIXING
-print(f"=" * 50)
-print(f"EMAIL_HOST_USER: '{EMAIL_HOST_USER}'")
-print(f"EMAIL_HOST_PASSWORD length: {len(EMAIL_HOST_PASSWORD)}")
-print(f"EMAIL_HOST_PASSWORD last 4 chars: '...{EMAIL_HOST_PASSWORD[-4:] if EMAIL_HOST_PASSWORD else 'EMPTY'}'")
-print(f"BASE_DIR .env exists: {(BASE_DIR / '.env').exists()}")
-print(f"=" * 50)
