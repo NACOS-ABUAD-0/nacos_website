@@ -15,10 +15,28 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include
+
+
+def api_prefix_no_slash(request):
+    """
+    Handle GET/POST /api (no trailing slash). Without this, APPEND_SLASH tries to
+    redirect POST /api → /api/ and raises RuntimeError. Bots and misconfigured
+    clients often hit bare /api.
+    """
+    return JsonResponse(
+        {
+            "detail": "Not found. Use paths under /api/ with a trailing slash "
+            "(e.g. /api/auth/login/)."
+        },
+        status=404,
+    )
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api', api_prefix_no_slash),
     path('api/', include('accounts.urls')),
     path('api/', include('projects.urls')),
     path('api/', include('resources.urls')),
