@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { UserListParams, PaginatedUserResponse, UserRecord} from '../../services/adminUserService'
+import type { PaginatedUserResponse, UserRecord} from '../../services/adminUserService'
 import type{ DeleteUserPayload } from '../../services/adminUserService'
 import {fetchUsers, deleteUser,  } from '../../services/adminUserService'
 

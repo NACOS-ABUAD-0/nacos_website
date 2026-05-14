@@ -33,8 +33,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── RESPONSE INTERCEPTOR: silent token refresh ──────────────────────────────
-
+// RESPONSE INTERCEPTOR: silent token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -45,23 +44,29 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) throw new Error("No refresh token");
+        if (!refreshToken) {
+          throw new Error("No refresh token in localStorage");
+        }
 
         const response = await axios.post(
           `${BASE_URL}/auth/token/refresh/`,
           { refresh: refreshToken }
         );
 
-        const { access, refresh } = response.data;
-        localStorage.setItem("accessToken", access);
-        if (refresh) localStorage.setItem("refreshToken", refresh);
+        const { access } = response.data;
+        if (!access) {
+          throw new Error("Refresh endpoint did not return access token");
+        }
 
+        localStorage.setItem("accessToken", access);
         originalRequest.headers.Authorization = `Bearer ${access}`;
         return api(originalRequest);
-      } catch {
+
+      } catch (refreshError: any) {
+        // Just clear tokens — DON'T redirect here
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
+        return Promise.reject(refreshError);
       }
     }
 
