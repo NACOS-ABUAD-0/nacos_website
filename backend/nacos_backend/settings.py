@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes", "y", "on")
+DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes", "y", "on")
 
 #  SECRET KEY — dev-only default; production must set DJANGO_SECRET_KEY
 _dev_secret = "django-insecure-tx17(7h&pa@3^t+kh+!6v^+q8v&7w6e9vcji09320j+(058b+m"
