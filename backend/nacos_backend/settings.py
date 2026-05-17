@@ -104,7 +104,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
-use_sqlite = os.getenv('USE_SQLITE')
+
 
 # Database: DATABASE_URL (recommended) or POSTGRES_* / DB_* discrete variables
 _database_url = os.getenv("DATABASE_URL")
