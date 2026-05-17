@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { api } from '../api';
 
+/**
+ * =========================
+ * TYPES
+ * =========================
+ */
+
+// What backend RETURNS
 export interface Event {
   id: number;
   title: string;
@@ -19,7 +26,21 @@ export interface Event {
   updated_at: string;
 }
 
-// Paginated response type
+// What backend ACCEPTS on CREATE
+export interface CreateEventDTO {
+  title: string;
+  start_time: string;
+  end_time?: string | null;
+  is_remote: boolean;
+  location: string;
+  poster_url: string;
+  description: string;
+  registration_url: string;
+  contact_email: string;
+  is_published: boolean;
+}
+
+// Pagination type
 interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -27,19 +48,22 @@ interface PaginatedResponse<T> {
   results: T[];
 }
 
-// ✅ FIXED: Returns array directly, not paginated object
+/**
+ * =========================
+ * QUERIES
+ * =========================
+ */
+
 export const useEvents = (params: Record<string, unknown> = {}) =>
   useQuery({
     queryKey: ['events', params],
     queryFn: async () => {
       const response = await api.get('/events/', { params });
-      // Normalize: always return the results array
       return (response.data as PaginatedResponse<Event>)?.results ?? [];
     },
     placeholderData: keepPreviousData,
   });
 
-// ✅ FIXED: Returns single event object (not paginated)
 export const useEvent = (id: string | number) =>
   useQuery({
     queryKey: ['event', id],
@@ -47,34 +71,45 @@ export const useEvent = (id: string | number) =>
     enabled: !!id,
   });
 
-// ✅ ADDED: Separate hook for upcoming events (common use case)
 export const useUpcomingEvents = (params: Record<string, unknown> = {}) =>
   useQuery({
     queryKey: ['upcoming-events', params],
     queryFn: async () => {
       const response = await api.get('/events/', {
-        params: { ...params, status: 'upcoming' }
+        params: { ...params, status: 'upcoming' },
       });
       return (response.data as PaginatedResponse<Event>)?.results ?? [];
     },
     placeholderData: keepPreviousData,
   });
 
-// Mutation hooks (unchanged - they work fine)
+/**
+ * =========================
+ * MUTATIONS
+ * =========================
+ */
+
 export const useCreateEvent = () => {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: (data: Partial<Event>) =>
+    mutationFn: (data: CreateEventDTO) =>
       api.post('/events/', data).then(r => r.data as Event),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
+
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['upcoming-events'] });
+    },
   });
 };
 
 export const useUpdateEvent = () => {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Event> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<CreateEventDTO> }) =>
       api.patch(`/events/${id}/`, data).then(r => r.data as Event),
+
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['event', id] });
@@ -85,8 +120,10 @@ export const useUpdateEvent = () => {
 
 export const useDeleteEvent = () => {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: (id: number) => api.delete(`/events/${id}/`),
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['upcoming-events'] });
