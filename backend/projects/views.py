@@ -1,7 +1,11 @@
 # path: backend/projects/views.py
+import hashlib
 import logging
+import time
 
+from django.conf import settings
 from rest_framework import viewsets, status, filters
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
@@ -18,6 +22,41 @@ from .serializers import (
 from .permissions import IsOwnerOrReadOnly
 
 logger = logging.getLogger(__name__)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cloudinary_sign(request):
+    """
+    Return a short-lived signature so the client can upload directly to Cloudinary
+    without exposing the API secret in the browser.
+    """
+    cloud_name = settings.CLOUDINARY_CLOUD_NAME
+    api_key = settings.CLOUDINARY_API_KEY
+    api_secret = settings.CLOUDINARY_API_SECRET
+    if not all([cloud_name, api_key, api_secret]):
+        return Response(
+            {"detail": "Cloudinary is not configured on the server."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    folder = settings.CLOUDINARY_UPLOAD_FOLDER
+    timestamp = int(time.time())
+    params_to_sign = {"folder": folder, "timestamp": timestamp}
+    signature_base = "&".join(
+        f"{key}={params_to_sign[key]}" for key in sorted(params_to_sign)
+    )
+    signature = hashlib.sha1(
+        f"{signature_base}{api_secret}".encode("utf-8")
+    ).hexdigest()
+
+    return Response({
+        "cloud_name": cloud_name,
+        "api_key": api_key,
+        "timestamp": timestamp,
+        "signature": signature,
+        "folder": folder,
+    })
 
 
 class SkillTagViewSet(viewsets.ReadOnlyModelViewSet):

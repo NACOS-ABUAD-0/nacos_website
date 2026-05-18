@@ -336,17 +336,50 @@ export const adminCommitteeAPI = {
 // ─── CLOUDINARY ───────────────────────────────────────────────────────────────
 
 export const cloudinaryAPI = {
-  upload: async (file: File, uploadPreset: string = 'nacos_projects') => {
+  /**
+   * Uploads to Cloudinary. Default: signed upload via POST /api/cloudinary/sign/.
+   * Set VITE_CLOUDINARY_UPLOAD_PRESET to use unsigned preset uploads instead.
+   */
+  upload: async (file: File) => {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'your_cloud_name';
+    formData.append("file", file);
+
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET?.trim();
+    let cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME?.trim() || "";
+
+    if (uploadPreset) {
+      if (!cloudName) {
+        throw new Error(
+          "VITE_CLOUDINARY_CLOUD_NAME is not set. Add it to frontend/.env and restart the dev server."
+        );
+      }
+      formData.append("upload_preset", uploadPreset);
+    } else {
+      const { data } = await api.post<{
+        cloud_name: string;
+        api_key: string;
+        timestamp: number;
+        signature: string;
+        folder: string;
+      }>("/cloudinary/sign/");
+      cloudName = data.cloud_name;
+      formData.append("api_key", data.api_key);
+      formData.append("timestamp", String(data.timestamp));
+      formData.append("signature", data.signature);
+      formData.append("folder", data.folder);
+    }
+
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      { method: 'POST', body: formData }
+      { method: "POST", body: formData }
     );
-    if (!response.ok) throw new Error('Upload failed');
-    return response.json();
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        (err as { error?: { message?: string } })?.error?.message || "Upload failed"
+      );
+    }
+    return response.json() as Promise<{ secure_url: string }>;
   },
 };
 

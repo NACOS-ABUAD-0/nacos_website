@@ -240,6 +240,12 @@ FRONTEND_URL = os.getenv(
     "https://nacosabuad.org",
 )
 
+# Cloudinary (project image uploads — secret must stay server-side only)
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
+CLOUDINARY_UPLOAD_FOLDER = os.getenv("CLOUDINARY_UPLOAD_FOLDER", "nacos/projects")
+
 # Custom flags
 REQUIRE_STUDENT_VERIFICATION = True
 
