@@ -4,10 +4,10 @@ from django.utils import timezone
 
 
 class Event(models.Model):
-    title = models.CharField(max_length=255)          # was "name"
+    title = models.CharField(max_length=255)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(null=True, blank=True)
-    location = models.CharField(max_length=500)
+    location = models.CharField(max_length=500, blank=True, default="")  # blank=True + default for remote events
     is_remote = models.BooleanField(default=False)
     poster_url = models.URLField(blank=True)
     description = models.TextField(blank=True)
