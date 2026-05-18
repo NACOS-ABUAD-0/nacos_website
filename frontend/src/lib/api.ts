@@ -32,14 +32,28 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
-// ─── AXIOS INSTANCE ───────────────────────────────────────────────────────────
+// ─── AXIOS INSTANCES ──────────────────────────────────────────────────────────
 
+/**
+ * Authenticated instance — attaches JWT and handles silent token refresh.
+ * Use for any endpoint that requires a logged-in user.
+ */
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: false,
 });
 
-// ─── REQUEST INTERCEPTOR: attach JWT ─────────────────────────────────────────
+/**
+ * Public instance — no auth headers, no token refresh logic.
+ * Use for read-only endpoints open to unauthenticated users
+ * (e.g. gallery, homepage stats, resources).
+ */
+export const publicApi = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: false,
+});
+
+// ─── REQUEST INTERCEPTOR: attach JWT (api instance only) ─────────────────────
 
 api.interceptors.request.use(
   (config) => {
@@ -61,7 +75,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── RESPONSE INTERCEPTOR: silent token refresh ───────────────────────────────
+// ─── RESPONSE INTERCEPTOR: silent token refresh (api instance only) ───────────
 
 api.interceptors.response.use(
   (response) => response,

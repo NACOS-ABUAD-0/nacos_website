@@ -19,7 +19,7 @@ interface GalleryImage {
   display_order: number
   is_published: boolean
   resolved_url?: string
-  image_url_field?: string
+  image_url?: string
 }
 
 interface GalleryFormData {
@@ -28,7 +28,7 @@ interface GalleryFormData {
   category: GalleryCategory
   display_order: number
   is_published: boolean
-  image_url_field: string
+  image_url: string
 }
 
 const CATEGORIES: GalleryCategory[] = ['Hackathons', 'Workshops', 'Socials', 'Others']
@@ -46,7 +46,7 @@ const EMPTY_FORM: GalleryFormData = {
   category: 'Others',
   display_order: 0,
   is_published: true,
-  image_url_field: '',
+  image_url: '',
 }
 
 // ─── Three-dot menu ───────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
           category:        initial.category         ?? 'Others',
           display_order:   initial.display_order    ?? 0,
           is_published:    initial.is_published     ?? true,
-          image_url_field: initial.resolved_url     ?? '',
+          image_url:       initial.image_url        ?? initial.resolved_url ?? '',
         }
       : EMPTY_FORM
   )
@@ -235,24 +235,37 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
     if (!f) return
     setFile(f)
     setPreviewUrl(URL.createObjectURL(f))
-    set('image_url_field', '')
+    set('image_url', '')
   }
 
   const handleUrlChange = (url: string): void => {
-    set('image_url_field', url)
+    set('image_url', url)
     setFile(null)
     setPreviewUrl(url || null)
   }
 
   const handleSubmit = (): void => {
-    if (!file && !form.image_url_field && !initial?.resolved_url) {
+    // For new images, require either a file or URL
+    if (!initial && !file && !form.image_url.trim()) {
       toast.error('Please upload an image or provide an image URL.')
       return
     }
 
     const fd = new FormData()
-    if (file) fd.append('image', file)
-    fd.append('image_url_field', form.image_url_field)
+
+    // If user uploaded a new file, send it. Backend should handle file upload
+    // and set image_url accordingly, OR we upload to Cloudinary first.
+    // For now, we send the file as 'image' if present.
+    if (file) {
+      fd.append('image', file)
+    }
+
+    // Always send image_url if we have one (either from URL input or existing image)
+    // This is the KEY FIX: backend expects 'image_url', not 'image_url_field'
+    if (form.image_url.trim()) {
+      fd.append('image_url', form.image_url.trim())
+    }
+
     fd.append('caption', form.caption)
     fd.append('alt_text', form.alt_text)
     fd.append('category', form.category)
@@ -277,7 +290,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
             previewUrl={previewUrl}
             onFileChange={handleFileChange}
             onUrlChange={handleUrlChange}
-            urlValue={form.image_url_field}
+            urlValue={form.image_url}
           />
 
           <div>
@@ -375,7 +388,12 @@ const Gallery: React.FC = () => {
       setModal(null)
       toast.success('Image added!')
     },
-    onError: () => toast.error('Failed to add image.'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.image_url?.[0]
+        || err?.response?.data?.detail
+        || 'Failed to add image.'
+      toast.error(msg)
+    },
   })
 
   const updateMutation = useMutation({
@@ -387,7 +405,12 @@ const Gallery: React.FC = () => {
       setModal(null)
       toast.success('Image updated!')
     },
-    onError: () => toast.error('Failed to update image.'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.image_url?.[0]
+        || err?.response?.data?.detail
+        || 'Failed to update image.'
+      toast.error(msg)
+    },
   })
 
   const deleteMutation = useMutation({

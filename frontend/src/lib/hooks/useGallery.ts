@@ -1,3 +1,5 @@
+// useGallery.ts
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { publicApi, api } from '../api';
 
@@ -27,7 +29,7 @@ export const useGallery = (params: Record<string, unknown> = {}) =>
 export const useCreateGalleryImage = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>) =>
+    mutationFn: (data: Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>) =>
       api.post('/gallery/', data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gallery'] });
@@ -38,7 +40,7 @@ export const useCreateGalleryImage = () => {
 export const useUpdateGalleryImage = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Omit<<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>> }) =>
       api.patch(`/gallery/${id}/`, data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gallery'] });
