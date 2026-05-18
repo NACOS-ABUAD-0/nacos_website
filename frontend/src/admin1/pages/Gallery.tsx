@@ -1,7 +1,6 @@
 // src/admin1/pages/Gallery.tsx
 
-import React, { useState, useRef} from 'react'
-import type { ChangeEvent } from 'react'
+import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
@@ -30,6 +29,8 @@ interface GalleryFormData {
   is_published: boolean
   image_url: string
 }
+
+type GalleryPayload = Omit<GalleryFormData, never>
 
 const CATEGORIES: GalleryCategory[] = ['Hackathons', 'Workshops', 'Socials', 'Others']
 
@@ -147,66 +148,45 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) =>
   )
 }
 
-// ─── Image upload / URL input ─────────────────────────────────────────────────
-interface ImageInputProps {
+// ─── Image URL input with preview ─────────────────────────────────────────────
+interface ImageUrlInputProps {
   previewUrl: string | null
-  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void
   onUrlChange: (url: string) => void
   urlValue: string
 }
 
-const ImageInput: React.FC<ImageInputProps> = ({ previewUrl, onFileChange, onUrlChange, urlValue }) => {
-  const fileRef = useRef<HTMLInputElement>(null)
+const ImageUrlInput: React.FC<ImageUrlInputProps> = ({ previewUrl, onUrlChange, urlValue }) => (
+  <div className="space-y-2">
+    <label className="text-xs font-semibold text-gray-500 uppercase">
+      Image URL
+    </label>
 
-  return (
-    <div className="space-y-2">
-      <label className="text-xs font-semibold text-gray-500 uppercase">
-        Image (upload file or paste URL)
-      </label>
-
-      {/* Preview */}
-      {previewUrl && (
-        <div className="w-full h-40 rounded-lg overflow-hidden border border-gray-200">
-          <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-        </div>
-      )}
-
-      {/* File upload */}
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-500 hover:border-[#1a7a3f] hover:text-[#1a7a3f] transition-colors text-center"
-      >
-        📁 Click to upload image file
-      </button>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={onFileChange}
-      />
-
-      {/* URL fallback */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-200" />
+    {/* Preview */}
+    {previewUrl && (
+      <div className="w-full h-40 rounded-lg overflow-hidden border border-gray-200">
+        <img
+          src={previewUrl}
+          alt="Preview"
+          className="w-full h-full object-cover"
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
       </div>
-      <input
-        value={urlValue}
-        onChange={e => onUrlChange(e.target.value)}
-        placeholder="https://example.com/image.jpg"
-        className="border p-2 rounded-lg text-sm w-full"
-      />
-    </div>
-  )
-}
+    )}
+
+    <input
+      value={urlValue}
+      onChange={e => onUrlChange(e.target.value)}
+      placeholder="https://example.com/image.jpg"
+      className="border p-2 rounded-lg text-sm w-full"
+    />
+    <p className="text-[11px] text-gray-400">Paste a publicly accessible image URL.</p>
+  </div>
+)
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 interface GalleryModalProps {
   initial: GalleryImage | null
-  onSave: (fd: FormData) => void
+  onSave: (payload: GalleryPayload) => void
   onClose: () => void
   isSaving: boolean
 }
@@ -215,64 +195,44 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
   const [form, setForm] = useState<GalleryFormData>(
     initial
       ? {
-          caption:         initial.caption         ?? '',
-          alt_text:        initial.alt_text         ?? '',
-          category:        initial.category         ?? 'Others',
-          display_order:   initial.display_order    ?? 0,
-          is_published:    initial.is_published     ?? true,
-          image_url:       initial.image_url        ?? initial.resolved_url ?? '',
+          caption:       initial.caption       ?? '',
+          alt_text:      initial.alt_text       ?? '',
+          category:      initial.category       ?? 'Others',
+          display_order: initial.display_order  ?? 0,
+          is_published:  initial.is_published   ?? true,
+          image_url:     initial.image_url      ?? initial.resolved_url ?? '',
         }
       : EMPTY_FORM
   )
-  const [file, setFile]           = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initial?.resolved_url ?? null)
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    initial?.image_url ?? initial?.resolved_url ?? null
+  )
 
   const set = <K extends keyof GalleryFormData>(field: K, value: GalleryFormData[K]): void =>
     setForm(f => ({ ...f, [field]: value }))
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    setFile(f)
-    setPreviewUrl(URL.createObjectURL(f))
-    set('image_url', '')
-  }
-
   const handleUrlChange = (url: string): void => {
     set('image_url', url)
-    setFile(null)
-    setPreviewUrl(url || null)
+    setPreviewUrl(url.trim() || null)
   }
 
   const handleSubmit = (): void => {
-    // For new images, require either a file or URL
-    if (!initial && !file && !form.image_url.trim()) {
-      toast.error('Please upload an image or provide an image URL.')
+    if (!form.image_url.trim()) {
+      toast.error('Please provide an image URL.')
       return
     }
 
-    const fd = new FormData()
-
-    // If user uploaded a new file, send it. Backend should handle file upload
-    // and set image_url accordingly, OR we upload to Cloudinary first.
-    // For now, we send the file as 'image' if present.
-    if (file) {
-      fd.append('image', file)
+    const payload: GalleryPayload = {
+      image_url:     form.image_url.trim(),
+      caption:       form.caption,
+      alt_text:      form.alt_text,
+      category:      form.category,
+      display_order: form.display_order,
+      is_published:  form.is_published,
     }
 
-    // Always send image_url if we have one (either from URL input or existing image)
-    // This is the KEY FIX: backend expects 'image_url', not 'image_url_field'
-    if (form.image_url.trim()) {
-      fd.append('image_url', form.image_url.trim())
-    }
-
-    fd.append('caption', form.caption)
-    fd.append('alt_text', form.alt_text)
-    fd.append('category', form.category)
-    fd.append('display_order', String(form.display_order))
-    fd.append('is_published', String(form.is_published))
-
-    onSave(fd)
+    onSave(payload)
   }
 
   return (
@@ -286,9 +246,8 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
         </h2>
 
         <div className="flex flex-col gap-4">
-          <ImageInput
+          <ImageUrlInput
             previewUrl={previewUrl}
-            onFileChange={handleFileChange}
             onUrlChange={handleUrlChange}
             urlValue={form.image_url}
           />
@@ -371,7 +330,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
 // ─── Main component ───────────────────────────────────────────────────────────
 const Gallery: React.FC = () => {
   const qc = useQueryClient()
-  const [modal, setModal]       = useState<'add' | GalleryImage | null>(null)
+  const [modal, setModal]         = useState<'add' | GalleryImage | null>(null)
   const [filterCat, setFilterCat] = useState<string>('All')
 
   const { data: images = [], isLoading, error, refetch } = useQuery<GalleryImage[]>({
@@ -380,8 +339,8 @@ const Gallery: React.FC = () => {
   })
 
   const createMutation = useMutation({
-    mutationFn: (fd: FormData) =>
-      api.post('/gallery/', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
+    mutationFn: (payload: GalleryPayload) =>
+      api.post('/gallery/', payload).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-gallery'] })
       qc.invalidateQueries({ queryKey: ['gallery'] })
@@ -389,16 +348,19 @@ const Gallery: React.FC = () => {
       toast.success('Image added!')
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.image_url?.[0]
-        || err?.response?.data?.detail
-        || 'Failed to add image.'
+      const data = err?.response?.data
+      const msg =
+        data?.image_url?.[0] ??
+        data?.non_field_errors?.[0] ??
+        data?.detail ??
+        'Failed to add image.'
       toast.error(msg)
     },
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, fd }: { id: number; fd: FormData }) =>
-      api.patch(`/gallery/${id}/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<GalleryPayload> }) =>
+      api.patch(`/gallery/${id}/`, payload).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-gallery'] })
       qc.invalidateQueries({ queryKey: ['gallery'] })
@@ -406,9 +368,12 @@ const Gallery: React.FC = () => {
       toast.success('Image updated!')
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.image_url?.[0]
-        || err?.response?.data?.detail
-        || 'Failed to update image.'
+      const data = err?.response?.data
+      const msg =
+        data?.image_url?.[0] ??
+        data?.non_field_errors?.[0] ??
+        data?.detail ??
+        'Failed to update image.'
       toast.error(msg)
     },
   })
@@ -423,11 +388,11 @@ const Gallery: React.FC = () => {
     onError: () => toast.error('Failed to delete image.'),
   })
 
-  const handleSave = (fd: FormData): void => {
+  const handleSave = (payload: GalleryPayload): void => {
     if (modal === 'add') {
-      createMutation.mutate(fd)
+      createMutation.mutate(payload)
     } else if (modal && typeof modal === 'object') {
-      updateMutation.mutate({ id: (modal as GalleryImage).id, fd })
+      updateMutation.mutate({ id: (modal as GalleryImage).id, payload })
     }
   }
 

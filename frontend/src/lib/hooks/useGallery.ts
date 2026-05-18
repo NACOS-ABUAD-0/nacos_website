@@ -1,4 +1,4 @@
-// useGallery.ts
+// src/hooks/useGallery.ts
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { publicApi, api } from '../api';
@@ -16,6 +16,8 @@ export interface GalleryImage {
   updated_at: string;
 }
 
+export type GalleryImagePayload = Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>;
+
 const toArray = (data: any): GalleryImage[] =>
   Array.isArray(data) ? data : (data?.results ?? []);
 
@@ -29,8 +31,11 @@ export const useGallery = (params: Record<string, unknown> = {}) =>
 export const useCreateGalleryImage = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>) =>
-      api.post('/gallery/', data).then(r => r.data),
+    // Send plain JSON — backend serializer expects `image_url` as a field,
+    // NOT a multipart file upload. Using application/json avoids the
+    // "Provide either an image file or an image URL." validation error.
+    mutationFn: (payload: GalleryImagePayload) =>
+      api.post('/gallery/', payload).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gallery'] });
     },
@@ -40,7 +45,7 @@ export const useCreateGalleryImage = () => {
 export const useUpdateGalleryImage = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<GalleryImagePayload> }) =>
       api.patch(`/gallery/${id}/`, data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gallery'] });
