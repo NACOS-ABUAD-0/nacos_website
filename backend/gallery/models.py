@@ -9,7 +9,7 @@ class GalleryImage(models.Model):
         ('Others', 'Others'),
     ]
 
-    image_url = models.URLField(blank=True)
+    image_url = models.URLField(blank=True, max_length=2048)
     caption = models.CharField(max_length=255, blank=True)
     alt_text = models.CharField(max_length=255, blank=True)
     category = models.CharField(
