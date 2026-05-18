@@ -1,4 +1,3 @@
-# backend/gallery/models.py
 from django.db import models
 
 
@@ -10,8 +9,7 @@ class GalleryImage(models.Model):
         ('Others', 'Others'),
     ]
 
-    image = models.ImageField(upload_to='gallery/', blank=True, null=True)
-    image_url = models.URLField(blank=True)          # external URL alternative
+    image_url = models.URLField(blank=True)
     caption = models.CharField(max_length=255, blank=True)
     alt_text = models.CharField(max_length=255, blank=True)
     category = models.CharField(
@@ -30,7 +28,4 @@ class GalleryImage(models.Model):
 
     @property
     def resolved_url(self):
-        """Return image file URL if uploaded, else fallback to image_url field."""
-        if self.image:
-            return self.image.url
         return self.image_url or None

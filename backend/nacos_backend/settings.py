@@ -110,9 +110,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 
 
-# Database: DATABASE_URL (recommended) or POSTGRES_* / DB_* discrete variables
+# ─── DATABASE ────────────────────────────────────────────────────────────────
+#
+# Priority order:
+#   1. DATABASE_URL env var          (production — Heroku / Railway style)
+#   2. POSTGRES_HOST / DB_HOST var   (production — EC2 / ECS discrete vars)
+#   3. SQLite fallback               (local dev — no env vars needed)
+#
 _database_url = os.getenv("DATABASE_URL")
+_postgres_host = os.getenv("POSTGRES_HOST") or os.getenv("DB_HOST")
+
 if _database_url:
+    # ── Option 1: full DATABASE_URL ──────────────────────────────────────────
     _ssl_require = os.getenv("DATABASE_SSL_REQUIRE", "true").lower() in ("1", "true", "yes", "y", "on")
     DATABASES = {
         "default": dj_database_url.config(
@@ -121,14 +130,15 @@ if _database_url:
             ssl_require=_ssl_require,
         ),
     }
-else:
+
+elif _postgres_host:
+    # ── Option 2: discrete POSTGRES_* / DB_* vars ────────────────────────────
     _db_name = os.getenv("POSTGRES_DB") or os.getenv("DB_NAME") or "postgres"
     _db_user = os.getenv("POSTGRES_USER") or os.getenv("DB_USER") or "postgres"
     _db_password = os.getenv("POSTGRES_PASSWORD") or os.getenv("DB_PASSWORD") or ""
-    _db_host = os.getenv("POSTGRES_HOST") or os.getenv("DB_HOST") or "localhost"
     _db_port = os.getenv("POSTGRES_PORT") or os.getenv("DB_PORT") or "5432"
     _local_hosts = {"localhost", "127.0.0.1", "::1"}
-    _default_sslmode = "prefer" if _db_host in _local_hosts else "require"
+    _default_sslmode = "prefer" if _postgres_host in _local_hosts else "require"
     _sslmode = os.getenv("POSTGRES_SSLMODE", _default_sslmode)
     DATABASES = {
         "default": {
@@ -136,11 +146,27 @@ else:
             "NAME": _db_name,
             "USER": _db_user,
             "PASSWORD": _db_password,
-            "HOST": _db_host,
+            "HOST": _postgres_host,
             "PORT": _db_port,
             "OPTIONS": {"sslmode": _sslmode},
         },
     }
+
+else:
+    # ── Option 3: SQLite — local development fallback ────────────────────────
+    # Kicks in automatically when neither DATABASE_URL nor POSTGRES_HOST/DB_HOST
+    # is set. db.sqlite3 is written next to manage.py and should be in .gitignore.
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "No database configured. Set DATABASE_URL or POSTGRES_HOST in production."
+        )
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+
 
 #  Password validation
 AUTH_PASSWORD_VALIDATORS = [

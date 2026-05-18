@@ -1,8 +1,6 @@
-# backend/gallery/views.py
 from rest_framework import viewsets, filters
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import AllowAny
+from django_filters.rest_framework import DjangoFilterBackend
 from .models import GalleryImage
 from .serializers import GalleryImageSerializer
 
@@ -20,8 +18,3 @@ class GalleryImageViewSet(viewsets.ModelViewSet):
         if self.request.user.is_authenticated and self.request.user.is_staff:
             return GalleryImage.objects.all()
         return GalleryImage.objects.filter(is_published=True)
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
