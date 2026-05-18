@@ -2,7 +2,7 @@
 
 import axios from "axios";
 
-// URL CONSTRUCTION
+// ─── URL CONSTRUCTION ────────────────────────────────────────────────────────
 
 export function buildBaseURL(): string {
   const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
@@ -13,27 +13,56 @@ export function buildBaseURL(): string {
 
 const BASE_URL = buildBaseURL();
 
-// AXIOS INSTANCE
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if the JWT access token stored in localStorage is expired
+ * (or malformed). We check this before attaching the header so we never
+ * send a token we already know is stale — which would cause the server to
+ * return 401 even on AllowAny endpoints.
+ */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    // `exp` is in seconds; Date.now() is in milliseconds.
+    return typeof payload.exp === "number" && payload.exp * 1000 < Date.now();
+  } catch {
+    // Malformed token — let the server decide.
+    return false;
+  }
+}
+
+// ─── AXIOS INSTANCE ───────────────────────────────────────────────────────────
 
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: false,
 });
 
-// REQUEST INTERCEPTOR: attach JWT
+// ─── REQUEST INTERCEPTOR: attach JWT ─────────────────────────────────────────
 
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
+
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (isTokenExpired(token)) {
+        // Remove the stale token immediately so we don't keep sending it.
+        // The response interceptor below will handle silent refresh when
+        // the server returns 401 for protected endpoints.
+        localStorage.removeItem("accessToken");
+      } else {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR: silent token refresh
+// ─── RESPONSE INTERCEPTOR: silent token refresh ───────────────────────────────
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -62,8 +91,8 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${access}`;
         return api(originalRequest);
 
-      } catch (refreshError: any) {
-        // Just clear tokens — DON'T redirect here
+      } catch (refreshError: unknown) {
+        // Clear tokens — DON'T redirect here; let the UI handle it.
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         return Promise.reject(refreshError);
@@ -74,7 +103,7 @@ api.interceptors.response.use(
   }
 );
 
-// ERROR UNWRAPPER
+// ─── ERROR UNWRAPPER ──────────────────────────────────────────────────────────
 
 const handleApiError = (error: unknown) => {
   const axiosError = error as { response?: { data?: unknown } };
@@ -82,7 +111,8 @@ const handleApiError = (error: unknown) => {
   throw { detail: "Something went wrong. Please try again." };
 };
 
-// TYPES
+// ─── TYPES ────────────────────────────────────────────────────────────────────
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -126,7 +156,7 @@ export interface NotificationData {
   message: string;
   notification_type: "committee" | "system";
   is_read: boolean;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   created_at: string;
 }
 
@@ -315,7 +345,6 @@ export const collaborationAPI = {
     message: string;
   }) => api.post(`/projects/${projectId}/apply_collaborate/`, payload),
 
-
   getRequests: (projectId: number | string) =>
     api.get<PaginatedResponse<CollaborationRequestData>>(
       `/projects/${projectId}/collaboration_requests/`
@@ -330,9 +359,9 @@ export const collaborationAPI = {
   deleteRequest: (projectId: number | string, requestId: number) =>
     api.delete(`/projects/${projectId}/requests/${requestId}/delete/`),
 
-  // BUG 3 FIX: Pass page_size=200 so pagination doesn't silently truncate
-  // results to the first page (typically 10–20 items).
-  // needs_help is passed as the string "true" — the backend checks `== "true"`.
+  // Pass page_size=200 so pagination doesn't silently truncate results to
+  // the first page. needs_help is passed as the string "true" — the backend
+  // checks `== "true"`.
   getProjectsNeedingHelp: (skillType?: string) =>
     api.get('/projects/', {
       params: {

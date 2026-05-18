@@ -1,5 +1,3 @@
-# backend/nacos_backend/settings.py
-
 from datetime import timedelta
 from pathlib import Path
 import os
@@ -68,7 +66,13 @@ INSTALLED_APPS = [
 #  DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # OptionalJWTAuthentication returns None (unauthenticated) for
+        # invalid/expired tokens instead of raising a 401. This lets
+        # AllowAny views stay accessible even when the client sends a
+        # stale Bearer token. Authenticated views are unaffected — a None
+        # result simply means the user is treated as anonymous, and
+        # IsAuthenticated permission will then deny access as expected.
+        'nacos_backend.authentication.OptionalJWTAuthentication',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
@@ -195,7 +199,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'
 
-# 📧 Email
+# Email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
