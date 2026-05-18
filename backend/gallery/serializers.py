@@ -22,8 +22,16 @@ class GalleryImageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'resolved_url', 'created_at', 'updated_at']
 
     def validate(self, attrs):
-        if not attrs.get('image_url'):
-            raise serializers.ValidationError(
-                {'image_url': 'An image URL is required.'}
-            )
+        # On create (no instance), image_url is required.
+        # On update (PATCH), only validate if image_url is explicitly being cleared.
+        if self.instance is None:
+            if not attrs.get('image_url'):
+                raise serializers.ValidationError(
+                    {'image_url': 'An image URL is required.'}
+                )
+        else:
+            if 'image_url' in attrs and not attrs['image_url']:
+                raise serializers.ValidationError(
+                    {'image_url': 'An image URL is required.'}
+                )
         return attrs
