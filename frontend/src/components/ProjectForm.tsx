@@ -26,7 +26,7 @@ const projectSchema = z.object({
   ).optional().default([]),
 });
 
-type ProjectFormData = z.infer<<typeof projectSchema>;
+type ProjectFormData = z.infer<typeof projectSchema>;
 
 interface CollaborationNeedForm {
   skill_type: 'frontend' | 'backend' | 'ui_ux' | 'ai_ml' | 'documentation' | 'others';
@@ -49,7 +49,7 @@ interface ProjectFormProps {
   onCancel?: () => void;
 }
 
-export const ProjectForm: React.FC<<ProjectFormProps> = ({
+export const ProjectForm: React.FC<ProjectFormProps> = ({
   project,
   onSubmit,
   onCancel,
@@ -65,7 +65,7 @@ export const ProjectForm: React.FC<<ProjectFormProps> = ({
     setValue,
     watch,
     reset,
-  } = useForm<<ProjectFormData>({
+  } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       title: '',
@@ -80,8 +80,8 @@ export const ProjectForm: React.FC<<ProjectFormProps> = ({
   const [linkInputs, setLinkInputs] = useState<{ key: string; value: string }[]>([]);
   const [imageInputs, setImageInputs] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [collabNeeds, setCollabNeeds] = useState<<CollaborationNeedForm[]>([]);
-  const fileInputRef = useRef<<HTMLInputElement>(null);
+  const [collabNeeds, setCollabNeeds] = useState<CollaborationNeedForm[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ─── Sync form + local state whenever the project changes ─────────────────
   useEffect(() => {
@@ -128,7 +128,7 @@ export const ProjectForm: React.FC<<ProjectFormProps> = ({
   const selectedTags = watch('tag_ids') || [];
 
   // ─── Image Upload ──────────────────────────────────────────────────────────
-  const handleImageUpload = async (e: React.ChangeEvent<<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
@@ -209,7 +209,7 @@ export const ProjectForm: React.FC<<ProjectFormProps> = ({
   };
 
   const syncLinksToForm = (inputs: typeof linkInputs) => {
-    const record = inputs.reduce<<Record<string, string>>((acc, { key, value }) => {
+    const record = inputs.reduce<Record<string, string>>((acc, { key, value }) => {
       if (key.trim() && value.trim()) acc[key.trim()] = value.trim();
       return acc;
     }, {});
@@ -238,7 +238,7 @@ export const ProjectForm: React.FC<<ProjectFormProps> = ({
       title: data.title,
       description: data.description,
       tag_ids: data.tag_ids,
-      links: linkInputs.reduce<<Record<string, string>>((acc, { key, value }) => {
+      links: linkInputs.reduce<Record<string, string>>((acc, { key, value }) => {
         if (key.trim() && value.trim()) acc[key.trim()] = value.trim();
         return acc;
       }, {}),
