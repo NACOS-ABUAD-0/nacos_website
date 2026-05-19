@@ -4,14 +4,6 @@ import { projectsAPI, skillsAPI } from '../api';
 import type { Project, Skill } from '../../types';
 
 // ─── Helper: normalize any API shape to a plain array ────────────────────────
-//
-// Django REST Framework endpoints may return either:
-//   A) A paginated object: { count, next, previous, results: [...] }
-//   B) A plain array:      [...]
-//
-// This helper always produces T[] regardless of which shape arrives,
-// so every hook is safe to use directly without downstream guards.
-// ─────────────────────────────────────────────────────────────────────────────
 function extractArray<T>(data: unknown): T[] {
   if (!data) return [];
   if (Array.isArray(data)) return data as T[];
@@ -27,8 +19,7 @@ export const useProjects = (params = {}) => {
     queryKey: ['projects', params],
     queryFn: async () => {
       const res = await projectsAPI.getProjects(params);
-      // Always resolve to a plain Project[] regardless of API response shape
-      return extractArray<Project>(res.data);
+      return extractArray<<Project>(res.data);
     },
     placeholderData: keepPreviousData,
   });
@@ -39,7 +30,7 @@ export const useMyProjects = () => {
     queryKey: ['my-projects'],
     queryFn: async () => {
       const res = await projectsAPI.getMyProjects();
-      return extractArray<Project>(res.data);
+      return extractArray<<Project>(res.data);
     },
   });
 };
@@ -53,12 +44,11 @@ export const useProject = (id: string | number) => {
 };
 
 export const useSkills = () => {
-  return useQuery<Skill[]>({
+  return useQuery<<Skill[]>({
     queryKey: ['skills'],
     queryFn: async () => {
       const res = await skillsAPI.getSkills();
-      // Normalize: API may return { count, results: Skill[] } or Skill[]
-      return extractArray<Skill>(res.data);
+      return extractArray<<Skill>(res.data);
     },
   });
 };
@@ -69,10 +59,11 @@ export const useCreateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<Project>) =>
+    mutationFn: (data: Partial<<Project>) =>
       projectsAPI.createProject(data).then(res => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['my-projects'] });
     },
   });
 };
@@ -81,10 +72,11 @@ export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string | number; data: Partial<Project> }) =>
+    mutationFn: ({ id, data }: { id: string | number; data: Partial<<Project> }) =>
       projectsAPI.updateProject(id, data).then(res => res.data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['my-projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
     },
   });
@@ -98,6 +90,7 @@ export const useDeleteProject = () => {
       projectsAPI.deleteProject(id).then(res => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['my-projects'] });
     },
   });
 };
@@ -111,6 +104,7 @@ export const useLikeProject = () => {
     onSuccess: (_, projectId) => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['my-projects'] });
     },
   });
 };
@@ -124,6 +118,7 @@ export const useUnlikeProject = () => {
     onSuccess: (_, projectId) => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['my-projects'] });
     },
   });
 };

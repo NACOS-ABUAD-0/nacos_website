@@ -7,20 +7,26 @@ import { useSkills, useCreateProject, useUpdateProject } from '../lib/hooks/useP
 import { cloudinaryAPI } from '../lib/api';
 import type { Project, Skill, CollaborationNeed } from '../types';
 
+// ─── Relaxed Zod Schema ──────────────────────────────────────────────────────
+// We avoid strict .url() validation on links/images to prevent silent failures
+// when users paste plain domains. tag_ids accepts both strings and numbers.
+// ─────────────────────────────────────────────────────────────────────────────
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
   description: z.string().min(1, 'Description is required'),
-  tag_ids: z.array(z.number()).optional(),
-  links: z.record(z.string().url('Invalid URL')).optional(),
-  images: z.array(z.string().url('Invalid URL')).optional(),
-  collaboration_needs: z.array(z.object({
-    skill_type: z.enum(['frontend', 'backend', 'ui_ux', 'ai_ml', 'documentation', 'others']),
-    custom_skill: z.string().optional(),
-    description: z.string().optional(),
-  })).optional(),
+  tag_ids: z.array(z.union([z.string(), z.number()])).optional().default([]),
+  links: z.record(z.string().min(1)).optional().default({}),
+  images: z.array(z.string().min(1)).optional().default([]),
+  collaboration_needs: z.array(
+    z.object({
+      skill_type: z.enum(['frontend', 'backend', 'ui_ux', 'ai_ml', 'documentation', 'others']),
+      custom_skill: z.string().optional(),
+      description: z.string().optional(),
+    })
+  ).optional().default([]),
 });
 
-type ProjectFormData = z.infer<typeof projectSchema>;
+type ProjectFormData = z.infer<<typeof projectSchema>;
 
 interface CollaborationNeedForm {
   skill_type: 'frontend' | 'backend' | 'ui_ux' | 'ai_ml' | 'documentation' | 'others';
@@ -43,7 +49,7 @@ interface ProjectFormProps {
   onCancel?: () => void;
 }
 
-export const ProjectForm: React.FC<ProjectFormProps> = ({
+export const ProjectForm: React.FC<<ProjectFormProps> = ({
   project,
   onSubmit,
   onCancel,
@@ -58,49 +64,71 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     formState: { errors },
     setValue,
     watch,
-  } = useForm<ProjectFormData>({
+    reset,
+  } = useForm<<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      title: project?.title || '',
-      description: project?.description || '',
-      tag_ids: project?.tags?.map((tag: Skill) => tag.id) || [],
-      links: project?.links || {},
-      images: project?.images || [],
-      collaboration_needs: project?.collaboration_needs?.map((need: CollaborationNeed) => ({
-        skill_type: need.skill_type,
-        custom_skill: need.custom_skill || '',
-        description: need.description || '',
-      })) || [],
+      title: '',
+      description: '',
+      tag_ids: [],
+      links: {},
+      images: [],
+      collaboration_needs: [],
     },
   });
 
   const [linkInputs, setLinkInputs] = useState<{ key: string; value: string }[]>([]);
   const [imageInputs, setImageInputs] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [collabNeeds, setCollabNeeds] = useState<CollaborationNeedForm[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [collabNeeds, setCollabNeeds] = useState<<CollaborationNeedForm[]>([]);
+  const fileInputRef = useRef<<HTMLInputElement>(null);
 
+  // ─── Sync form + local state whenever the project changes ─────────────────
   useEffect(() => {
-    if (project?.links) {
+    if (project) {
+      reset({
+        title: project.title || '',
+        description: project.description || '',
+        tag_ids: project.tags?.map((tag: Skill) => tag.id) || [],
+        links: project.links || {},
+        images: project.images || [],
+        collaboration_needs:
+          project.collaboration_needs?.map((need: CollaborationNeed) => ({
+            skill_type: need.skill_type,
+            custom_skill: need.custom_skill || '',
+            description: need.description || '',
+          })) || [],
+      });
       setLinkInputs(
-        Object.entries(project.links).map(([key, value]) => ({ key, value }))
+        Object.entries(project.links || {}).map(([key, value]) => ({ key, value }))
       );
+      setImageInputs(project.images || []);
+      setCollabNeeds(
+        project.collaboration_needs?.map((need: CollaborationNeed) => ({
+          skill_type: need.skill_type,
+          custom_skill: need.custom_skill || '',
+          description: need.description || '',
+        })) || []
+      );
+    } else {
+      reset({
+        title: '',
+        description: '',
+        tag_ids: [],
+        links: {},
+        images: [],
+        collaboration_needs: [],
+      });
+      setLinkInputs([]);
+      setImageInputs([]);
+      setCollabNeeds([]);
     }
-    if (project?.images) {
-      setImageInputs(project.images);
-    }
-    if (project?.collaboration_needs) {
-      setCollabNeeds(project.collaboration_needs.map((need: CollaborationNeed) => ({
-        skill_type: need.skill_type,
-        custom_skill: need.custom_skill || '',
-        description: need.description || '',
-      })));
-    }
-  }, [project]);
+  }, [project?.id, reset]);
 
   const selectedTags = watch('tag_ids') || [];
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ─── Image Upload ──────────────────────────────────────────────────────────
+  const handleImageUpload = async (e: React.ChangeEvent<<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
@@ -114,7 +142,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
       }
       const newImages = [...imageInputs, ...uploadedUrls];
       setImageInputs(newImages);
-      setValue('images', newImages);
+      setValue('images', newImages, { shouldValidate: true });
     } catch (err) {
       alert('Failed to upload images. Please try again.');
     } finally {
@@ -123,67 +151,123 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
+  const removeImageInput = (index: number) => {
+    const updated = imageInputs.filter((_, i) => i !== index);
+    setImageInputs(updated);
+    setValue('images', updated, { shouldValidate: true });
+  };
+
+  // ─── Collaboration Needs ───────────────────────────────────────────────────
   const addCollabNeed = () => {
-    setCollabNeeds([...collabNeeds, { skill_type: 'frontend', custom_skill: '', description: '' }]);
+    const updated = [
+      ...collabNeeds,
+      { skill_type: 'frontend' as const, custom_skill: '', description: '' },
+    ];
+    setCollabNeeds(updated);
+    setValue('collaboration_needs', updated, { shouldValidate: true });
   };
 
   const removeCollabNeed = (index: number) => {
-    setCollabNeeds(collabNeeds.filter((_, i) => i !== index));
+    const updated = collabNeeds.filter((_, i) => i !== index);
+    setCollabNeeds(updated);
+    setValue('collaboration_needs', updated, { shouldValidate: true });
   };
 
-  const updateCollabNeed = (index: number, field: keyof CollaborationNeedForm, value: string) => {
+  const updateCollabNeed = (
+    index: number,
+    field: keyof CollaborationNeedForm,
+    value: string
+  ) => {
     const updated = [...collabNeeds];
     updated[index] = { ...updated[index], [field]: value };
     setCollabNeeds(updated);
+    setValue('collaboration_needs', updated, { shouldValidate: true });
   };
 
+  // ─── Links ─────────────────────────────────────────────────────────────────
+  const addLinkInput = () => {
+    const updated = [...linkInputs, { key: '', value: '' }];
+    setLinkInputs(updated);
+    syncLinksToForm(updated);
+  };
+
+  const removeLinkInput = (index: number) => {
+    const updated = linkInputs.filter((_, i) => i !== index);
+    setLinkInputs(updated);
+    syncLinksToForm(updated);
+  };
+
+  const updateLinkInput = (
+    index: number,
+    field: 'key' | 'value',
+    newValue: string
+  ) => {
+    const updated = [...linkInputs];
+    updated[index][field] = newValue;
+    setLinkInputs(updated);
+    syncLinksToForm(updated);
+  };
+
+  const syncLinksToForm = (inputs: typeof linkInputs) => {
+    const record = inputs.reduce<<Record<string, string>>((acc, { key, value }) => {
+      if (key.trim() && value.trim()) acc[key.trim()] = value.trim();
+      return acc;
+    }, {});
+    setValue('links', record, { shouldValidate: true });
+  };
+
+  // ─── Tags ──────────────────────────────────────────────────────────────────
+  const toggleTag = (tagId: number | string) => {
+    const current = selectedTags;
+    const newTags = current.includes(tagId)
+      ? current.filter((id) => id !== tagId)
+      : [...current, tagId];
+    setValue('tag_ids', newTags, { shouldValidate: true });
+  };
+
+  // ─── Submit ──────────────────────────────────────────────────────────────
   const handleFormSubmit = (data: ProjectFormData) => {
+    if (project && !project.id) {
+      console.error('Update failed: project.id is missing');
+      return;
+    }
+
+    // Build a clean payload — do NOT spread ...data to avoid sending
+    // both collaboration_needs (from schema) and collaboration_needs_data
     const formattedData = {
-      ...data,
-      links: linkInputs.reduce<Record<string, string>>((acc, { key, value }) => {
-        if (key && value) acc[key] = value;
+      title: data.title,
+      description: data.description,
+      tag_ids: data.tag_ids,
+      links: linkInputs.reduce<<Record<string, string>>((acc, { key, value }) => {
+        if (key.trim() && value.trim()) acc[key.trim()] = value.trim();
         return acc;
       }, {}),
       images: imageInputs.filter((url: string) => url.trim() !== ''),
-      collaboration_needs_data: collabNeeds.map(need => ({
+      collaboration_needs_data: collabNeeds.map((need) => ({
         skill_type: need.skill_type,
         custom_skill: need.skill_type === 'others' ? need.custom_skill : '',
         description: need.description,
       })),
     };
 
-    if (project) {
+    if (project?.id) {
       updateMutation.mutate(
         { id: project.id, data: formattedData },
-        { onSuccess: onSubmit }
+        {
+          onSuccess: () => onSubmit?.(),
+          onError: (err) => console.error('Update mutation error:', err),
+        }
       );
     } else {
-      createMutation.mutate(formattedData, { onSuccess: onSubmit });
+      createMutation.mutate(formattedData, {
+        onSuccess: () => onSubmit?.(),
+        onError: (err) => console.error('Create mutation error:', err),
+      });
     }
   };
 
-  const addLinkInput = () => setLinkInputs([...linkInputs, { key: '', value: '' }]);
-  const removeLinkInput = (index: number) => setLinkInputs(linkInputs.filter((_, i) => i !== index));
-  const updateLinkInput = (index: number, field: 'key' | 'value', newValue: string) => {
-    const updated = [...linkInputs];
-    updated[index][field] = newValue;
-    setLinkInputs(updated);
-  };
-
-  const removeImageInput = (index: number) => {
-    const updated = imageInputs.filter((_, i) => i !== index);
-    setImageInputs(updated);
-    setValue('images', updated);
-  };
-
-  const toggleTag = (tagId: number) => {
-    const newTags = selectedTags.includes(tagId)
-      ? selectedTags.filter((id: number) => id !== tagId)
-      : [...selectedTags, tagId];
-    setValue('tag_ids', newTags);
-  };
-
-  const isLoading = createMutation.isPending || updateMutation.isPending || uploadingImages;
+  const isLoading =
+    createMutation.isPending || updateMutation.isPending || uploadingImages;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -195,15 +279,31 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           </h2>
         </div>
         <p className="text-sm text-gray-500 mt-1">
-          {project ? 'Update your project details' : 'Build something amazing with the community'}
+          {project
+            ? 'Update your project details'
+            : 'Build something amazing with the community'}
         </p>
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-8">
+        {/* Global Mutation Error */}
+        {(updateMutation.isError || createMutation.isError) && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-600 font-medium">
+              {(updateMutation.error as Error)?.message ||
+                (createMutation.error as Error)?.message ||
+                'Something went wrong. Please try again.'}
+            </p>
+          </div>
+        )}
+
         {/* Title Field */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label htmlFor="title" className="block text-sm font-semibold text-gray-900">
+            <label
+              htmlFor="title"
+              className="block text-sm font-semibold text-gray-900"
+            >
               Project Title
             </label>
             <span className="text-xs text-gray-500">Required</span>
@@ -217,7 +317,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           {errors.title && (
             <p className="text-sm text-red-600 font-medium flex items-center gap-2">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
               {errors.title.message}
             </p>
@@ -227,7 +331,10 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Description Field */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label htmlFor="description" className="block text-sm font-semibold text-gray-900">
+            <label
+              htmlFor="description"
+              className="block text-sm font-semibold text-gray-900"
+            >
               Description
             </label>
             <span className="text-xs text-gray-500">Required</span>
@@ -241,7 +348,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           {errors.description && (
             <p className="text-sm text-red-600 font-medium flex items-center gap-2">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
               {errors.description.message}
             </p>
@@ -250,9 +361,12 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
 
         {/* Skills/Tags */}
         <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-900">
-            Technologies & Skills
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-semibold text-gray-900">
+              Technologies & Skills
+            </label>
+            <span className="text-xs text-gray-500">Optional</span>
+          </div>
           <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 min-h-16">
             {skills?.map((skill: Skill) => (
               <button
@@ -267,8 +381,16 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               >
                 <span>{skill.name}</span>
                 {selectedTags.includes(skill.id) && (
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <svg
+                    className="w-3 h-3"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 )}
               </button>
@@ -277,53 +399,93 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               <p className="text-gray-500 text-sm">No skills available</p>
             )}
           </div>
+          {errors.tag_ids && (
+            <p className="text-sm text-red-600 font-medium">
+              {errors.tag_ids.message || 'Invalid tag selection'}
+            </p>
+          )}
         </div>
 
-        {/* ─── Collaboration Needs ─────────────────────────────────────── */}
+        {/* Collaboration Needs */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Collaboration Needs</h3>
-              <p className="text-xs text-gray-500 mt-0.5">Specify what help you need from the community</p>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Collaboration Needs
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Specify what help you need from the community
+              </p>
             </div>
             <span className="text-xs text-gray-500">Optional</span>
           </div>
 
+          {errors.collaboration_needs && (
+            <p className="text-sm text-red-600 font-medium">
+              {errors.collaboration_needs.message || 'Invalid collaboration needs'}
+            </p>
+          )}
+
           {collabNeeds.map((need, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+            <div
+              key={index}
+              className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Need #{index + 1}</span>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Need #{index + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeCollabNeed(index)}
                   className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Skill Type</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Skill Type
+                </label>
                 <select
                   value={need.skill_type}
-                  onChange={(e) => updateCollabNeed(index, 'skill_type', e.target.value as any)}
+                  onChange={(e) =>
+                    updateCollabNeed(index, 'skill_type', e.target.value)
+                  }
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 bg-white"
                 >
-                  {SKILL_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {SKILL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {need.skill_type === 'others' && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Custom Skill</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Custom Skill
+                  </label>
                   <input
                     type="text"
                     value={need.custom_skill}
-                    onChange={(e) => updateCollabNeed(index, 'custom_skill', e.target.value)}
+                    onChange={(e) =>
+                      updateCollabNeed(index, 'custom_skill', e.target.value)
+                    }
                     placeholder="e.g. DevOps, Mobile Development"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200"
                   />
@@ -331,10 +493,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               )}
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Description
+                </label>
                 <textarea
                   value={need.description}
-                  onChange={(e) => updateCollabNeed(index, 'description', e.target.value)}
+                  onChange={(e) =>
+                    updateCollabNeed(index, 'description', e.target.value)
+                  }
                   rows={2}
                   placeholder="e.g. Need a React dev to build dashboard UI"
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 resize-none"
@@ -348,8 +514,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             onClick={addCollabNeed}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all duration-200"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             Add Collaboration Need
           </button>
@@ -358,9 +534,17 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Links Section */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">Project Links</label>
+            <label className="block text-sm font-semibold text-gray-900">
+              Project Links
+            </label>
             <span className="text-xs text-gray-500">GitHub, Demo, etc.</span>
           </div>
+
+          {errors.links && (
+            <p className="text-sm text-red-600 font-medium">
+              {errors.links.message || 'Invalid link entry'}
+            </p>
+          )}
 
           <div className="space-y-3">
             {linkInputs.map((link, index) => (
@@ -370,14 +554,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                     type="text"
                     placeholder="Platform (github, demo, website)"
                     value={link.key}
-                    onChange={(e) => updateLinkInput(index, 'key', e.target.value)}
+                    onChange={(e) =>
+                      updateLinkInput(index, 'key', e.target.value)
+                    }
                     className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
                   />
                   <input
-                    type="url"
+                    type="text"
                     placeholder="https://..."
                     value={link.value}
-                    onChange={(e) => updateLinkInput(index, 'value', e.target.value)}
+                    onChange={(e) =>
+                      updateLinkInput(index, 'value', e.target.value)
+                    }
                     className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
                   />
                 </div>
@@ -386,8 +574,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                   onClick={() => removeLinkInput(index)}
                   className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
@@ -397,8 +595,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               onClick={addLinkInput}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-all duration-200"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Add Link
             </button>
@@ -408,11 +616,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Cloudinary Image Upload */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-gray-900">Project Images</label>
+            <label className="block text-sm font-semibold text-gray-900">
+              Project Images
+            </label>
             <span className="text-xs text-gray-500">Upload screenshots</span>
           </div>
 
-          {/* Hidden file input */}
+          {errors.images && (
+            <p className="text-sm text-red-600 font-medium">
+              {errors.images.message || 'Invalid image URL'}
+            </p>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -422,7 +637,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             className="hidden"
           />
 
-          {/* Upload button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -436,15 +650,24 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
                 Upload Images
               </>
             )}
           </button>
 
-          {/* Image previews */}
           {imageInputs.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {imageInputs.map((url, index) => (
@@ -459,8 +682,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                     onClick={() => removeImageInput(index)}
                     className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
