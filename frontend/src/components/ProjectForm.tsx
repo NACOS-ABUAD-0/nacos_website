@@ -1,11 +1,34 @@
 // src/components/ProjectForm.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useSkills, useCreateProject, useUpdateProject } from '../lib/hooks/useProjects';
 import { cloudinaryAPI } from '../lib/api';
 import type { Project, Skill, CollaborationNeed } from '../types';
+
+// ─── Inline Zod resolver ─────────────────────────────────────────────────────
+// Avoids the `_zod` TypeError caused by a version mismatch between
+// zod v4 and older @hookform/resolvers builds. Works with zod v3 & v4.
+// ─────────────────────────────────────────────────────────────────────────────
+function zodResolver<T extends z.ZodTypeAny>(schema: T) {
+  return async (values: unknown) => {
+    const result = await schema.safeParseAsync(values);
+    if (result.success) {
+      return { values: result.data as z.infer<T>, errors: {} };
+    }
+    const errors: Record<string, { type: string; message: string }> = {};
+    for (const issue of result.error.issues) {
+      const path = issue.path
+        .map((p) => (typeof p === 'number' ? `[${p}]` : p))
+        .join('.')
+        .replace(/\.\[/g, '[');
+      if (path && !(path in errors)) {
+        errors[path] = { type: issue.code, message: issue.message };
+      }
+    }
+    return { values: {}, errors };
+  };
+}
 
 // ─── Relaxed Zod Schema ──────────────────────────────────────────────────────
 // We avoid strict .url() validation on links/images to prevent silent failures
