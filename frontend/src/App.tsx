@@ -36,6 +36,8 @@ import { CollaborationHubPage } from './pages/CollaborationHubPage';
 import { MyCollaborationsPage } from "./pages/MyCollaborationsPage";
 import { CollaborationRequestsPage } from "./pages/CollaborationRequestsPage";
 
+// ── NEW: Lecturers ─────────────────────────────────────────────────────────────
+import LecturersPage from "./pages/LecturersPage";
 
 // ── NEW: Student feature pages ─────────────────────────────────────────────────
 import { LikedProjectsPage } from "./pages/LikedProjectsPage";
@@ -108,6 +110,9 @@ function AppRoutes() {
       <Route path="/executives" element={<Executives isHome={false} />} />
       <Route path="/contact" element={<ContactPage />} />
 
+      {/* ── NEW: Lecturers ───────────────────────────────────────────── */}
+      <Route path="/lecturers" element={<LecturersPage />} />
+
       {/* ── Projects ─────────────────────────────────────────────────── */}
       <Route path="/projects" element={<ProjectsGallery />} />
       <Route
@@ -148,27 +153,28 @@ function AppRoutes() {
 
       <Route path="/collaboration-hub" element={
         <RequireAuth>
-        <CollaborationHubPage />
+          <CollaborationHubPage />
         </RequireAuth>
         }
-        />
-     {/* ── Collaborations ───────────────────────────────────────────── */}
-<Route
-  path="/my-collaborations"
-  element={
-    <RequireAuth>
-      <MyCollaborationsPage />
-    </RequireAuth>
-  }
-/>
-<Route
-  path="/collaboration-requests"
-  element={
-    <RequireAuth>
-      <CollaborationRequestsPage />
-    </RequireAuth>
-  }
-/>
+      />
+
+      {/* ── Collaborations ───────────────────────────────────────────── */}
+      <Route
+        path="/my-collaborations"
+        element={
+          <RequireAuth>
+            <MyCollaborationsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/collaboration-requests"
+        element={
+          <RequireAuth>
+            <CollaborationRequestsPage />
+          </RequireAuth>
+        }
+      />
 
       {/* ── NEW: Committees ──────────────────────────────────────────── */}
       <Route
@@ -326,13 +332,13 @@ function AppRoutes() {
         }
       />
       <Route
-  path="/admin/users"
-  element={
-    <RequireAdmin>
-      <UserManagement />
-    </RequireAdmin>
-  }
-/>
+        path="/admin/users"
+        element={
+          <RequireAdmin>
+            <UserManagement />
+          </RequireAdmin>
+        }
+      />
       {/* ── NEW: Admin Committee Applications ────────────────────────── */}
       <Route
         path="/admin/committee-applications"

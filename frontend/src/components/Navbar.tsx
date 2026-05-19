@@ -10,9 +10,10 @@ import {
   User as UserIcon,
   Grid,
   Folder,
+  GraduationCap,
 } from "lucide-react";
 import NacosLogo from "/images/nacos_logo.png";
-import AbuadLogo from "/images/abuadLogo.png"
+import AbuadLogo from "/images/abuadLogo.png";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -62,6 +63,7 @@ const Navbar = () => {
     { name: "Projects", path: "/projects" },
     { name: "Events", path: "/events" },
     { name: "Resources", path: "/resources" },
+    { name: "Lecturers", path: "/lecturers" },
     { name: "Gallery", path: "/gallery" },
     { name: "Executives", path: "/executives" },
     { name: "Contact", path: "/contact" },
@@ -71,7 +73,7 @@ const Navbar = () => {
     { name: "Home", path: "/" },
     { name: "Projects", path: "/projects" },
     { name: "Events", path: "/events" },
-    { name: "Resources", path: "/resources" },
+    { name: "Lecturers", path: "/lecturers" },
     { name: "Gallery", path: "/gallery" },
     { name: "Executives", path: "/executives" },
     { name: "Contact", path: "/contact" },
@@ -102,26 +104,29 @@ const Navbar = () => {
         {/* ── Logo ─────────────────────────────────────────────────────── */}
         <NavLink to="/" className="flex gap-3 items-center group">
           <img src={NacosLogo} alt="NACOS Logo" className="w-9 md:w-12" />
-          <img src={AbuadLogo} alt="NACOS Logo" className="w-9 md:w-11" />
+          <img src={AbuadLogo} alt="ABUAD Logo" className="w-9 md:w-11" />
           <h1 className={`font-bold text-lg lg:text-2xl ${textBase}`}>
             NACOS ABUAD
           </h1>
         </NavLink>
 
         {/* ── Desktop links ────────────────────────────────────────────── */}
-        <div className="hidden lg:flex items-center gap-6">
+        <div className="hidden lg:flex items-center gap-5">
           {navItems.map((item) => (
             <NavLink
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `text-base font-medium transition-colors ${
+                `text-sm font-medium transition-colors flex items-center gap-1.5 ${
                   isActive
                     ? "text-[#006E3A]"
                     : `${textMuted} hover:text-[#006E3A]`
                 }`
               }
             >
+              {item.name === "Lecturers" && (
+                <GraduationCap className="w-3.5 h-3.5" />
+              )}
               {item.name}
             </NavLink>
           ))}
@@ -225,6 +230,11 @@ const Navbar = () => {
                           icon: <Folder className="w-4 h-4" />,
                           label: "My Projects",
                         },
+                        {
+                          to: "/lecturers",
+                          icon: <GraduationCap className="w-4 h-4" />,
+                          label: "Lecturers",
+                        },
                       ].map(({ to, icon, label }) => (
                         <NavLink
                           key={to}
@@ -309,13 +319,14 @@ const Navbar = () => {
               to={item.path}
               onClick={() => setIsMobileOpen(false)}
               className={({ isActive }) =>
-                `px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                `px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                   isActive
                     ? "bg-[#006E3A] text-white"
                     : `${textMuted} hover:bg-green-50 hover:text-[#006E3A]`
                 }`
               }
             >
+              {item.name === "Lecturers" && <GraduationCap className="w-4 h-4" />}
               {item.name}
             </NavLink>
           ))}
@@ -394,7 +405,6 @@ const Navbar = () => {
               >
                 Sign In
               </NavLink>
-
             </>
           )}
         </div>
