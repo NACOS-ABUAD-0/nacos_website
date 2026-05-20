@@ -28,11 +28,26 @@ export interface ProjectItem {
   title: string;
   owner: { id: number | string; full_name?: string };
   skills?: string[];
+
+  // ── Image field: Django REST Framework may return any of these depending
+  //    on how the serializer is set up:
+  //    • cover_image  — raw FileField / ImageField (most common in DRF)
+  //    • cover_url    — SerializerMethodField or custom property
+  //    • image        — generic fallback name
+  //    • thumbnail    — some setups use this
+  //
+  //    The helper `getProjectImage()` below always tries them in order so
+  //    the carousel and any other consumer never has to guess.
+  cover_image?: string;
   cover_url?: string;
+  image?: string;
+  thumbnail?: string;
+
   links?: Record<string, string>;
   updated_at?: string;
   tags?: { id: number; name: string }[];
   is_featured?: boolean;
+  description?: string;
 }
 
 export interface ResourceItem {
@@ -65,14 +80,33 @@ export interface FeaturedProjectsResult {
   count: number;
 }
 
+// ─── getProjectImage ──────────────────────────────────────────────────────────
+//
+// Resolves whichever image field the API populated.
+// Import and use this anywhere you need to render a project image.
+//
+// Usage:
+//   const src = getProjectImage(project);
+//   if (src) <img src={src} ... />
+// ─────────────────────────────────────────────────────────────────────────────
+export function getProjectImage(project: ProjectItem): string | null {
+  return (
+    project.cover_image ||
+    project.cover_url   ||
+    project.image       ||
+    project.thumbnail   ||
+    null
+  );
+}
+
 // ─── Helper: normalize any API shape to a plain ProjectItem array ─────────────
 //
 // The Django REST Framework endpoint may return either:
 //   A) A paginated object: { count, next, previous, results: [...] }
 //   B) A plain array:      [...]
 //
-// This helper always produces a ProjectItem[] regardless of which shape arrives,
-// so callers never have to guard against undefined.
+// This helper always produces a ProjectItem[] regardless of which shape
+// arrives, so callers never have to guard against undefined.
 // ─────────────────────────────────────────────────────────────────────────────
 function extractResults(data: unknown): ProjectItem[] {
   if (!data) return [];
@@ -82,13 +116,15 @@ function extractResults(data: unknown): ProjectItem[] {
   return [];
 }
 
-// useFeaturedProjects
+// ─── useFeaturedProjects ──────────────────────────────────────────────────────
+//
 // Try featured first; fall back to 6 most recent if none are featured.
 // This ensures the homepage always shows projects even before an admin
 // has manually featured any.
 //
 // Always returns { results: ProjectItem[], count: number } — never undefined
 // arrays — so downstream components can safely call .length and .map.
+// ─────────────────────────────────────────────────────────────────────────────
 export const useFeaturedProjects = () => {
   return useQuery<FeaturedProjectsResult>({
     queryKey: ['projects', 'homepage'],

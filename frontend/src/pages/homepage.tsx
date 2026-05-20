@@ -11,6 +11,7 @@ import { ProjectCardSkeleton } from "../components/home/Skeletons";
 import {
   useFeaturedProjects,
   usePublicStats,
+  getProjectImage,
 } from "../lib/hooks/useHomepage";
 import type { ProjectItem } from "../lib/hooks/useHomepage";
 import { useSEO } from "../lib/seo";
@@ -28,14 +29,6 @@ const fadeUp = {
     opacity: 1,
     y: 0,
     transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: d },
-  }),
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: (d: number = 0) => ({
-    opacity: 1,
-    transition: { duration: 0.55, ease: "easeOut", delay: d },
   }),
 };
 
@@ -323,10 +316,6 @@ interface ProjectCarouselProps {
 }
 
 const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
-  // ── Safety guard ────────────────────────────────────────────────────────────
-  // Even though useFeaturedProjects now always normalises to an array, this
-  // guard makes the component self-contained and crash-proof regardless of
-  // whatever a parent passes in.
   if (!projects || projects.length === 0) return null;
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -426,91 +415,131 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
               animate="visible"
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
-              {slides[currentSlide].map((project) => (
-                <motion.div
-                  key={project.id}
-                  variants={cardVariant}
-                  whileHover={{
-                    y: -6,
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.1)",
-                    transition: { duration: 0.3, ease: "easeOut" },
-                  }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group"
-                >
-                  {project.cover_url ? (
-                    <div className="relative overflow-hidden">
-                      <motion.img
-                        src={project.cover_url}
-                        alt={project.title}
-                        className="w-full h-48 object-cover"
-                        loading="lazy"
-                        whileHover={{ scale: 1.06 }}
-                        transition={{ duration: 0.45, ease: "easeOut" }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              {slides[currentSlide].map((project) => {
+                // ── Resolve whichever image field the API populated ──────────
+                // getProjectImage() tries cover_image → cover_url → image →
+                // thumbnail in that order, returning the first truthy value
+                // or null. This matches exactly what ProjectCard in the gallery
+                // does, so both pages show identical images.
+                const imageSrc = getProjectImage(project);
+
+                return (
+                  <motion.div
+                    key={project.id}
+                    variants={cardVariant}
+                    whileHover={{
+                      y: -6,
+                      boxShadow: "0 16px 40px rgba(0,0,0,0.1)",
+                      transition: { duration: 0.3, ease: "easeOut" },
+                    }}
+                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group"
+                  >
+                    {/* ── Project image or placeholder ───────────────────── */}
+                    {imageSrc ? (
+                      <div className="relative overflow-hidden">
+                        <motion.img
+                          src={imageSrc}
+                          alt={project.title}
+                          className="w-full h-48 object-cover"
+                          loading="lazy"
+                          whileHover={{ scale: 1.06 }}
+                          transition={{ duration: 0.45, ease: "easeOut" }}
+                          // If the resolved URL is still broken (e.g. a
+                          // relative path the browser can't find), hide the
+                          // broken-image icon and show the placeholder instead.
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            img.style.display = "none";
+                            const placeholder =
+                              img.parentElement?.nextElementSibling as HTMLElement | null;
+                            if (placeholder) placeholder.style.display = "flex";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                      </div>
+                    ) : null}
+
+                    {/* Placeholder — shown when no image resolves, or after
+                        an img onError. Hidden by default when imageSrc exists. */}
+                    <div
+                      className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 items-center justify-center"
+                      style={{ display: imageSrc ? "none" : "flex" }}
+                    >
+                      <svg
+                        className="w-12 h-12 text-gray-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                        />
                       </svg>
                     </div>
-                  )}
 
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                      {project.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      By {project.owner?.full_name || "Anonymous"}
-                    </p>
+                    {/* ── Card body ────────────────────────────────────────── */}
+                    <div className="p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                        {project.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        By {project.owner?.full_name || "Anonymous"}
+                      </p>
 
-                    {project.skills && project.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {project.skills.slice(0, 3).map((skill, idx) => (
-                          <motion.span
-                            key={idx}
-                            whileHover={{ scale: 1.05 }}
-                            className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-100 cursor-default"
-                          >
-                            {skill}
-                          </motion.span>
-                        ))}
-                        {project.skills.length > 3 && (
-                          <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full">
-                            +{project.skills.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                      {project.skills && project.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {project.skills.slice(0, 3).map((skill, idx) => (
+                            <motion.span
+                              key={idx}
+                              whileHover={{ scale: 1.05 }}
+                              className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-100 cursor-default"
+                            >
+                              {skill}
+                            </motion.span>
+                          ))}
+                          {project.skills.length > 3 && (
+                            <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full">
+                              +{project.skills.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                    <div className="flex items-center justify-between">
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
-                      >
-                        View Project
-                        <motion.svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          whileHover={{ x: 3 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                      <div className="flex items-center justify-between">
+                        <Link
+                          to={`/projects/${project.id}`}
+                          className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </motion.svg>
-                      </Link>
-                      <span className="text-xs text-gray-400">
-                        {project.updated_at
-                          ? new Date(project.updated_at).toLocaleDateString()
-                          : ""}
-                      </span>
+                          View Project
+                          <motion.svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            whileHover={{ x: 3 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </motion.svg>
+                        </Link>
+                        <span className="text-xs text-gray-400">
+                          {project.updated_at
+                            ? new Date(project.updated_at).toLocaleDateString()
+                            : ""}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </motion.div>
           </motion.div>
         </AnimatePresence>
