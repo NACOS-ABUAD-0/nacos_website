@@ -545,7 +545,7 @@ const EventsSectionHeader: React.FC<{
 
 // ═════════════════════════════════════════════════════════════════════════════
 // FUTURISTIC EVENT CAROUSEL
-// Drag physics · momentum · depth scaling · glow · parallax
+// Standard translateX track — autoplay works reliably, drag to swipe supported
 // ═════════════════════════════════════════════════════════════════════════════
 
 const FuturisticEventCarousel: React.FC<{
@@ -553,32 +553,71 @@ const FuturisticEventCarousel: React.FC<{
   variant: "upcoming" | "completed";
   compact?: boolean;
 }> = ({ events, variant, compact = false }) => {
-  const [active, setActive] = useState(0);
+  const [active, setActive]     = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const dragX = useMotionValue(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const total = events.length;
+  const [direction, setDir]     = useState(1);
+  const intervalRef             = useRef<ReturnType<typeof setInterval> | null>(null);
+  const total                   = events.length;
 
-  // Auto-advance
+  // ── Autoplay: use ref so the callback always reads the latest `active` ──
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  const startInterval = useCallback(() => {
+    if (total <= 1) return;
+    intervalRef.current = setInterval(() => {
+      setDir(1);
+      setActive(prev => (prev + 1) % total);
+    }, 4500);
+  }, [total]);
+
+  const stopInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    if (isPaused || total <= 1) return;
-    const id = setInterval(() => setActive(p => (p + 1) % total), 5000);
-    return () => clearInterval(id);
-  }, [isPaused, total]);
+    if (!isPaused) startInterval();
+    else stopInterval();
+    return stopInterval;
+  }, [isPaused, startInterval, stopInterval]);
 
-  const goTo = (i: number) => setActive(clamp(i, 0, total - 1));
+  // Restart timer whenever active changes (prevents double-firing)
+  useEffect(() => {
+    if (!isPaused) {
+      stopInterval();
+      startInterval();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
-    const threshold = 60;
-    if (info.offset.x < -threshold) goTo(active + 1 < total ? active + 1 : active);
-    else if (info.offset.x > threshold) goTo(active - 1 >= 0 ? active - 1 : active);
-    animate(dragX, 0, { duration: 0.35, ease: EASE_CINEMA });
+  const goTo = useCallback((i: number) => {
+    const target = clamp(i, 0, total - 1);
+    setDir(target >= activeRef.current ? 1 : -1);
+    setActive(target);
+  }, [total]);
+
+  // ── Drag / swipe ──
+  const dragStartX  = useRef(0);
+  const handleDragStart = (e: React.PointerEvent) => { dragStartX.current = e.clientX; };
+  const handleDragEnd   = (e: React.PointerEvent) => {
+    const delta = e.clientX - dragStartX.current;
+    if (Math.abs(delta) < 50) return;
+    if (delta < 0) goTo(activeRef.current + 1);
+    else           goTo(activeRef.current - 1);
   };
 
   if (total === 0) return null;
 
-  const cardW = compact ? 280 : 340;
-  const gap   = 20;
+  const slideV = {
+    enter:  (d: number) => ({ x: d > 0 ? "100%" : "-100%", opacity: 0, filter: "blur(6px)" }),
+    center: { x: 0, opacity: 1, filter: "blur(0px)",
+              transition: { duration: 0.55, ease: EASE_CINEMA } },
+    exit:   (d: number) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0, filter: "blur(6px)",
+              transition: { duration: 0.45, ease: EASE_CINEMA } }),
+  };
 
   return (
     <div
@@ -586,78 +625,51 @@ const FuturisticEventCarousel: React.FC<{
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* ── Track ── */}
-      <div ref={containerRef} className="overflow-hidden">
-        <motion.div
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.12}
-          onDragEnd={handleDragEnd}
-          style={{ x: dragX }}
-          className="flex cursor-grab active:cursor-grabbing"
-        >
-          <AnimatePresence initial={false} mode="popLayout">
-            {events.map((event, i) => {
-              const offset  = i - active;
-              const isActive = offset === 0;
-              const dist    = Math.abs(offset);
-              const visible = dist <= 2;
-
-              return (
-                <motion.div
-                  key={event.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{
-                    opacity: dist === 0 ? 1 : dist === 1 ? 0.65 : 0.3,
-                    scale:   dist === 0 ? 1 : dist === 1 ? 0.92 : 0.84,
-                    x: offset * (cardW + gap),
-                    zIndex: 10 - dist,
-                    filter: dist === 0 ? "blur(0px)" : `blur(${dist * 1.5}px)`,
-                  }}
-                  transition={{ ...SPRING_SOFT }}
-                  onClick={() => !isActive && goTo(i)}
-                  style={{
-                    width: cardW,
-                    flexShrink: 0,
-                    position: i === 0 ? "relative" : "absolute",
-                    left: i === 0 ? 0 : 0,
-                  }}
-                  className={visible ? "" : "pointer-events-none"}
-                >
-                  <GlowBorder active={isActive} className="h-full">
-                    <FuturisticEventCard
-                      event={event}
-                      variant={variant}
-                      active={isActive}
-                      compact={compact}
-                    />
-                  </GlowBorder>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
+      {/* ── Slide track ── */}
+      <div
+        className="overflow-hidden rounded-2xl cursor-grab active:cursor-grabbing"
+        onPointerDown={handleDragStart}
+        onPointerUp={handleDragEnd}
+      >
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={active}
+            custom={direction}
+            variants={slideV}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
+            <GlowBorder active>
+              <FuturisticEventCard
+                event={events[active]}
+                variant={variant}
+                active
+                compact={compact}
+              />
+            </GlowBorder>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* ── Navigation arrows ── */}
+      {/* ── Controls row ── */}
       {total > 1 && (
-        <div className="flex items-center justify-between mt-6 px-1">
+        <div className="flex items-center justify-between mt-5 px-1">
+          {/* Arrows */}
           <div className="flex gap-2">
-            {[
-              { dir: -1, label: "Prev", icon: "M15 19l-7-7 7-7" },
-              { dir:  1, label: "Next", icon: "M9 5l7 7-7 7" },
-            ].map(({ dir, label, icon }) => (
+            {([
+              { delta: -1, icon: "M15 19l-7-7 7-7", label: "Previous event" },
+              { delta:  1, icon: "M9 5l7 7-7 7",    label: "Next event"     },
+            ] as const).map(({ delta, icon, label }) => (
               <MagneticWrapper key={label} strength={0.35}>
                 <motion.button
-                  onClick={() => goTo(active + dir)}
-                  disabled={dir === -1 ? active === 0 : active === total - 1}
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.93 }}
-                  className="w-10 h-10 rounded-full border border-gray-200 bg-white/80 backdrop-blur-sm
-                             flex items-center justify-center text-gray-600 shadow-sm
-                             hover:border-emerald-400 hover:text-emerald-600 hover:shadow-emerald-100/60 hover:shadow-md
-                             disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+                  onClick={() => goTo(active + delta)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-10 h-10 rounded-full border border-gray-200 bg-white/90
+                             backdrop-blur-sm flex items-center justify-center text-gray-500
+                             shadow-sm hover:border-emerald-400 hover:text-emerald-600
+                             hover:shadow-md hover:shadow-emerald-100/60 transition-all duration-200"
                   aria-label={label}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -677,14 +689,25 @@ const FuturisticEventCarousel: React.FC<{
                 animate={{
                   width: i === active ? 24 : 8,
                   backgroundColor: i === active ? "#10b981" : "#d1d5db",
-                  opacity: i === active ? 1 : 0.5,
+                  opacity: i === active ? 1 : 0.55,
                 }}
                 transition={{ duration: 0.3, ease: EASE_CINEMA }}
-                whileHover={{ scale: 1.3 }}
+                whileHover={{ scale: 1.35 }}
                 className="h-2 rounded-full focus:outline-none"
-                aria-label={`Go to event ${i + 1}`}
+                aria-label={`Event ${i + 1}`}
               />
             ))}
+          </div>
+
+          {/* Live autoplay progress bar */}
+          <div className="w-16 h-0.5 rounded-full bg-gray-100 overflow-hidden">
+            <motion.div
+              key={active}
+              className="h-full bg-emerald-400 rounded-full origin-left"
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 4.5, ease: "linear" }}
+            />
           </div>
         </div>
       )}
