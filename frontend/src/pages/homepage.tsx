@@ -59,6 +59,23 @@ function resolveImageUrl(url: string | null | undefined): string | null {
   return url;
 }
 
+// ─── getProjectImageFromApi ───────────────────────────────────────────────────
+//
+// FIX: The API returns an `images` array (e.g. ["https://..."]) on the
+// ProjectItem, NOT the cover_image / cover_url / image / thumbnail fields
+// that getProjectImage() from useHomepage checks. This helper handles both
+// shapes so the carousel works regardless of which fields are populated.
+//
+function getProjectImageFromApi(project: ProjectItem): string | null {
+  // Shape 1: API returns images: string[]  (actual API response)
+  const withImages = project as ProjectItem & { images?: string[] };
+  if (Array.isArray(withImages.images) && withImages.images.length > 0) {
+    return withImages.images[0];
+  }
+  // Shape 2: useHomepage fields (cover_image, cover_url, image, thumbnail)
+  return getProjectImage(project);
+}
+
 // ─── Shared motion variants ───────────────────────────────────────────────────
 
 const fadeUp = {
@@ -163,18 +180,26 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-// ─── Event types ──────────────────────────────────────────────────────────────
-
-interface EventItem {
+// ─── Event type matching the actual API response ──────────────────────────────
+//
+// FIX: The API returns `start_time`, `end_time`, `location`, and `poster_url`
+// (matching EventCard.tsx and EventSerializer). The old homepage EventItem
+// used `start`, `end`, `venue`, and `cover` which caused images and dates
+// to silently disappear.
+//
+interface ApiEventItem {
   id: number | string;
   title: string;
   slug?: string;
-  cover?: string;
-  start: string;
-  end?: string;
-  venue?: string;
+  // Correct API field names:
+  start_time: string;        // was: start
+  end_time?: string | null;  // was: end
+  location: string;          // was: venue
+  poster_url?: string | null;// was: cover
   is_remote?: boolean;
   status?: "upcoming" | "ongoing" | "completed" | string;
+  // media object also carries the poster in some responses
+  media?: { poster?: string | null };
 }
 
 // ─── Homepage ─────────────────────────────────────────────────────────────────
@@ -342,7 +367,7 @@ const Homepage: React.FC = () => {
 
 const HomeEventsSection: React.FC = () => {
   // Upcoming / ongoing events
-  const { data: upcomingRaw, isLoading: upcomingLoading } = useQuery<EventItem[]>({
+  const { data: upcomingRaw, isLoading: upcomingLoading } = useQuery<ApiEventItem[]>({
     queryKey: ["events", "upcoming-homepage"],
     queryFn: async () => {
       const res = await api.get("/events/", { params: { upcoming: true, page_size: 6 } });
@@ -354,7 +379,7 @@ const HomeEventsSection: React.FC = () => {
 
   // Completed events — always fetch so we can show them as a fallback or
   // appended section
-  const { data: completedRaw, isLoading: completedLoading } = useQuery<EventItem[]>({
+  const { data: completedRaw, isLoading: completedLoading } = useQuery<ApiEventItem[]>({
     queryKey: ["events", "completed-homepage"],
     queryFn: async () => {
       const res = await api.get("/events/", {
@@ -367,8 +392,8 @@ const HomeEventsSection: React.FC = () => {
   });
 
   const isLoading = upcomingLoading || completedLoading;
-  const upcomingEvents: EventItem[] = upcomingRaw ?? [];
-  const completedEvents: EventItem[] = completedRaw ?? [];
+  const upcomingEvents: ApiEventItem[] = upcomingRaw ?? [];
+  const completedEvents: ApiEventItem[] = completedRaw ?? [];
 
   const hasUpcoming = upcomingEvents.length > 0;
   const hasCompleted = completedEvents.length > 0;
@@ -490,7 +515,7 @@ const SectionHeader: React.FC<{
 // ─── EventGrid ────────────────────────────────────────────────────────────────
 
 const EventGrid: React.FC<{
-  events: EventItem[];
+  events: ApiEventItem[];
   variant: "upcoming" | "completed";
 }> = ({ events, variant }) => {
   return (
@@ -510,15 +535,23 @@ const EventGrid: React.FC<{
 };
 
 // ─── EventCard ────────────────────────────────────────────────────────────────
+//
+// FIX: All field references updated to match the actual API response:
+//   event.start_time  (was event.start)
+//   event.end_time    (was event.end)
+//   event.location    (was event.venue)
+//   event.poster_url  (was event.cover)
+//   Also checks event.media?.poster as a secondary source for the image.
 
 const EventCard: React.FC<{
-  event: EventItem;
+  event: ApiEventItem;
   variant: "upcoming" | "completed";
 }> = ({ event, variant }) => {
   const [imgError, setImgError] = useState(false);
 
-  const startDate = event.start ? new Date(event.start) : null;
-  const endDate = event.end ? new Date(event.end) : null;
+  // FIX: Use start_time / end_time (API field names)
+  const startDate = event.start_time ? new Date(event.start_time) : null;
+  const endDate = event.end_time ? new Date(event.end_time) : null;
 
   const formatDate = (d: Date) =>
     d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -530,8 +563,9 @@ const EventCard: React.FC<{
     startDate && endDate && startDate <= now && endDate >= now;
   const isUpcoming = startDate && startDate > now;
 
-  // Resolve relative media paths to absolute URLs
-  const coverSrc = resolveImageUrl(event.cover);
+  // FIX: Resolve poster_url (API field name). Also fall back to media.poster.
+  const rawPoster = event.poster_url || event.media?.poster || null;
+  const coverSrc = resolveImageUrl(rawPoster);
 
   return (
     <motion.div
@@ -541,7 +575,7 @@ const EventCard: React.FC<{
         isCompleted ? "border-gray-100 opacity-90" : "border-gray-100"
       }`}
     >
-      {/* Cover image / placeholder — plain <img> mirrors how Gallery renders images */}
+      {/* Cover image / placeholder */}
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-green-50 to-teal-50">
         {coverSrc && !imgError ? (
           <img
@@ -609,6 +643,7 @@ const EventCard: React.FC<{
         </h3>
 
         <div className="space-y-1.5 mb-4">
+          {/* FIX: use startDate derived from start_time */}
           {startDate && (
             <p className="flex items-center gap-2 text-xs text-gray-500">
               <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,14 +656,24 @@ const EventCard: React.FC<{
               )}
             </p>
           )}
-          {event.venue && (
+          {/* FIX: use location (API field name) instead of venue */}
+          {event.location && !event.is_remote && (
             <p className="flex items-center gap-2 text-xs text-gray-500">
               <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {event.venue}
+              {event.location}
+            </p>
+          )}
+          {event.is_remote && (
+            <p className="flex items-center gap-2 text-xs text-gray-500">
+              <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+              </svg>
+              Remote Event
             </p>
           )}
         </div>
@@ -886,9 +931,7 @@ interface ProjectCarouselProps {
 
 // ─── ProjectImageWithFallback ─────────────────────────────────────────────────
 // Receives an already-resolved absolute URL (Cloudinary, etc.) and renders it.
-// Falls back to a placeholder icon on error. Uses a plain <img> — same
-// pattern the Gallery component uses — to avoid any framer-motion interference
-// with the onError handler.
+// Falls back to a placeholder icon on error.
 
 const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
   const [failed, setFailed] = useState(false);
@@ -905,7 +948,7 @@ const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({ src,
   }
 
   return (
-    <div className="relative overflow-hidden group-hover:[&>img]:scale-105 transition-transform duration-450">
+    <div className="relative overflow-hidden">
       <img
         src={src}
         alt={alt}
@@ -1013,8 +1056,20 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
               {slides[currentSlide].map((project) => {
-                // Resolve any relative /media/… path Django returns to a full URL
-                const imageSrc = resolveImageUrl(getProjectImage(project));
+                // FIX: Use getProjectImageFromApi which correctly reads the
+                // `images` array the API actually returns, then falls back to
+                // the useHomepage cover_* fields for any other shape.
+                const imageSrc = resolveImageUrl(getProjectImageFromApi(project));
+
+                // Tags can come as either project.tags (SkillTag[]) or
+                // project.skills (string[]) depending on which endpoint served it.
+                const projectWithTags = project as ProjectItem & {
+                  tags?: { id: number; name: string }[];
+                };
+                const tagNames: string[] =
+                  projectWithTags.tags?.map((t) => t.name) ??
+                  project.skills ??
+                  [];
 
                 return (
                   <motion.div
@@ -1027,7 +1082,7 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
                     }}
                     className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group"
                   >
-                    {/* ── Image: use state-based fallback component ───────── */}
+                    {/* Image */}
                     {imageSrc ? (
                       <ProjectImageWithFallback src={imageSrc} alt={project.title} />
                     ) : (
@@ -1057,20 +1112,21 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
                         By {project.owner?.full_name || "Anonymous"}
                       </p>
 
-                      {project.skills && project.skills.length > 0 && (
+                      {/* FIX: render tags from either tags[] or skills[] */}
+                      {tagNames.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {project.skills.slice(0, 3).map((skill, idx) => (
+                          {tagNames.slice(0, 3).map((name, idx) => (
                             <motion.span
                               key={idx}
                               whileHover={{ scale: 1.05 }}
                               className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-100 cursor-default"
                             >
-                              {skill}
+                              {name}
                             </motion.span>
                           ))}
-                          {project.skills.length > 3 && (
+                          {tagNames.length > 3 && (
                             <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full">
-                              +{project.skills.length - 3}
+                              +{tagNames.length - 3}
                             </span>
                           )}
                         </div>
