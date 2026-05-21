@@ -24,10 +24,13 @@ import api from "../lib/api";
 
 // ─── resolveImageUrl ──────────────────────────────────────────────────────────
 //
-// Django's ImageField / FileField often returns a relative path like
-// "/media/projects/cover.jpg". The browser can't load that unless we
-// prefix it with the server's origin. Absolute URLs (http/https/blob/data)
-// are returned as-is. Null / empty strings return null.
+// Rules:
+//   • Already-absolute URLs (http/https/blob/data/Cloudinary) → unchanged.
+//   • Django media paths starting with /media/ or media/ → prepend the
+//     backend server origin so the browser can actually fetch them.
+//   • Everything else (e.g. /images/lecturers/… public Vite assets) → returned
+//     as-is; the browser resolves them against the FRONTEND origin, which is
+//     correct for files in the public/ folder.
 //
 const MEDIA_BASE = (() => {
   const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
@@ -38,16 +41,22 @@ const MEDIA_BASE = (() => {
 
 function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
+  // Already absolute — Cloudinary, S3, external CDN, blob, data URI, etc.
   if (
     url.startsWith("http://") ||
     url.startsWith("https://") ||
-    url.startsWith("blob:") ||
+    url.startsWith("blob:")   ||
     url.startsWith("data:")
   ) {
     return url;
   }
-  // Relative path — prepend the server origin
-  return `${MEDIA_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+  // Django media file — must be fetched from the backend origin
+  if (url.startsWith("/media/") || url.startsWith("media/")) {
+    return `${MEDIA_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+  }
+  // Public / static frontend asset (e.g. /images/lecturers/Hod.png served by Vite)
+  // Leave as-is so the browser resolves it against the frontend origin.
+  return url;
 }
 
 // ─── Shared motion variants ───────────────────────────────────────────────────
@@ -532,7 +541,7 @@ const EventCard: React.FC<{
         isCompleted ? "border-gray-100 opacity-90" : "border-gray-100"
       }`}
     >
-      {/* Cover image / placeholder */}
+      {/* Cover image / placeholder — plain <img> mirrors how Gallery renders images */}
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-green-50 to-teal-50">
         {coverSrc && !imgError ? (
           <img
@@ -541,6 +550,7 @@ const EventCard: React.FC<{
             className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
               isCompleted ? "grayscale-[30%]" : ""
             }`}
+            loading="lazy"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -732,8 +742,9 @@ const LecturersSection: React.FC = () => {
 
 const LecturerCard: React.FC<{ lecturer: Lecturer }> = ({ lecturer }) => {
   const [imgError, setImgError] = useState(false);
-  const resolvedPhoto = resolveImageUrl(lecturer.image);
-  const hasImage = resolvedPhoto && !imgError;
+  // Lecturer images live in /public/images/lecturers/ — served by the frontend,
+  // NOT Django. Use the path directly; no URL transformation needed.
+  const hasImage = lecturer.image && !imgError;
   const gradient = getLecturerGradient(lecturer.id);
 
   return (
@@ -749,9 +760,10 @@ const LecturerCard: React.FC<{ lecturer: Lecturer }> = ({ lecturer }) => {
       <div className="relative h-56 w-full overflow-hidden bg-gray-50">
         {hasImage ? (
           <img
-            src={resolvedPhoto}
+            src={lecturer.image}
             alt={lecturer.name}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+            loading="lazy"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -873,17 +885,15 @@ interface ProjectCarouselProps {
 }
 
 // ─── ProjectImageWithFallback ─────────────────────────────────────────────────
-// Uses React state for error handling instead of direct DOM manipulation,
-// which is safer and avoids stale-ref issues with AnimatePresence.
+// Receives an already-resolved absolute URL (Cloudinary, etc.) and renders it.
+// Falls back to a placeholder icon on error. Uses a plain <img> — same
+// pattern the Gallery component uses — to avoid any framer-motion interference
+// with the onError handler.
 
 const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
   const [failed, setFailed] = useState(false);
 
-  // Resolve relative paths (e.g. /media/…) to an absolute URL so the
-  // browser can actually fetch them from the Django media server.
-  const resolvedSrc = resolveImageUrl(src);
-
-  if (failed || !resolvedSrc) {
+  if (failed) {
     return (
       <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -895,14 +905,12 @@ const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({ src,
   }
 
   return (
-    <div className="relative overflow-hidden">
-      <motion.img
-        src={resolvedSrc}
+    <div className="relative overflow-hidden group-hover:[&>img]:scale-105 transition-transform duration-450">
+      <img
+        src={src}
         alt={alt}
-        className="w-full h-48 object-cover"
+        className="w-full h-48 object-cover transition-transform duration-[450ms] ease-out group-hover:scale-105"
         loading="lazy"
-        whileHover={{ scale: 1.06 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
         onError={() => setFailed(true)}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
