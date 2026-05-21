@@ -22,6 +22,34 @@ import { Layout } from "../layouts/layout";
 import Gallery from "./gallery";
 import api from "../lib/api";
 
+// ─── resolveImageUrl ──────────────────────────────────────────────────────────
+//
+// Django's ImageField / FileField often returns a relative path like
+// "/media/projects/cover.jpg". The browser can't load that unless we
+// prefix it with the server's origin. Absolute URLs (http/https/blob/data)
+// are returned as-is. Null / empty strings return null.
+//
+const MEDIA_BASE = (() => {
+  const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
+    .replace(/\/+$/, "")
+    .replace(/\/api$/, "");
+  return raw; // e.g. "http://127.0.0.1:8000" or "https://api.yoursite.com"
+})();
+
+function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("blob:") ||
+    url.startsWith("data:")
+  ) {
+    return url;
+  }
+  // Relative path — prepend the server origin
+  return `${MEDIA_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 // ─── Shared motion variants ───────────────────────────────────────────────────
 
 const fadeUp = {
@@ -488,15 +516,13 @@ const EventCard: React.FC<{
 
   const isCompleted = variant === "completed";
 
-  // Determine live badge
   const now = new Date();
   const isOngoing =
-    startDate &&
-    endDate &&
-    startDate <= now &&
-    endDate >= now;
-
+    startDate && endDate && startDate <= now && endDate >= now;
   const isUpcoming = startDate && startDate > now;
+
+  // Resolve relative media paths to absolute URLs
+  const coverSrc = resolveImageUrl(event.cover);
 
   return (
     <motion.div
@@ -508,9 +534,9 @@ const EventCard: React.FC<{
     >
       {/* Cover image / placeholder */}
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-green-50 to-teal-50">
-        {event.cover && !imgError ? (
+        {coverSrc && !imgError ? (
           <img
-            src={event.cover}
+            src={coverSrc}
             alt={event.title}
             className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
               isCompleted ? "grayscale-[30%]" : ""
@@ -706,7 +732,8 @@ const LecturersSection: React.FC = () => {
 
 const LecturerCard: React.FC<{ lecturer: Lecturer }> = ({ lecturer }) => {
   const [imgError, setImgError] = useState(false);
-  const hasImage = lecturer.image && !imgError;
+  const resolvedPhoto = resolveImageUrl(lecturer.image);
+  const hasImage = resolvedPhoto && !imgError;
   const gradient = getLecturerGradient(lecturer.id);
 
   return (
@@ -722,7 +749,7 @@ const LecturerCard: React.FC<{ lecturer: Lecturer }> = ({ lecturer }) => {
       <div className="relative h-56 w-full overflow-hidden bg-gray-50">
         {hasImage ? (
           <img
-            src={lecturer.image}
+            src={resolvedPhoto}
             alt={lecturer.name}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
             onError={() => setImgError(true)}
@@ -852,7 +879,11 @@ interface ProjectCarouselProps {
 const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
   const [failed, setFailed] = useState(false);
 
-  if (failed) {
+  // Resolve relative paths (e.g. /media/…) to an absolute URL so the
+  // browser can actually fetch them from the Django media server.
+  const resolvedSrc = resolveImageUrl(src);
+
+  if (failed || !resolvedSrc) {
     return (
       <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -866,7 +897,7 @@ const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({ src,
   return (
     <div className="relative overflow-hidden">
       <motion.img
-        src={src}
+        src={resolvedSrc}
         alt={alt}
         className="w-full h-48 object-cover"
         loading="lazy"
@@ -974,7 +1005,8 @@ const ProjectCarousel: React.FC<ProjectCarouselProps> = ({ projects }) => {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
               {slides[currentSlide].map((project) => {
-                const imageSrc = getProjectImage(project);
+                // Resolve any relative /media/… path Django returns to a full URL
+                const imageSrc = resolveImageUrl(getProjectImage(project));
 
                 return (
                   <motion.div
