@@ -1,5 +1,3 @@
-// src/admin1/pages/Gallery.tsx
-
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
@@ -35,8 +33,10 @@ type GalleryPayload = Omit<GalleryFormData, never>
 const CATEGORIES: GalleryCategory[] = ['Hackathons', 'Workshops', 'Socials', 'Others']
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
+// page_size=200 ensures the admin sees all images — avoids the default 10-item
+// pagination limit without requiring a backend change.
 const fetchAllGallery = (): Promise<GalleryImage[]> =>
-  api.get('/gallery/').then(r => {
+  api.get('/gallery/', { params: { page_size: 200 } }).then(r => {
     const data = r.data
     return Array.isArray(data) ? data : (data?.results ?? [])
   })
@@ -104,7 +104,6 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) =>
       className="relative group rounded-2xl overflow-hidden shadow-sm bg-gray-100 aspect-square"
       onClick={() => menuOpen && setMenuOpen(false)}
     >
-      {/* Image */}
       {image.resolved_url ? (
         <img
           src={image.resolved_url}
@@ -120,7 +119,6 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) =>
         </div>
       )}
 
-      {/* Hover overlay */}
       <div className="absolute inset-0 bg-[#006E3A]/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4 text-white">
         <span className="text-[10px] uppercase tracking-widest opacity-80 mb-1">
           {image.category}
@@ -128,14 +126,12 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) =>
         <p className="font-bold text-sm line-clamp-2">{image.caption || 'No caption'}</p>
       </div>
 
-      {/* Draft badge */}
       {!image.is_published && (
         <span className="absolute top-2 left-2 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
           Draft
         </span>
       )}
 
-      {/* Three-dot menu */}
       <div className="absolute top-2 right-2 z-20" onClick={e => e.stopPropagation()}>
         <DotsMenu
           open={menuOpen}
@@ -157,11 +153,7 @@ interface ImageUrlInputProps {
 
 const ImageUrlInput: React.FC<ImageUrlInputProps> = ({ previewUrl, onUrlChange, urlValue }) => (
   <div className="space-y-2">
-    <label className="text-xs font-semibold text-gray-500 uppercase">
-      Image URL
-    </label>
-
-    {/* Preview */}
+    <label className="text-xs font-semibold text-gray-500 uppercase">Image URL</label>
     {previewUrl && (
       <div className="w-full h-40 rounded-lg overflow-hidden border border-gray-200">
         <img
@@ -172,7 +164,6 @@ const ImageUrlInput: React.FC<ImageUrlInputProps> = ({ previewUrl, onUrlChange, 
         />
       </div>
     )}
-
     <input
       value={urlValue}
       onChange={e => onUrlChange(e.target.value)}
@@ -222,17 +213,14 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
       toast.error('Please provide an image URL.')
       return
     }
-
-    const payload: GalleryPayload = {
+    onSave({
       image_url:     form.image_url.trim(),
       caption:       form.caption,
       alt_text:      form.alt_text,
       category:      form.category,
       display_order: form.display_order,
       is_published:  form.is_published,
-    }
-
-    onSave(payload)
+    })
   }
 
   return (
@@ -241,9 +229,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
         className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="font-bold text-lg mb-5">
-          {initial ? 'Edit Image' : 'Add Image'}
-        </h2>
+        <h2 className="font-bold text-lg mb-5">{initial ? 'Edit Image' : 'Add Image'}</h2>
 
         <div className="flex flex-col gap-4">
           <ImageUrlInput
@@ -279,9 +265,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
               onChange={e => set('category', e.target.value as GalleryCategory)}
               className="border p-2 rounded-lg text-sm w-full mt-1 bg-white"
             >
-              {CATEGORIES.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -308,10 +292,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
         </div>
 
         <div className="flex gap-2 mt-6">
-          <button
-            onClick={onClose}
-            className="flex-1 border p-2 rounded-lg text-sm hover:bg-gray-50"
-          >
+          <button onClick={onClose} className="flex-1 border p-2 rounded-lg text-sm hover:bg-gray-50">
             Cancel
           </button>
           <button
@@ -349,12 +330,9 @@ const Gallery: React.FC = () => {
     },
     onError: (err: any) => {
       const data = err?.response?.data
-      const msg =
-        data?.image_url?.[0] ??
-        data?.non_field_errors?.[0] ??
-        data?.detail ??
-        'Failed to add image.'
-      toast.error(msg)
+      toast.error(
+        data?.image_url?.[0] ?? data?.non_field_errors?.[0] ?? data?.detail ?? 'Failed to add image.'
+      )
     },
   })
 
@@ -369,12 +347,9 @@ const Gallery: React.FC = () => {
     },
     onError: (err: any) => {
       const data = err?.response?.data
-      const msg =
-        data?.image_url?.[0] ??
-        data?.non_field_errors?.[0] ??
-        data?.detail ??
-        'Failed to update image.'
-      toast.error(msg)
+      toast.error(
+        data?.image_url?.[0] ?? data?.non_field_errors?.[0] ?? data?.detail ?? 'Failed to update image.'
+      )
     },
   })
 
@@ -402,13 +377,9 @@ const Gallery: React.FC = () => {
     }
   }
 
-  const isSaving = createMutation.isPending || updateMutation.isPending
-
-  const displayed: GalleryImage[] =
-    filterCat === 'All' ? images : images.filter(img => img.category === filterCat)
-
-  const editInitial: GalleryImage | null =
-    modal && modal !== 'add' ? (modal as GalleryImage) : null
+  const isSaving  = createMutation.isPending || updateMutation.isPending
+  const displayed = filterCat === 'All' ? images : images.filter(img => img.category === filterCat)
+  const editInitial: GalleryImage | null = modal && modal !== 'add' ? (modal as GalleryImage) : null
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">

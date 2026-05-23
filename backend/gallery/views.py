@@ -1,3 +1,5 @@
+# backend/gallery/views.py
+
 from rest_framework import viewsets, filters
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated, SAFE_METHODS
 from rest_framework.permissions import BasePermission

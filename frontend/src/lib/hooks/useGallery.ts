@@ -1,5 +1,3 @@
-// src/hooks/useGallery.ts
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { publicApi, api } from '../api';
 
@@ -16,24 +14,30 @@ export interface GalleryImage {
   updated_at: string;
 }
 
-export type GalleryImagePayload = Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>;
+export interface PaginatedGallery {
+  count: number;
+  results: GalleryImage[];
+}
 
-const toArray = (data: any): GalleryImage[] =>
-  Array.isArray(data) ? data : (data?.results ?? []);
+export type GalleryImagePayload = Omit<GalleryImage, 'id' | 'resolved_url' | 'created_at' | 'updated_at'>;
 
 export const useGallery = (params: Record<string, unknown> = {}) =>
   useQuery({
     queryKey: ['gallery', params],
-    queryFn: () => publicApi.get('/gallery/', { params }).then(r => toArray(r.data)),
+    queryFn: async (): Promise<PaginatedGallery> => {
+      const r = await publicApi.get('/gallery/', { params });
+      const data = r.data;
+      if (Array.isArray(data)) {
+        return { count: data.length, results: data };
+      }
+      return { count: data.count ?? 0, results: data.results ?? [] };
+    },
     staleTime: 5 * 60 * 1000,
   });
 
 export const useCreateGalleryImage = () => {
   const qc = useQueryClient();
   return useMutation({
-    // Send plain JSON — backend serializer expects `image_url` as a field,
-    // NOT a multipart file upload. Using application/json avoids the
-    // "Provide either an image file or an image URL." validation error.
     mutationFn: (payload: GalleryImagePayload) =>
       api.post('/gallery/', payload).then(r => r.data),
     onSuccess: () => {

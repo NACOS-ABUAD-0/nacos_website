@@ -1,40 +1,117 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom"; // Import Link for navigation
-import Navbar from "../components/Navbar";
-import { Footer } from "../components/Footer";
-import SectionHeader from "../components/SectionHeader";
-import PageHeader from "../components/PageHeader";
-import { useGallery } from "../lib/hooks/useGallery";
-import { GallerySkeleton } from "../components/home/Skeletons";
-import { X } from "lucide-react";
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import Navbar from '../components/Navbar'
+import { Footer } from '../components/Footer'
+import SectionHeader from '../components/SectionHeader'
+import PageHeader from '../components/PageHeader'
+import { useGallery } from '../lib/hooks/useGallery'
+import { GallerySkeleton } from '../components/home/Skeletons'
+import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface GalleryProps {
-  isHome: boolean;
+  isHome: boolean
 }
 
-const CATEGORIES = ["All", "Hackathons", "Workshops", "Socials", "Others"];
+const CATEGORIES = ['All', 'Hackathons', 'Workshops', 'Socials', 'Others']
+const PAGE_SIZE = 10
 
+// ─── Pagination ───────────────────────────────────────────────────────────────
+interface PaginationProps {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}
+
+function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+  if (totalPages <= 1) return null
+
+  const getPages = (): (number | '...')[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+    const pages: (number | '...')[] = [1]
+    if (currentPage > 3) pages.push('...')
+    const start = Math.max(2, currentPage - 1)
+    const end   = Math.min(totalPages - 1, currentPage + 1)
+    for (let i = start; i <= end; i++) pages.push(i)
+    if (currentPage < totalPages - 2) pages.push('...')
+    pages.push(totalPages)
+    return pages
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-1 mt-14 flex-wrap">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-[#006E3A] hover:text-[#006E3A] disabled:opacity-30 disabled:cursor-not-allowed transition"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+
+      {getPages().map((page, idx) =>
+        page === '...' ? (
+          <span key={`ellipsis-${idx}`} className="px-2 text-gray-400 select-none">…</span>
+        ) : (
+          <button
+            key={page}
+            onClick={() => onPageChange(page as number)}
+            className={`min-w-[36px] h-9 rounded-lg text-sm font-semibold transition border ${
+              page === currentPage
+                ? 'bg-[#006E3A] text-white border-[#006E3A]'
+                : 'border-gray-200 text-gray-600 hover:border-[#006E3A] hover:text-[#006E3A]'
+            }`}
+          >
+            {page}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-[#006E3A] hover:text-[#006E3A] disabled:opacity-30 disabled:cursor-not-allowed transition"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function Gallery({ isHome }: GalleryProps) {
-  const [filter, setFilter] = useState("All");
-  const [visibleCount, setVisibleCount] = useState(6);
-  const [selectedImage, setSelectedImage] = useState<any | null>(null);
+  const [filter, setFilter]               = useState('All')
+  const [currentPage, setCurrentPage]     = useState(1)
+  const [selectedImage, setSelectedImage] = useState<any | null>(null)
 
-  const { data: images = [], isLoading, error, refetch } = useGallery();
+  // Home preview: just 6 images, no pagination
+  const homeParams = { page_size: 6 }
 
-  const filtered =
-    filter === "All" ? images : images.filter(img => img.category === filter);
+  // Full page: send page + page_size + optional category filter to backend
+  const pageParams: Record<string, unknown> = {
+    page:      currentPage,
+    page_size: PAGE_SIZE,
+    ...(filter !== 'All' && { category: filter }),
+  }
 
-  const displayImages = isHome
-    ? images.slice(0, 6)
-    : filtered.slice(0, visibleCount);
+  const { data, isLoading, error, refetch } = useGallery(isHome ? homeParams : pageParams)
+
+  const images     = data?.results ?? []
+  const totalCount = data?.count   ?? 0
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   const handleFilterChange = (cat: string) => {
-    setFilter(cat);
-    setVisibleCount(6);
-  };
+    setFilter(cat)
+    setCurrentPage(1)
+  }
 
-  if (isLoading) return <GallerySkeleton />;
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  if (isLoading) return <GallerySkeleton />
 
   if (error) {
     return (
@@ -51,7 +128,7 @@ export default function Gallery({ isHome }: GalleryProps) {
         </div>
         {!isHome && <Footer />}
       </>
-    );
+    )
   }
 
   return (
@@ -71,7 +148,7 @@ export default function Gallery({ isHome }: GalleryProps) {
           />
         )}
 
-        {/* FILTER */}
+        {/* FILTER — full page only */}
         {!isHome && (
           <div className="flex justify-center gap-3 mb-12 flex-wrap">
             {CATEGORIES.map(cat => (
@@ -80,8 +157,8 @@ export default function Gallery({ isHome }: GalleryProps) {
                 onClick={() => handleFilterChange(cat)}
                 className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
                   filter === cat
-                    ? "bg-[#006E3A] text-white shadow"
-                    : "bg-white text-gray-600 border hover:border-[#006E3A]"
+                    ? 'bg-[#006E3A] text-white shadow'
+                    : 'bg-white text-gray-600 border hover:border-[#006E3A]'
                 }`}
               >
                 {cat}
@@ -91,19 +168,16 @@ export default function Gallery({ isHome }: GalleryProps) {
         )}
 
         {/* EMPTY */}
-        {displayImages.length === 0 && (
+        {images.length === 0 && (
           <div className="text-center py-20 text-gray-500 font-medium">
             No images found.
           </div>
         )}
 
         {/* GRID */}
-        <motion.div
-          layout
-          className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6"
-        >
-          <AnimatePresence>
-            {displayImages.map(image => (
+        <motion.div layout className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+          <AnimatePresence mode="wait">
+            {images.map(image => (
               <motion.div
                 key={image.id}
                 layout
@@ -115,22 +189,14 @@ export default function Gallery({ isHome }: GalleryProps) {
                 onClick={() => setSelectedImage(image)}
               >
                 <img
-                  src={image.resolved_url ?? "/placeholder.jpg"}
+                  src={image.resolved_url ?? '/placeholder.jpg'}
                   alt={image.alt_text || image.caption}
                   className="w-full h-auto object-cover group-hover:scale-105 transition duration-500"
                 />
-
-                {/* SUBTLE ALWAYS TEXT */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                  <p className="text-xs text-white/70 uppercase">
-                    {image.category}
-                  </p>
-                  <p className="text-sm font-semibold text-white line-clamp-1">
-                    {image.caption}
-                  </p>
+                  <p className="text-xs text-white/70 uppercase">{image.category}</p>
+                  <p className="text-sm font-semibold text-white line-clamp-1">{image.caption}</p>
                 </div>
-
-                {/* HOVER OVERLAY */}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-semibold text-sm">
                   View Image
                 </div>
@@ -139,23 +205,27 @@ export default function Gallery({ isHome }: GalleryProps) {
           </AnimatePresence>
         </motion.div>
 
-        {/* LOAD MORE (only on full gallery page) */}
-        {!isHome && visibleCount < filtered.length && (
-          <div className="flex justify-center mt-16 mb-10">
-            <button
-              onClick={() => setVisibleCount(c => c + 3)}
-              className="px-8 py-3 border-2 border-[#006E3A] text-[#006E3A] font-semibold rounded-xl hover:bg-[#006E3A] hover:text-white transition"
-            >
-              Load More
-            </button>
-          </div>
+        {/* NUMBERED PAGINATION — full page only */}
+        {!isHome && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         )}
 
-        {/* GRADIENT GREEN BUTTON - VIEW ALL GALLERY (only on home) */}
+        {/* Result count — full page only */}
+        {!isHome && totalCount > 0 && (
+          <p className="text-center text-xs text-gray-400 mt-4">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount} images
+          </p>
+        )}
+
+        {/* VIEW ALL BUTTON — home only */}
         {isHome && images.length > 0 && (
           <div className="flex justify-center mt-12">
             <Link
-              to="/gallery" // Adjust the route if your gallery page is at a different path
+              to="/gallery"
               className="px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 transition shadow-md"
             >
               View All Gallery
@@ -164,7 +234,7 @@ export default function Gallery({ isHome }: GalleryProps) {
         )}
       </section>
 
-      {/* MODAL */}
+      {/* LIGHTBOX MODAL */}
       <AnimatePresence>
         {selectedImage && (
           <motion.div
@@ -179,14 +249,14 @@ export default function Gallery({ isHome }: GalleryProps) {
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               <div className="relative">
                 <img
                   src={selectedImage.resolved_url}
+                  alt={selectedImage.alt_text || selectedImage.caption}
                   className="w-full max-h-[500px] object-cover"
                 />
-
                 <button
                   onClick={() => setSelectedImage(null)}
                   className="absolute top-3 right-3 bg-black/70 text-white p-2 rounded-full"
@@ -194,19 +264,11 @@ export default function Gallery({ isHome }: GalleryProps) {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-
-              {/* DESCRIPTION */}
               <div className="p-6">
-                <p className="text-xs uppercase text-gray-400 mb-2">
-                  {selectedImage.category}
-                </p>
-
-                <h2 className="text-xl font-bold mb-2">
-                  {selectedImage.caption}
-                </h2>
-
+                <p className="text-xs uppercase text-gray-400 mb-2">{selectedImage.category}</p>
+                <h2 className="text-xl font-bold mb-2">{selectedImage.caption}</h2>
                 <p className="text-gray-600 text-sm">
-                  {selectedImage.alt_text || "No description provided."}
+                  {selectedImage.alt_text || 'No description provided.'}
                 </p>
               </div>
             </motion.div>
@@ -216,5 +278,5 @@ export default function Gallery({ isHome }: GalleryProps) {
 
       {!isHome && <Footer />}
     </>
-  );
+  )
 }
