@@ -508,12 +508,24 @@ const HomeEventsSection: React.FC = () => {
 
   const allEvents: ApiEventItem[] = data ?? [];
 
-  const homeEvents = allEvents
+  // Active events (upcoming + ongoing) sorted soonest first
+  const activeEvents = allEvents
     .filter((e) => e.status === "upcoming" || e.status === "ongoing")
     .sort(
       (a, b) =>
         new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
     );
+
+  // Completed events sorted most recent first
+  const completedEvents = allEvents
+    .filter((e) => e.status === "completed")
+    .sort(
+      (a, b) =>
+        new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+    );
+
+  // Always show active first, completed appended after
+  const homeEvents = [...activeEvents, ...completedEvents];
 
   if (isLoading) {
     return (
@@ -542,8 +554,8 @@ const HomeEventsSection: React.FC = () => {
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <EventsSectionHeader
-        title="Upcoming & Ongoing Events"
-        subtitle="Workshops, competitions, and community gatherings"
+        title="Events"
+        subtitle="Upcoming workshops, competitions, and community gatherings — plus a look back at past ones"
         ctaText="View all events"
         ctaLink="/events"
       />
@@ -575,7 +587,7 @@ const HomeEventsSection: React.FC = () => {
           </p>
         </motion.div>
       ) : (
-        <EventCarousel events={homeEvents} />
+        <EventCarousel events={homeEvents} activeCount={activeEvents.length} />
       )}
     </section>
   );
@@ -677,7 +689,10 @@ const EventImageWithFallback: React.FC<{ src: string; alt: string }> = ({
   );
 };
 
-const EventCarousel: React.FC<{ events: ApiEventItem[] }> = ({ events }) => {
+const EventCarousel: React.FC<{
+  events: ApiEventItem[];
+  activeCount?: number;
+}> = ({ events, activeCount = 0 }) => {
   if (!events.length) return null;
 
   const [current, setCurrent] = useState(0);
@@ -686,11 +701,18 @@ const EventCarousel: React.FC<{ events: ApiEventItem[] }> = ({ events }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const PER = 3;
+  // Track each event's global index so we can identify completed events
+  // (those at index >= activeCount) regardless of which slide page they're on.
+  const indexedEvents = useMemo(
+    () => events.map((e, globalIdx) => ({ event: e, globalIdx })),
+    [events]
+  );
   const slides = useMemo(() => {
-    const s: ApiEventItem[][] = [];
-    for (let i = 0; i < events.length; i += PER) s.push(events.slice(i, i + PER));
+    const s: { event: ApiEventItem; globalIdx: number }[][] = [];
+    for (let i = 0; i < indexedEvents.length; i += PER)
+      s.push(indexedEvents.slice(i, i + PER));
     return s;
-  }, [events]);
+  }, [indexedEvents]);
   const total = slides.length;
 
   const go = useCallback(
@@ -756,7 +778,8 @@ const EventCarousel: React.FC<{ events: ApiEventItem[] }> = ({ events }) => {
             exit="exit"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {slides[current].map((event, i) => {
+              {slides[current].map(({ event, globalIdx }, i) => {
+                const isCompleted = globalIdx >= activeCount;
                 const imageSrc = resolveImageUrl(
                   event.poster_url || event.media?.poster || null
                 );
@@ -785,9 +808,13 @@ const EventCarousel: React.FC<{ events: ApiEventItem[] }> = ({ events }) => {
                     : event.status ?? "upcoming";
 
                 const isFocused = i === 0;
-                const blurClass = isFocused
+                // Completed cards are always slightly dimmed to visually
+                // separate them from active events, but still hoverable.
+                const blurClass = isCompleted
+                  ? "opacity-50 scale-95 hover:opacity-80 hover:scale-100"
+                  : isFocused
                   ? "blur-0 opacity-100 scale-100"
-                  : "blur-[2px] opacity-60 scale-95";
+                  : "blur-[2px] opacity-60 scale-95 hover:blur-0 hover:opacity-100 hover:scale-100";
 
                 return (
                   <motion.div
@@ -796,13 +823,16 @@ const EventCarousel: React.FC<{ events: ApiEventItem[] }> = ({ events }) => {
                     variants={cardV}
                     initial="hidden"
                     animate="visible"
-                    className={`transition-all duration-500 ease-out ${blurClass} hover:blur-0 hover:opacity-100 hover:scale-100`}
+                    className={`transition-all duration-500 ease-out ${blurClass}`}
                   >
                     <TiltCard
-                      intensity={isFocused ? 6 : 2}
-                      className="bg-white rounded-2xl border border-gray-100 overflow-hidden group
-                                 hover:border-emerald-200/60 hover:shadow-xl hover:shadow-emerald-50/80
-                                 transition-all duration-400 h-full"
+                      intensity={isCompleted ? 2 : isFocused ? 6 : 2}
+                      className={`bg-white rounded-2xl border overflow-hidden group
+                                 hover:shadow-xl transition-all duration-400 h-full
+                                 ${isCompleted
+                                   ? "border-gray-100 hover:border-gray-200 hover:shadow-gray-50/80"
+                                   : "border-gray-100 hover:border-emerald-200/60 hover:shadow-emerald-50/80"
+                                 }`}
                     >
                       {imageSrc ? (
                         <EventImageWithFallback src={imageSrc} alt={event.title} />
