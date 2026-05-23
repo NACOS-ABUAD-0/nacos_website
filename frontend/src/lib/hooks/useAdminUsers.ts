@@ -1,12 +1,20 @@
+// src/lib/hooks/useAdminUsers.ts
+
 /**
  * Custom hook for admin user management state and operations.
  * Provides paginated data fetching, search, filtering, and deletion.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { PaginatedUserResponse, UserRecord} from '../../services/adminUserService'
-import type{ DeleteUserPayload } from '../../services/adminUserService'
-import {fetchUsers, deleteUser,  } from '../../services/adminUserService'
+import type {
+  PaginatedUserResponse,
+  UserRecord,
+  DeleteUserPayload,
+  UserListParams,
+} from '../../services/adminUserService'
+import { fetchUsers, deleteUser } from '../../services/adminUserService'
+
+// ─── Return Type ───────────────────────────────────────────────────────────────
 
 interface UseAdminUsersReturn {
   users: UserRecord[]
@@ -34,6 +42,8 @@ interface UseAdminUsersReturn {
   clearErrors: () => void
 }
 
+// ─── Hook ──────────────────────────────────────────────────────────────────────
+
 export const useAdminUsers = (): UseAdminUsersReturn => {
   const [users, setUsers] = useState<UserRecord[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -42,20 +52,25 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const [pageSize] = useState<number>(10)
+  const pageSize = 10
   const [count, setCount] = useState<number>(0)
   const [totalPages, setTotalPages] = useState<number>(1)
   const [hasNext, setHasNext] = useState<boolean>(false)
   const [hasPrevious, setHasPrevious] = useState<boolean>(false)
 
+  // Displayed value updates immediately; the debounced version drives API calls.
   const [searchQuery, setSearchQuery] = useState<string>('')
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('')
   const [levelFilter, setLevelFilter] = useState<string>('')
   const [roleFilter, setRoleFilter] = useState<string>('')
 
-  // Debounce search to avoid excessive API calls
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const loadUsers = useCallback(async (page: number = currentPage) => {
+  // ── loadUsers ────────────────────────────────────────────────────────────────
+  // currentPage is NOT in the dependency array; it is always passed explicitly
+  // as a parameter so the function stays stable across page-change transitions.
+
+  const loadUsers = useCallback(async (page: number): Promise<void> => {
     setLoading(true)
     setError(null)
 
@@ -63,7 +78,7 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
       const params: UserListParams = {
         page,
         page_size: pageSize,
-        ...(searchQuery.trim() && { search: searchQuery.trim() }),
+        ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
         ...(levelFilter && { level: levelFilter }),
         ...(roleFilter && { role: roleFilter }),
       }
@@ -82,52 +97,68 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, pageSize, searchQuery, levelFilter, roleFilter])
+  }, [pageSize, debouncedSearch, levelFilter, roleFilter])
 
-  // Initial load and when filters change
+  // ── Reset to page 1 whenever filters/search change ───────────────────────────
+
   useEffect(() => {
-    // Reset to page 1 when filters change
     setCurrentPage(1)
-  }, [searchQuery, levelFilter, roleFilter])
+    loadUsers(1)
+  }, [debouncedSearch, levelFilter, roleFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  // loadUsers is intentionally omitted: we only want this to fire when the
+  // filter values themselves change, not every time loadUsers is recreated.
+
+  // ── Re-fetch when page changes (triggered by goToPage) ───────────────────────
 
   useEffect(() => {
     loadUsers(currentPage)
-  }, [loadUsers, currentPage])
+  }, [currentPage]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Debounced search ─────────────────────────────────────────────────────────
+  // Updates the displayed input immediately; defers the API-driving value by
+  // 300 ms so we don't fire a request on every keystroke.
 
   const handleSearchChange = useCallback((q: string) => {
     setSearchQuery(q)
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
+
     searchTimeoutRef.current = setTimeout(() => {
-      setCurrentPage(1)
+      setDebouncedSearch(q)
     }, 300)
   }, [])
 
+  // ── handleDeleteUser ─────────────────────────────────────────────────────────
+
   const handleDeleteUser = useCallback(async (
     userId: number,
-    payload: DeleteUserPayload
+    payload: DeleteUserPayload,
   ): Promise<boolean> => {
     setDeleting(true)
     setDeleteError(null)
 
     try {
       await deleteUser(userId, payload)
-      // Refresh current page after deletion
+      // Refresh the current page after a successful deletion.
       await loadUsers(currentPage)
       return true
     } catch (err) {
       let message = 'Failed to delete user. Please try again.'
+
       if (err instanceof Error) {
         message = err.message
       }
-      // Try to extract backend error message
+
+      // Surface the backend's descriptive error message when available.
       if (typeof err === 'object' && err !== null && 'response' in err) {
         const axiosErr = err as { response?: { data?: { error?: string } } }
         if (axiosErr.response?.data?.error) {
           message = axiosErr.response.data.error
         }
       }
+
       setDeleteError(message)
       return false
     } finally {
@@ -135,16 +166,22 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     }
   }, [currentPage, loadUsers])
 
+  // ── goToPage ─────────────────────────────────────────────────────────────────
+
   const goToPage = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
     }
   }, [totalPages])
 
+  // ── clearErrors ──────────────────────────────────────────────────────────────
+
   const clearErrors = useCallback(() => {
     setError(null)
     setDeleteError(null)
   }, [])
+
+  // ── Return ────────────────────────────────────────────────────────────────────
 
   return {
     users,

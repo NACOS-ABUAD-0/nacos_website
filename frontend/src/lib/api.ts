@@ -371,6 +371,33 @@ export const adminCommitteeAPI = {
     api.patch(`/admin/committee-applications/${id}/reject/`, { admin_note }),
 };
 
+// ─── ADMIN USERS ─────────────────────────────────────────────────────────────
+
+export const adminUsersAPI = {
+  /**
+   * Fetches a paginated, optionally filtered list of all registered users.
+   * Maps directly to GET /api/admin/users/.
+   */
+  getUsers: (params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    level?: string;
+    role?: string;
+  }) => api.get("/admin/users/", { params }),
+
+  /**
+   * Deletes a user by primary key.
+   * Requires matric_number and full_name in the request body for
+   * backend credential verification.
+   * Maps directly to DELETE /api/admin/users/<id>/delete/.
+   */
+  deleteUser: (
+    id: number,
+    payload: { matric_number: string; full_name: string }
+  ) => api.delete(`/admin/users/${id}/delete/`, { data: payload }),
+};
+
 // ─── CLOUDINARY ───────────────────────────────────────────────────────────────
 
 export const cloudinaryAPI = {
