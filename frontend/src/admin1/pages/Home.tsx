@@ -1,440 +1,509 @@
 // src/admin1/pages/Home.tsx
 
-import React, { useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Line, Area, AreaChart, CartesianGrid,
+  AreaChart, Area, CartesianGrid,
 } from 'recharts'
 
-import userIcon from '../../assets/user.png'
-import cash from '../../assets/cash.png'
-import receipt from '../../assets/receipt.png'
-import box from '../../assets/box.png'
-import prev from '../../assets/prev.png'
-import curr from '../../assets/current.png'
+// ── Hooks (only using confirmed data shapes) ───────────────────
+import { usePublicStats }    from '../../lib/hooks/useHomepage'      // { students, projects, skills, events, resources }
+import { useEvents }         from '../../lib/hooks/useEvents'         // Event[] — status: 'upcoming'|'ongoing'|'completed', start_time, title, is_published
+import { useInquiries }      from '../../lib/hooks/useInquiries'      // Inquiry[] — type, status, created_at, name
+import { useAdminUsers }     from '../../lib/hooks/useAdminUsers'     // { users, pagination }
+import { useStudentProfile } from '../../lib/hooks/useStudentProfile' // { full_name, email, ... }
+import { useProjects }       from '../../lib/hooks/useProjects'       // Project[] — id, title, is_featured, updated_at, tags, owner
 
-// ── Types ─────────────────────────────────────────────────
-interface GrowthDataPoint {
-  day: string
-  label: string
-  thisMonth: number
-  lastMonth: number
-  other: number
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+/** Group an array of items by calendar month using a date-string field */
+function groupByMonth<T>(items: T[], getDate: (item: T) => string): { month: string; count: number }[] {
+  const buckets = Array(12).fill(0)
+  items.forEach(item => {
+    const d = new Date(getDate(item))
+    if (!isNaN(d.getTime())) buckets[d.getMonth()]++
+  })
+  return MONTHS.map((month, i) => ({ month, count: buckets[i] }))
 }
 
-interface AttendanceDataPoint {
-  month: string
-  users: number
+/** Get greeting based on time of day */
+function greeting(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
-interface AdminLog {
-  name: string
-  percent: number
-}
+// ─────────────────────────────────────────────────────────────────
+// SUB-COMPONENTS
+// ─────────────────────────────────────────────────────────────────
 
-interface FilterTabsProps {
-  options: string[]
-  active: string
-  onChange: (opt: string) => void
-}
-
-interface StatCardProps {
-  icon: string
-  value: string
-  label: string
-}
-
-// ── Generate 30 days of member growth data ─────────────────────
-const allMemberGrowthData: GrowthDataPoint[] = Array.from({ length: 30 }, (_, i) => ({
-  day: String(i + 1).padStart(2, '0'),
-  label: i === 0 ? '02 jan' : String(i + 1).padStart(2, '0'),
-  thisMonth: Math.floor(Math.random() * 30) + 60 + (i > 3 ? 15 : 0),
-  lastMonth: Math.floor(Math.random() * 15) + 42,
-  other:     Math.floor(Math.random() * 10) + 10,
-}))
-allMemberGrowthData[4].thisMonth = 110
-
-// ── Attendance data ────────────────────────────────────────────
-const attendanceData: AttendanceDataPoint[] = [
-  { month: 'Jan', users: 600 }, { month: 'Feb', users: 650 },
-  { month: 'Mar', users: 470 }, { month: 'Apr', users: 490 },
-  { month: 'May', users: 470 }, { month: 'Jun', users: 620 },
-  { month: 'Jul', users: 490 }, { month: 'Aug', users: 510 },
-  { month: 'Sep', users: 580 }, { month: 'Oct', users: 600 },
-  { month: 'Nov', users: 580 }, { month: 'Dec', users: 490 },
-]
-
-const adminLogs: AdminLog[] = [
-  { name: 'Admin 1', percent: 50 },
-  { name: 'Admin 2', percent: 30 },
-  { name: 'Admin 3', percent: 20 },
-  { name: 'Admin 4', percent: 10 },
-  { name: 'Admin 5', percent: 10 },
-]
-
-const DAYS_PER_PAGE = 10
-
-// ── Filter Tabs ────────────────────────────────────────────────
-const FilterTabs: React.FC<FilterTabsProps> = ({ options, active, onChange }) => (
-  <div className="flex gap-1 flex-wrap">
-    {options.map((opt) => (
-      <button
-        key={opt}
-        onClick={() => onChange(opt)}
-        className={`px-2 md:px-3 py-1 rounded-md text-[11px] md:text-xs font-medium transition-colors duration-150 ${
-          active === opt
-            ? 'bg-white border border-gray-300 text-gray-800 shadow-sm'
-            : 'text-gray-400 hover:text-gray-600'
-        }`}
-      >
-        {opt}
-      </button>
-    ))}
-  </div>
+const Skeleton: React.FC<{ w?: string; h?: string; rounded?: string }> = ({
+  w = 'w-full', h = 'h-4', rounded = 'rounded'
+}) => (
+  <div className={`${w} ${h} ${rounded} bg-gray-200 animate-pulse`} />
 )
 
-// ── Stat Card ──────────────────────────────────────────────────
-const StatCard: React.FC<StatCardProps> = ({ icon, value, label }) => (
-  <div className="flex items-center gap-3 md:gap-4 bg-white rounded-xl border border-gray-100 px-4 md:px-6 py-4 md:py-5 flex-1 shadow-sm min-w-0">
-    <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-      <img src={icon} alt={label} className="w-5 h-5 md:w-6 md:h-6 object-contain" />
+interface KpiCardProps {
+  label: string
+  value: string | number
+  sub?: string
+  accent: string   // tailwind bg class for the left border / icon bg
+  icon: React.ReactNode
+  loading?: boolean
+}
+
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub, accent, icon, loading }) => (
+  <div className={`relative bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex gap-4 items-start overflow-hidden`}>
+    {/* accent strip */}
+    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${accent}`} />
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${accent} bg-opacity-10`}>
+      {icon}
     </div>
     <div className="min-w-0">
-      <p className="text-[14px] md:text-[17px] font-bold text-gray-900 truncate">{value}</p>
-      <p className="text-[10px] md:text-xs text-gray-500 mt-0.5 truncate">{label}</p>
+      {loading ? (
+        <>
+          <Skeleton h="h-6" w="w-16" rounded="rounded-md" />
+          <Skeleton h="h-3" w="w-24" rounded="rounded mt-1.5" />
+        </>
+      ) : (
+        <>
+          <p className="text-2xl font-black text-gray-900 leading-none tracking-tight">{value}</p>
+          <p className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wide">{label}</p>
+          {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+        </>
+      )}
     </div>
   </div>
 )
 
-// ── Three Separate Concentric Donut Rings ──────────────────────
-const DonutChart: React.FC = () => {
-  const size = 140
-  const cx = 70
-  const cy = 70
+interface SectionCardProps {
+  title: string
+  sub?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}
 
-  const TrackRing: React.FC<{ r: number; strokeWidth?: number }> = ({ r, strokeWidth = 6 }) => (
-    <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f0f0f0" strokeWidth={strokeWidth} />
-  )
-
-  const FilledRing: React.FC<{ r: number; color: string; percent: number; strokeWidth?: number }> = ({ r, color, percent, strokeWidth = 6 }) => {
-    const circumference = 2 * Math.PI * r
-    const dash = (percent / 100) * circumference
-    return (
-      <circle
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeDasharray={`${dash} ${circumference - dash}`}
-        strokeLinecap="round"
-        transform={`rotate(-90 ${cx} ${cy})`}
-      />
-    )
-  }
-
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size}>
-        <TrackRing r={58} />
-        <TrackRing r={44} />
-        <TrackRing r={30} />
-        <FilledRing r={58} color="#1a7a3f" percent={80} />
-        <FilledRing r={44} color="#86efac" percent={50} />
-        <FilledRing r={30} color="#fbbf24" percent={15} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[10px] text-gray-400">Total</span>
-        <span className="text-lg font-bold text-gray-900">120</span>
+const SectionCard: React.FC<SectionCardProps> = ({ title, sub, action, children, className = '' }) => (
+  <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 md:p-6 ${className}`}>
+    <div className="flex items-start justify-between mb-5">
+      <div>
+        <h3 className="font-black text-gray-900 text-[15px] tracking-tight">{title}</h3>
+        {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
       </div>
+      {action}
     </div>
-  )
-}
-
-// ── Custom axis ticks ──────────────────────────────────────────
-interface TickProps {
-  x?: number
-  y?: number
-  payload?: { value: string | number }
-}
-
-const CustomYTick: React.FC<TickProps> = ({ x = 0, y = 0, payload }) => (
-  <text x={x} y={y} dy={4} textAnchor="end" fill="#9ca3af" fontSize={10}>
-    {payload?.value}
-  </text>
+    {children}
+  </div>
 )
 
-const CustomXTick: React.FC<TickProps> = ({ x = 0, y = 0, payload }) => (
-  <text x={x} y={y} dy={10} textAnchor="middle" fill="#9ca3af" fontSize={10}>
-    {payload?.value}
-  </text>
-)
+// ─────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────
 
-// ── Main Component ─────────────────────────────────────────────
 const Home: React.FC = () => {
-  const [projectFilter,    setProjectFilter]    = useState<string>('12 months')
-  const [growthFilter,     setGrowthFilter]     = useState<string>('12 months')
-  const [attendanceFilter, setAttendanceFilter] = useState<string>('12 months')
-  const [growthPage,       setGrowthPage]       = useState<number>(0)
+  // ── Data fetching ──────────────────────────────────────────────
+  const { data: stats, isLoading: statsLoading }              = usePublicStats()
+  const { data: events = [], isLoading: eventsLoading }       = useEvents()
+  const { data: inquiries = [], isLoading: inquiriesLoading } = useInquiries()
+  const { pagination, isLoading: usersLoading }               = useAdminUsers()
+  const { data: profile, isLoading: profileLoading }          = useStudentProfile()
+  // useProjects returns one paginated page. Its length is a floor, not total.
+  // stats.projects from /admin/stats/ is the authoritative total count.
+  const { data: projects = [], isLoading: projectsLoading }   = useProjects()
 
-  const totalPages = Math.ceil(allMemberGrowthData.length / DAYS_PER_PAGE)
+  // ── Derived: events by status (using confirmed `status` field) ─
+  const eventsByStatus = useMemo(() => {
+    const upcoming  = events.filter(e => e.status === 'upcoming').length
+    const ongoing   = events.filter(e => e.status === 'ongoing').length
+    const completed = events.filter(e => e.status === 'completed').length
+    return { upcoming, ongoing, completed, total: events.length }
+  }, [events])
 
-  const visibleGrowthData = useMemo<GrowthDataPoint[]>(() => {
-    const start = growthPage * DAYS_PER_PAGE
-    return allMemberGrowthData.slice(start, start + DAYS_PER_PAGE)
-  }, [growthPage])
+  // ── Derived: events per month (using confirmed `start_time`) ───
+  const eventsByMonth = useMemo(
+    () => groupByMonth(events, e => e.start_time),
+    [events]
+  )
 
-  const visibleDays = visibleGrowthData.map((d) => d.day)
+  // ── Derived: inquiries by type (confirmed: type field) ─────────
+  const inquiryByType = useMemo(() => {
+    const map: Record<string, number> = {
+      general: 0, sponsorship: 0, partnership: 0, recruitment: 0,
+    }
+    inquiries.forEach(i => { map[i.type] = (map[i.type] || 0) + 1 })
+    return Object.entries(map).map(([name, count]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      count,
+    }))
+  }, [inquiries])
+
+  // ── Derived: inquiries by status (confirmed: status field) ─────
+  const inquiryByStatus = useMemo(() => ({
+    new:       inquiries.filter(i => i.status === 'new').length,
+    read:      inquiries.filter(i => i.status === 'read').length,
+    responded: inquiries.filter(i => i.status === 'responded').length,
+    archived:  inquiries.filter(i => i.status === 'archived').length,
+  }), [inquiries])
+
+  // ── Derived: inquiries per month ───────────────────────────────
+  const inquiriesByMonth = useMemo(
+    () => groupByMonth(inquiries, i => i.created_at),
+    [inquiries]
+  )
+
+  // ── Recent inquiries (last 5, newest first) ────────────────────
+  const recentInquiries = useMemo(
+    () => [...inquiries]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5),
+    [inquiries]
+  )
+
+  // ── Upcoming events list (next 4) ──────────────────────────────
+  const upcomingEventsList = useMemo(
+    () => events
+      .filter(e => e.status === 'upcoming')
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+      .slice(0, 4),
+    [events]
+  )
+
+  // ── Admin name from profile ────────────────────────────────────
+  const adminName = profile?.full_name
+    ? profile.full_name.split(' ')[0]   // first name only
+    : null
+
+  // ── Stats values ─────────────────────────────────────────────
+  // Prefer admin stats endpoint (authoritative totals). But if it returns
+  // 0 (endpoint down, not yet seeded, etc.), fall back to the length of
+  // whatever the list hooks fetched — fixing the "0 projects" bug.
+  const totalMembers   = (stats?.students  ?? 0) > 0 ? stats!.students  : pagination.count
+  const totalProjects  = (stats?.projects  ?? 0) > 0 ? stats!.projects  : projects.length
+  const totalResources = (stats?.resources ?? 0) > 0 ? stats!.resources : 0
+  const totalEvents    = (stats?.events    ?? 0) > 0 ? stats!.events    : events.length
+  const projectsReady  = !statsLoading && !projectsLoading
+
+  // ─────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#f9fafb]">
+    <div className="min-h-screen bg-[#f4f6f3] font-sans">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-10">
 
-        {/* Welcome */}
-        <div className="mb-8 md:mb-12">
-          <h2 className="text-[22px] md:text-[30px] font-semibold text-gray-900">Welcome back, Habeebullah</h2>
-          <p className="text-xs md:text-sm text-gray-400 mt-1">Track, manage operations on Nacos Website</p>
-        </div>
-
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-          <StatCard icon={userIcon} value="2,248+"      label="Total Members" />
-          <StatCard icon={cash}     value="₦2,450,000+" label="Event Attendance" />
-          <StatCard icon={receipt}  value="190+"        label="Resources Downloaded" />
-          <StatCard icon={box}      value="220"         label="Project Downloaded" />
-        </div>
-
-        {/* Middle Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-          {/* Project Upload */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[15px] text-gray-900">Project Upload</h3>
-              <FilterTabs options={['12 months', '30 days', '7 days']} active={projectFilter} onChange={setProjectFilter} />
-            </div>
-
-            <div className="flex gap-6 md:gap-10 mb-6 mt-5 flex-wrap">
-              <div>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">1000</p>
-                <p className="text-[12px] text-gray-400">Total Projects</p>
-              </div>
-              <div>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">875</p>
-                <p className="text-[12px] text-gray-400">Finished</p>
-              </div>
-              <div>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">30</p>
-                <p className="text-[12px] text-gray-400">In-progress</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6 md:gap-8">
-              <DonutChart />
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-row gap-6 md:gap-10">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row gap-2 items-center">
-                      <span className="w-2 h-2 rounded-full bg-[#1a7a3f]" />
-                      <span className="text-[12px] text-gray-600">Finished</span>
-                    </div>
-                    <span className="text-[18px] md:text-[20px] font-bold text-gray-900 ml-4">800</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex flex-row gap-2 items-center">
-                      <span className="w-2 h-2 rounded-full bg-[#86efac]" />
-                      <span className="text-[12px] text-gray-600">In-Progress</span>
-                    </div>
-                    <span className="text-[18px] md:text-[20px] font-bold text-gray-900 ml-4">50</span>
-                  </div>
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex flex-row gap-2 items-center">
-                    <span className="w-2 h-2 rounded-full bg-[#fbbf24]" />
-                    <span className="text-[12px] text-gray-600">Failed</span>
-                  </div>
-                  <span className="text-[18px] md:text-[20px] font-bold text-gray-900 ml-4">150</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mt-6 bg-gray-200 rounded-xl px-4 py-3">
-              <span className="text-sm font-semibold text-gray-700">50 New Projects</span>
-              <button className="bg-[#1a7a3f] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#155f32] transition-colors duration-200 font-medium">
-                View
-              </button>
-            </div>
+        {/* ── Welcome banner ─────────────────────────────────── */}
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            {profileLoading ? (
+              <>
+                <Skeleton h="h-8" w="w-64" rounded="rounded-lg" />
+                <Skeleton h="h-4" w="w-40" rounded="rounded mt-2" />
+              </>
+            ) : (
+              <>
+                <h2 className="text-[26px] md:text-[34px] font-black text-gray-900 tracking-tight leading-none">
+                  {greeting()}{adminName ? `, ${adminName}` : ''}.
+                </h2>
+                <p className="text-sm text-gray-400 mt-1.5">
+                  Here's what's happening on Nacos today.
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Member Growth */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-gray-900 text-[15px]">Member Growth</h3>
-              <FilterTabs options={['12 months', '30 days', '7 days']} active={growthFilter} onChange={setGrowthFilter} />
-            </div>
-
-            <div className="flex gap-8 mb-3">
-              <div>
-                <p className="text-[11px] text-gray-400 mb-1">Previous</p>
-                <div className="flex flex-row gap-2 items-center">
-                  <img src={prev} className="w-3 h-3" alt="Previous" />
-                  <span className="text-sm font-bold text-gray-800">12,300,500</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] text-gray-400 mb-1">Current</p>
-                <div className="flex flex-row gap-1 items-center">
-                  <img src={curr} className="w-4 h-4" alt="Current" />
-                  <span className="text-sm font-bold text-gray-800">18,300,500</span>
-                </div>
-              </div>
-            </div>
-
-            <ResponsiveContainer width="100%" height={190}>
-              <AreaChart data={visibleGrowthData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="thisMonthGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#86efac" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="#86efac" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis dataKey="day" hide />
-                <YAxis tick={<CustomYTick />} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' }}
-                  formatter={(val: number | undefined, name: string | undefined) => {
-                    const map: Record<string, string> = { thisMonth: 'This month', lastMonth: 'Last Month', other: 'Other' }
-                    return [val ?? 0, map[name ?? ''] || name || '']
-                  }}
-                  labelFormatter={(label: React.ReactNode) => `Day ${String(label)}`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="thisMonth"
-                  stroke="#1a7a3f"
-                  strokeWidth={2}
-                  fill="url(#thisMonthGrad)"
-                  dot={false}
-                  activeDot={{ r: 5, fill: '#1a7a3f' }}
-                />
-                <Line type="monotone" dataKey="lastMonth" stroke="#fbbf24" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="other"     stroke="#1e3a5f" strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 px-1">
-              <button
-                onClick={() => setGrowthPage((p) => Math.max(0, p - 1))}
-                disabled={growthPage === 0}
-                className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-gray-400 hover:border-[#1a7a3f] hover:text-[#1a7a3f] disabled:opacity-25 disabled:cursor-not-allowed transition-colors shrink-0"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-
-              <div className="flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar">
-                {visibleDays.map((d) => (
-                  <span key={d} className="text-[11px] text-gray-400 shrink-0 w-5 text-center">
-                    {d}
-                  </span>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setGrowthPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={growthPage === totalPages - 1}
-                className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-gray-400 hover:border-[#1a7a3f] hover:text-[#1a7a3f] disabled:opacity-25 disabled:cursor-not-allowed transition-colors shrink-0"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
+          {/* Live date badge */}
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-xs font-bold text-[#1a7a3f] uppercase tracking-widest">
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long' })}
+            </span>
+            <span className="text-sm text-gray-500">
+              {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
           </div>
         </div>
 
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
+        {/* ── KPI row ────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <KpiCard
+            label="Members"
+            value={statsLoading || usersLoading ? '—' : totalMembers.toLocaleString()}
+            sub="registered students"
+            accent="bg-[#1a7a3f]"
+            loading={statsLoading && usersLoading}
+            icon={
+              <svg className="w-5 h-5 text-[#1a7a3f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="Projects"
+            value={!projectsReady ? '—' : totalProjects.toLocaleString()}
+            sub="total submitted"
+            accent="bg-blue-500"
+            loading={!projectsReady}
+            icon={
+              <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="Resources"
+            value={statsLoading ? '—' : totalResources.toLocaleString()}
+            sub="available downloads"
+            accent="bg-amber-500"
+            loading={statsLoading}
+            icon={
+              <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="Events"
+            value={statsLoading || eventsLoading ? '—' : totalEvents.toLocaleString()}
+            sub={eventsLoading ? undefined : `${eventsByStatus.upcoming} upcoming`}
+            accent="bg-rose-500"
+            loading={statsLoading && eventsLoading}
+            icon={
+              <svg className="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            }
+          />
+        </div>
 
-          {/* Event Attendance */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm">
-            <div className="flex flex-col mb-4">
-              <h3 className="font-bold text-gray-900 text-[15px] mb-4">Event Attendance</h3>
-              <FilterTabs
-                options={['12 months', '3 months', '30 days', '7 days', '24 hours']}
-                active={attendanceFilter}
-                onChange={setAttendanceFilter}
-              />
-            </div>
+        {/* ── Middle row: Events chart + Inquiries chart ──────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 mb-4">
 
-            <div className="flex items-center gap-1">
-              <div className="flex items-center justify-center shrink-0" style={{ width: 16, height: 220 }}>
-                <span
-                  className="text-[10px] text-gray-400 font-medium whitespace-nowrap"
-                  style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
-                >
-                  Active users
-                </span>
-              </div>
-
+          {/* Events per month bar chart */}
+          <SectionCard
+            title="Events This Year"
+            sub={eventsLoading ? undefined : `${eventsByStatus.upcoming} upcoming · ${eventsByStatus.ongoing} ongoing · ${eventsByStatus.completed} completed`}
+          >
+            {eventsLoading ? (
+              <div className="h-[220px] bg-gray-100 rounded-xl animate-pulse" />
+            ) : events.length === 0 ? (
+              <EmptyState message="No events found" />
+            ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={attendanceData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                <BarChart data={eventsByMonth} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                  <XAxis dataKey="month" tick={<CustomXTick />} axisLine={false} tickLine={false} />
-                  <YAxis tick={<CustomYTick />} axisLine={false} tickLine={false} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
                     cursor={{ fill: '#f0fdf4' }}
+                    formatter={(val: number) => [val, 'Events']}
                   />
-                  <Bar dataKey="users" fill="#1a7a3f" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" name="Events" fill="#1a7a3f" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-          </div>
+            )}
 
-          {/* Admin Logs */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="font-bold text-gray-900 text-[15px]">Admin Logs</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Total Logs - 10</p>
+            {/* Event status pills */}
+            {!eventsLoading && events.length > 0 && (
+              <div className="flex gap-2 mt-4 flex-wrap">
+                {[
+                  { label: 'Upcoming',  count: eventsByStatus.upcoming,  color: 'bg-[#1a7a3f]' },
+                  { label: 'Ongoing',   count: eventsByStatus.ongoing,   color: 'bg-amber-500' },
+                  { label: 'Completed', count: eventsByStatus.completed, color: 'bg-gray-300' },
+                ].map(s => (
+                  <span key={s.label} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 border border-gray-100 rounded-full px-3 py-1">
+                    <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                    {s.label}: {s.count}
+                  </span>
+                ))}
               </div>
-              <button className="text-xs text-[#1a7a3f] font-medium hover:underline">View all</button>
-            </div>
+            )}
+          </SectionCard>
 
-            <div className="flex flex-col gap-4">
-              {adminLogs.map((log, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-700 mb-1">{log.name}</p>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                      <div
-                        className="bg-[#1a7a3f] h-1.5 rounded-full transition-all duration-500"
-                        style={{ width: `${log.percent}%` }}
-                      />
+          {/* Inquiries by type */}
+          <SectionCard
+            title="Inquiries"
+            sub={inquiriesLoading ? undefined : `${inquiries.length} total · ${inquiryByStatus.new} new`}
+            action={
+              <button className="text-xs text-[#1a7a3f] font-semibold hover:underline">View all</button>
+            }
+          >
+            {inquiriesLoading ? (
+              <div className="space-y-3">
+                {[1,2,3,4].map(i => <Skeleton key={i} h="h-8" rounded="rounded-lg" />)}
+              </div>
+            ) : inquiries.length === 0 ? (
+              <EmptyState message="No inquiries yet" />
+            ) : (
+              <>
+                {/* Status breakdown */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[
+                    { label: 'New',       value: inquiryByStatus.new,       color: '#1a7a3f' },
+                    { label: 'Read',      value: inquiryByStatus.read,      color: '#86efac' },
+                    { label: 'Responded', value: inquiryByStatus.responded, color: '#3b82f6' },
+                    { label: 'Archived',  value: inquiryByStatus.archived,  color: '#d1d5db' },
+                  ].map(s => (
+                    <div key={s.label} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                      <p className="text-lg font-black text-gray-900">{s.value}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        <p className="text-[10px] text-gray-500 font-medium">{s.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* By type bars */}
+                <div className="space-y-2">
+                  {inquiryByType.filter(t => t.count > 0).map(t => (
+                    <div key={t.name} className="flex items-center gap-2">
+                      <span className="text-[11px] text-gray-500 w-20 shrink-0">{t.name}</span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                        <div
+                          className="h-1.5 rounded-full bg-[#1a7a3f] transition-all duration-700"
+                          style={{ width: inquiries.length > 0 ? `${(t.count / inquiries.length) * 100}%` : '0%' }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-bold text-gray-700 w-4 text-right">{t.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </SectionCard>
+        </div>
+
+        {/* ── Bottom row: Inquiries over time + Upcoming events + Members ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
+
+          {/* Upcoming events list */}
+          <SectionCard
+            title="Upcoming Events"
+            sub={`${eventsByStatus.upcoming} scheduled`}
+          >
+            {eventsLoading ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <Skeleton key={i} h="h-14" rounded="rounded-xl" />)}
+              </div>
+            ) : upcomingEventsList.length === 0 ? (
+              <EmptyState message="No upcoming events" />
+            ) : (
+              <div className="space-y-2">
+                {upcomingEventsList.map(event => (
+                  <div key={event.id} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                    {/* Date block */}
+                    <div className="shrink-0 w-10 flex flex-col items-center bg-[#1a7a3f] rounded-lg py-1.5 text-white">
+                      <span className="text-[10px] font-bold uppercase leading-none">
+                        {new Date(event.start_time).toLocaleDateString('en-GB', { month: 'short' })}
+                      </span>
+                      <span className="text-[16px] font-black leading-none">
+                        {new Date(event.start_time).getDate()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-bold text-gray-800 leading-tight truncate">{event.title}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {event.is_remote ? '📡 Remote' : event.location || 'TBD'}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500 font-medium w-8 text-right">{log.percent}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
 
+          {/* Inquiries over time + recent list */}
+          <SectionCard
+            title="Inquiry Activity"
+            sub="Monthly volume this year"
+          >
+            {inquiriesLoading ? (
+              <div className="h-[160px] bg-gray-100 rounded-xl animate-pulse" />
+            ) : inquiries.length === 0 ? (
+              <EmptyState message="No inquiries to display" />
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={140}>
+                  <AreaChart data={inquiriesByMonth} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="inquiryGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#1a7a3f" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#1a7a3f" stopOpacity={0.01} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                      formatter={(val: number) => [val, 'Inquiries']}
+                    />
+                    <Area type="monotone" dataKey="count" stroke="#1a7a3f" strokeWidth={2} fill="url(#inquiryGrad)" dot={false} activeDot={{ r: 4, fill: '#1a7a3f' }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+
+                {/* Recent inquiries */}
+                <div className="mt-4 space-y-1.5">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recent</p>
+                  {recentInquiries.map(inq => (
+                    <div key={inq.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${
+                          inq.status === 'new'       ? 'bg-[#1a7a3f]' :
+                          inq.status === 'read'      ? 'bg-amber-400' :
+                          inq.status === 'responded' ? 'bg-blue-400'  : 'bg-gray-300'
+                        }`} />
+                        <span className="text-[12px] font-medium text-gray-700 truncate">{inq.name}</span>
+                        <span className="text-[11px] text-gray-400 shrink-0 capitalize">{inq.type}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                        {new Date(inq.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </SectionCard>
         </div>
+
       </main>
       <Footer />
     </div>
   )
 }
+
+// ─────────────────────────────────────────────────────────────────
+// EMPTY STATE
+// ─────────────────────────────────────────────────────────────────
+
+const EmptyState: React.FC<{ message: string }> = ({ message }) => (
+  <div className="flex flex-col items-center justify-center py-10 text-gray-300">
+    <svg className="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+    <p className="text-sm font-medium">{message}</p>
+  </div>
+)
 
 export default Home
