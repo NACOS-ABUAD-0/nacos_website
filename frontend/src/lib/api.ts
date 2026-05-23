@@ -204,11 +204,15 @@ export const authAPI = {
   checkEmail: (email: string) =>
     api.post("/auth/check-email/", { email }),
 
-  verifyStudent: (email: string, fullName: string, matricNumber: string) =>
+  verifyStudent: (
+    email: string,
+    fullName: string,
+    matricNumber: string
+  ) =>
     api.post("/auth/verify-student/", {
       email,
       full_name: fullName,
-      matric_number: matricNumber,
+      matric_number: matricNumber.toUpperCase(), // ✅ normalize
     }),
 
   register: (
@@ -222,42 +226,76 @@ export const authAPI = {
     api.post("/auth/register/", {
       email,
       full_name: fullName,
-      matric_number: matricNumber,
+      matric_number: matricNumber.toUpperCase(), // ✅ normalize
       password,
       password2,
-      ...(verificationToken ? { verification_token: verificationToken } : {}),
+      ...(verificationToken
+        ? { verification_token: verificationToken }
+        : {}),
     }).catch(handleApiError),
 
   login: (email: string, password: string) =>
-    api.post("/auth/login/", { email, password }).catch(handleApiError),
+    api.post("/auth/login/", {
+      email,
+      password,
+    }).catch(handleApiError),
 
   logout: () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-    return Promise.resolve({ detail: "Logged out" });
+
+    return Promise.resolve({
+      detail: "Logged out",
+    });
   },
 
-  getProfile: () => api.get("/auth/me/").catch(handleApiError),
+  getProfile: () =>
+    api.get("/auth/me/").catch(handleApiError),
+
   updateProfile: (data: unknown) =>
     api.patch("/auth/me/", data).catch(handleApiError),
 
   refreshToken: (refreshToken: string) =>
-    api.post("/auth/token/refresh/", { refresh: refreshToken }),
-
-  requestPasswordReset: (email: string, matricNumber?: string) =>
-    api.post("/auth/password-reset/", {
-      email,
-      ...(matricNumber ? { matric_number: matricNumber } : {}),
+    api.post("/auth/token/refresh/", {
+      refresh: refreshToken,
     }),
 
-  confirmPasswordReset: (uid: string, token: string, password: string, password2: string) =>
-    api.post("/auth/password-reset/confirm/", { uid, token, password, password2 }),
+  requestPasswordReset: (
+    email: string,
+    matricNumber?: string
+  ) =>
+    api.post("/auth/password-reset/", {
+      email,
+      ...(matricNumber
+        ? {
+            matric_number:
+              matricNumber.toUpperCase(), // ✅ normalize
+          }
+        : {}),
+    }),
+
+  confirmPasswordReset: (
+    uid: string,
+    token: string,
+    password: string,
+    password2: string
+  ) =>
+    api.post("/auth/password-reset/confirm/", {
+      uid,
+      token,
+      password,
+      password2,
+    }),
 
   verifyEmail: (uid: string, token: string) =>
-    api.post("/auth/verify-email/", { uid, token }).catch(handleApiError),
+    api.post("/auth/verify-email/", {
+      uid,
+      token,
+    }).catch(handleApiError),
 
   resendVerification: () =>
-    api.post("/auth/resend-verification/").catch(handleApiError),
+    api.post("/auth/resend-verification/")
+      .catch(handleApiError),
 };
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
