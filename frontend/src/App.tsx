@@ -54,8 +54,10 @@ import AdminMetrics from "./admin1/pages/Metrics";
 import AdminGallery from "./admin1/pages/Gallery";
 import AdminInquiries from "./admin1/pages/Inquiries";
 import UserManagement from "./admin1/pages/UserManagement";
-// ── NEW: Admin committee applications ──────────────────────────────────────────
+// ── Admin committee applications ───────────────────────────────────────────────
 import AdminCommitteeApplications from "./admin1/pages/CommitteeApplications";
+// ── NEW: Admin featured projects ───────────────────────────────────────────────
+import AdminFeaturedProjects from "./admin1/pages/FeaturedProjects";
 
 // ─── Query Client ──────────────────────────────────────────────────────────────
 
@@ -339,12 +341,21 @@ function AppRoutes() {
           </RequireAdmin>
         }
       />
-      {/* ── NEW: Admin Committee Applications ────────────────────────── */}
+      {/* ── Admin Committee Applications ──────────────────────────────── */}
       <Route
         path="/admin/committee-applications"
         element={
           <RequireAdmin>
             <AdminCommitteeApplications />
+          </RequireAdmin>
+        }
+      />
+      {/* ── NEW: Admin Featured Projects ──────────────────────────────── */}
+      <Route
+        path="/admin/featured-projects"
+        element={
+          <RequireAdmin>
+            <AdminFeaturedProjects />
           </RequireAdmin>
         }
       />

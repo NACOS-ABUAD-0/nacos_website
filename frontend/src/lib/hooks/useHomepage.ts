@@ -118,6 +118,12 @@ function extractResults(data: unknown): ProjectItem[] {
 
 // ─── useFeaturedProjects ──────────────────────────────────────────────────────
 //
+// Query key: ["featured-projects"]
+//
+// This key MUST match the invalidation call in the admin FeaturedProjects page
+// (src/admin1/pages/FeaturedProjects.tsx) so that toggling a project's featured
+// status in the admin immediately reflects on the homepage without a full reload.
+//
 // Try featured first; fall back to 6 most recent if none are featured.
 // This ensures the homepage always shows projects even before an admin
 // has manually featured any.
@@ -127,7 +133,9 @@ function extractResults(data: unknown): ProjectItem[] {
 // ─────────────────────────────────────────────────────────────────────────────
 export const useFeaturedProjects = () => {
   return useQuery<FeaturedProjectsResult>({
-    queryKey: ['projects', 'homepage'],
+    // ⚠️  Keep this key in sync with the invalidateQueries call in
+    //     src/admin1/pages/FeaturedProjects.tsx
+    queryKey: ['featured-projects'],
     queryFn: async () => {
       const featuredRes = await api.get('/projects/', {
         params: { is_featured: true, page_size: 6 },

@@ -354,6 +354,12 @@ const Homepage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const showProfileBanner = isAuthenticated && !user?.profile_complete;
 
+  // ── Featured projects ──
+  // useFeaturedProjects uses query key ["featured-projects"], which matches
+  // the invalidateQueries call in src/admin1/pages/FeaturedProjects.tsx.
+  // Toggling a project in the admin dashboard instantly updates the homepage
+  // carousel without a full page reload. The hook also falls back to the 6
+  // most recent projects so the carousel is never empty.
   const {
     data: projects,
     isLoading: projectsLoading,
@@ -701,8 +707,6 @@ const EventCarousel: React.FC<{
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const PER = 3;
-  // Track each event's global index so we can identify completed events
-  // (those at index >= activeCount) regardless of which slide page they're on.
   const indexedEvents = useMemo(
     () => events.map((e, globalIdx) => ({ event: e, globalIdx })),
     [events]
@@ -808,8 +812,6 @@ const EventCarousel: React.FC<{
                     : event.status ?? "upcoming";
 
                 const isFocused = i === 0;
-                // Completed cards are always slightly dimmed to visually
-                // separate them from active events, but still hoverable.
                 const blurClass = isCompleted
                   ? "opacity-50 scale-95 hover:opacity-80 hover:scale-100"
                   : isFocused
