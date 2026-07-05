@@ -20,7 +20,7 @@ from django.shortcuts import get_object_or_404
 
 from . import models
 from .models import User, StudentProfile, Notification
-from .permissions import IsAdmin
+from .permissions import IsAdmin, IsSuperAdmin
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -328,12 +328,13 @@ class AdminRoleAssignmentView(APIView):
     POST   /admin/roles/assign/  — Promote a user to admin.
     DELETE /admin/roles/revoke/  — Revoke admin from a user.
 
-    Both operations require the caller to be an authenticated admin.
+    Both operations require the caller to be the super admin — regular
+    admins cannot promote or revoke other admins themselves.
     Promotion requires name + matric to be supplied and verified against
     the target user's stored record. Max 3 admins enforced at all times.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
 
     # Assign (POST)
     def post(self, request):
@@ -456,17 +457,22 @@ class AdminRoleAssignmentView(APIView):
 class AdminListView(APIView):
     """
     GET /admin/roles/
-    Returns the list of current admins and the remaining slots.
-    Only accessible by authenticated admins.
+    Returns the list of current admins (and the super admin) and the
+    remaining regular-admin slots. Only accessible by the super admin.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
 
     def get(self, request):
+        # MAX_ADMINS caps only the regular ADMIN tier — the super admin is a
+        # separate, singular, manually-assigned role outside that ceiling.
         admins = User.objects.filter(role=User.Role.ADMIN)
+        all_privileged = User.objects.filter(
+            role__in=[User.Role.ADMIN, User.Role.SUPER_ADMIN]
+        )
         return Response(
             {
-                "admins": UserSerializer(admins, many=True).data,
+                "admins": UserSerializer(all_privileged, many=True).data,
                 "count": admins.count(),
                 "max": MAX_ADMINS,
                 "slots_remaining": MAX_ADMINS - admins.count(),
@@ -657,7 +663,7 @@ class AdminUserListView(APIView):
             queryset = queryset.filter(student_profile__level__iexact=level_filter)
 
         role_filter = request.query_params.get("role", "").strip().lower()
-        if role_filter in ["user", "admin"]:
+        if role_filter in ["user", "admin", "super_admin"]:
             queryset = queryset.filter(role=role_filter)
 
         is_active_filter = request.query_params.get("is_active", "").strip().lower()

@@ -20,7 +20,7 @@ export interface UserRecord {
   matric_number: string
   level: string
   department: string
-  role: 'user' | 'admin'
+  role: 'user' | 'admin' | 'super_admin'
   is_staff: boolean
   is_active: boolean
   is_email_verified: boolean

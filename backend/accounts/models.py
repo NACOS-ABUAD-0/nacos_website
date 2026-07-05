@@ -50,6 +50,7 @@ class User(AbstractUser):
     class Role(models.TextChoices):
         USER = "user", "User"
         ADMIN = "admin", "Admin"
+        SUPER_ADMIN = "super_admin", "Super Admin"
 
     username = None
     email = models.EmailField(unique=True, db_index=True)
@@ -65,7 +66,7 @@ class User(AbstractUser):
     )
 
     role = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=Role.choices,
         default=Role.USER,
         db_index=True,
@@ -88,7 +89,11 @@ class User(AbstractUser):
 
     @property
     def is_admin(self) -> bool:
-        return self.role == self.Role.ADMIN or self.is_staff
+        return self.role in (self.Role.ADMIN, self.Role.SUPER_ADMIN) or self.is_staff
+
+    @property
+    def is_super_admin(self) -> bool:
+        return self.role == self.Role.SUPER_ADMIN
 
     def __str__(self) -> str:
         return f"{self.full_name} <{self.email}>"
@@ -97,7 +102,7 @@ class User(AbstractUser):
         if self.matric_number:
             self.matric_number = self.matric_number.strip().upper()
         if not self.is_superuser:
-            self.is_staff = self.role == self.Role.ADMIN
+            self.is_staff = self.role in (self.Role.ADMIN, self.Role.SUPER_ADMIN)
         super().save(*args, **kwargs)
 
     class Meta:

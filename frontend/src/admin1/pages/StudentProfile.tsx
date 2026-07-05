@@ -8,6 +8,7 @@ import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
 import { fetchUser } from '../../services/adminUserService'
 import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
+import { useProjects } from '../../lib/hooks/useProjects'
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex items-start gap-4 mb-4">
@@ -26,6 +27,8 @@ export default function StudentProfile(): React.ReactElement {
     queryFn: () => fetchUser(Number(id)),
     enabled: !!id,
   })
+
+  const { data: projects = [], isLoading: projectsLoading } = useProjects({ owner: id })
 
   const handleBan = async (): Promise<void> => {
     if (!student) return
@@ -115,6 +118,33 @@ export default function StudentProfile(): React.ReactElement {
             </div>
           </div>
         </div>
+
+        <h2 className="text-[18px] font-semibold text-gray-900 mb-4">Projects Submitted</h2>
+        {projectsLoading ? (
+          <div className="flex justify-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a7a3f]" />
+          </div>
+        ) : projects.length === 0 ? (
+          <p className="text-gray-500 bg-white rounded-2xl p-6 text-center">No projects submitted yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {projects.map((project) => (
+              <div key={project.id} className="bg-white rounded-2xl border border-gray-100 p-5">
+                <h3 className="text-[15px] font-bold text-gray-900 mb-1">{project.title}</h3>
+                <p className="text-[13px] text-gray-500 line-clamp-3 mb-3">{project.description}</p>
+                {project.tags && project.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {project.tags.map((tag) => (
+                      <span key={tag.id} className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </main>
       <Footer />
     </div>

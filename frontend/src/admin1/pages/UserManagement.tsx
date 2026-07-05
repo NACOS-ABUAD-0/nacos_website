@@ -22,19 +22,26 @@ import type { UserRecord } from '../../services/adminUserService'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-type RoleBadgeVariant = 'admin' | 'user'
+type RoleBadgeVariant = 'super_admin' | 'admin' | 'user'
 type StatusBadgeVariant = 'active' | 'inactive' | 'verified' | 'unverified'
 
 // ─── Sub-Components ────────────────────────────────────────────────────────
 
+const ROLE_LABELS: Record<RoleBadgeVariant, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  user: 'User',
+}
+
 const RoleBadge: React.FC<{ role: RoleBadgeVariant }> = ({ role }) => {
   const styles: Record<RoleBadgeVariant, string> = {
+    super_admin: 'bg-amber-100 text-amber-700 border-amber-200',
     admin: 'bg-purple-100 text-purple-700 border-purple-200',
     user: 'bg-gray-100 text-gray-600 border-gray-200',
   }
   return (
     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${styles[role]}`}>
-      {role === 'admin' ? 'Admin' : 'User'}
+      {ROLE_LABELS[role]}
     </span>
   )
 }
@@ -193,7 +200,7 @@ const UserManagement: React.FC = () => {
   }, [clearErrors])
 
   const handleViewProfile = useCallback((user: UserRecord) => {
-    navigate(`/admin/users/${user.id}`, { state: { user } })
+    navigate(`/admin/approvals/${user.id}`)
   }, [navigate])
 
   return (
@@ -215,7 +222,7 @@ const UserManagement: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Total Users', value: pagination.count, color: 'bg-blue-50 text-blue-700' },
-            { label: 'Admins', value: users.filter(u => u.role === 'admin').length, color: 'bg-purple-50 text-purple-700' },
+            { label: 'Admins', value: users.filter(u => u.role === 'admin' || u.role === 'super_admin').length, color: 'bg-purple-50 text-purple-700' },
             { label: 'Verified', value: users.filter(u => u.is_email_verified).length, color: 'bg-green-50 text-green-700' },
             { label: 'This Page', value: users.length, color: 'bg-gray-50 text-gray-700' },
           ].map((stat) => (

@@ -201,3 +201,79 @@ class ChangePasswordTest(APITestCase):
             'new_password2': 'newpass456',
         })
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class SuperAdminTierTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.super_admin = User.objects.create_user(
+            email='super@example.com', full_name='Super Admin', password='pass12345',
+            role='super_admin',
+        )
+        self.admin = User.objects.create_user(
+            email='admin@example.com', full_name='Regular Admin', password='pass12345',
+            role='admin',
+        )
+        self.student = User.objects.create_user(
+            email='student@example.com', full_name='Student One', password='pass12345',
+            matric_number='23/SCI01/077',
+        )
+
+    def test_super_admin_has_is_staff_and_is_admin(self):
+        self.assertTrue(self.super_admin.is_staff)
+        self.assertTrue(self.super_admin.is_admin)
+        self.assertTrue(self.super_admin.is_super_admin)
+
+    def test_regular_admin_is_not_super_admin(self):
+        self.assertTrue(self.admin.is_admin)
+        self.assertFalse(self.admin.is_super_admin)
+
+    def test_regular_admin_cannot_promote_users(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(reverse('admin-role-assign'), {
+            'matric_number': self.student.matric_number,
+            'full_name': self.student.full_name,
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_regular_admin_cannot_revoke_admins(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(reverse('admin-role-revoke'), {
+            'matric_number': self.student.matric_number,
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_regular_admin_cannot_view_admin_list(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(reverse('admin-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_super_admin_can_promote_and_revoke(self):
+        self.client.force_authenticate(user=self.super_admin)
+
+        promote = self.client.post(reverse('admin-role-assign'), {
+            'matric_number': self.student.matric_number,
+            'full_name': self.student.full_name,
+        })
+        self.assertEqual(promote.status_code, status.HTTP_200_OK)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.role, 'admin')
+        self.assertTrue(self.student.is_staff)
+
+        revoke = self.client.delete(reverse('admin-role-revoke'), {
+            'matric_number': self.student.matric_number,
+        })
+        self.assertEqual(revoke.status_code, status.HTTP_200_OK)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.role, 'user')
+        self.assertFalse(self.student.is_staff)
+
+    def test_super_admin_list_includes_both_tiers(self):
+        self.client.force_authenticate(user=self.super_admin)
+        response = self.client.get(reverse('admin-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = {a['email'] for a in response.data['admins']}
+        self.assertIn('super@example.com', emails)
+        self.assertIn('admin@example.com', emails)
+        # MAX_ADMINS count/slots only reflect the regular ADMIN tier.
+        self.assertEqual(response.data['count'], 1)

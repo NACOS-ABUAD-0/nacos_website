@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import RequireAdmin from "./components/RequireAdmin";
+import RequireSuperAdmin from "./components/RequireSuperAdmin";
 
 // ── Page imports ───────────────────────────────────────────────────────────────
 import { LoginPage } from "./pages/login";
@@ -56,6 +57,7 @@ import AdminStudentProfile from "./admin1/pages/StudentProfile";
 import AdminMetrics from "./admin1/pages/Metrics";
 import AdminGallery from "./admin1/pages/Gallery";
 import AdminExecutives from "./admin1/pages/Executives";
+import ManageAdmins from "./admin1/pages/ManageAdmins";
 import AdminInquiries from "./admin1/pages/Inquiries";
 import UserManagement from "./admin1/pages/UserManagement";
 // ── Admin committee applications ───────────────────────────────────────────────
@@ -359,6 +361,14 @@ function AppRoutes() {
           <RequireAdmin>
             <AdminExecutives />
           </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/manage-admins"
+        element={
+          <RequireSuperAdmin>
+            <ManageAdmins />
+          </RequireSuperAdmin>
         }
       />
       <Route

@@ -7,6 +7,12 @@ import { Footer } from '../../components/Footer'
 import { useAuth } from '../../context/AuthContext'
 import { authAPI } from '../../lib/api'
 
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  user: 'User',
+}
+
 // ── Types ──────────────────────────────────────────────────────
 interface FieldProps {
   label: string
@@ -135,7 +141,7 @@ const MyDetails: React.FC = () => {
       </Field>
 
       <Field label="Role">
-        <Input value={user?.role ?? ''} disabled />
+        <Input value={ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? ''} disabled />
       </Field>
     </div>
   )

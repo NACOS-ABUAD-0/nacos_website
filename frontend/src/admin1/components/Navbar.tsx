@@ -5,6 +5,7 @@ import { NavLink } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/nacos_logo.png'
 import profileImg from '../../assets/profile.png'
+import { useAuth } from '../../context/AuthContext'
 
 const NAV_LINKS = [
   { label: 'Home',                   to: '/admin' },
@@ -18,11 +19,27 @@ const NAV_LINKS = [
   { label: 'User Management',        to: '/admin/users' },
 ]
 
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  user: 'User',
+}
+
 const Navbar: React.FC = () => {
   const [dropdownOpen, setDropdownOpen]   = useState<boolean>(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false)
   const dropdownRef  = useRef<HTMLDivElement>(null)
   const navigate     = useNavigate()
+  const { user, logout } = useAuth()
+
+  const navLinks = user?.role === 'super_admin'
+    ? [...NAV_LINKS, { label: 'Manage Admins', to: '/admin/manage-admins' }]
+    : NAV_LINKS
+
+  const handleLogout = (): void => {
+    logout()
+    navigate('/login')
+  }
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -55,7 +72,7 @@ const Navbar: React.FC = () => {
 
         {/* Desktop Nav Links */}
         <ul className="hidden md:flex items-center gap-6 lg:gap-8">
-          {NAV_LINKS.map(({ label, to }) => (
+          {navLinks.map(({ label, to }) => (
             <li key={label}>
               <NavLink
                 to={to}
@@ -93,7 +110,7 @@ const Navbar: React.FC = () => {
                   <div className="relative">
                     <img
                       src={profileImg}
-                      alt="James Bayo"
+                      alt={user?.full_name ?? 'Profile'}
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
                     />
                     <span className="absolute bottom-0 right-0 w-5 h-5 bg-[#1a7a3f] rounded-full flex items-center justify-center border-2 border-white">
@@ -102,8 +119,8 @@ const Navbar: React.FC = () => {
                       </svg>
                     </span>
                   </div>
-                  <p className="mt-3 font-semibold text-gray-900 text-[15px]">James Bayo</p>
-                  <p className="text-xs text-gray-400">Admin</p>
+                  <p className="mt-3 font-semibold text-gray-900 text-[15px]">{user?.full_name ?? 'Admin'}</p>
+                  <p className="text-xs text-gray-400">{ROLE_LABELS[user?.role ?? 'admin'] ?? 'Admin'}</p>
                   <span className="mt-2 flex items-center gap-1.5 bg-green-100 text-green-600 text-xs font-medium px-3 py-1 rounded-full">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     Online
@@ -143,7 +160,10 @@ const Navbar: React.FC = () => {
 
                 {/* Logout */}
                 <div className="px-4 pb-5 pt-1">
-                  <button className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors duration-200">
+                  <button
+                    onClick={() => { setDropdownOpen(false); handleLogout() }}
+                    className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors duration-200"
+                  >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
@@ -215,7 +235,7 @@ const Navbar: React.FC = () => {
         {/* Nav Links */}
         <nav className="flex-1 overflow-y-auto py-3">
           <ul className="flex flex-col">
-            {NAV_LINKS.map(({ label, to }) => (
+            {navLinks.map(({ label, to }) => (
               <li key={label}>
                 <NavLink
                   to={to}
@@ -238,7 +258,10 @@ const Navbar: React.FC = () => {
 
         {/* Drawer Footer — Logout */}
         <div className="px-5 py-5 border-t border-gray-100">
-          <button className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors duration-200">
+          <button
+            onClick={() => { closeMobileMenu(); handleLogout() }}
+            className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors duration-200"
+          >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>

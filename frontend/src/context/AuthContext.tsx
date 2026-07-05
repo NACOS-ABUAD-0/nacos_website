@@ -4,7 +4,7 @@ import { authAPI } from "../lib/api";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type UserRole = "user" | "admin";
+type UserRole = "user" | "admin" | "super_admin";
 
 interface User {
   id: number;
