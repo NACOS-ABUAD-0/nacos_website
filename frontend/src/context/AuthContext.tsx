@@ -96,10 +96,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // ─── Error Handler ─────────────────────────────────────────────────────────────
 
 function handleApiError(err: any, fallback: string): void {
-  if (err && typeof err === "object") {
-    Object.entries(err).forEach(([field, messages]) => {
+  if (err && typeof err === "object" && Object.keys(err).length > 0) {
+    Object.values(err).forEach((messages) => {
       if (Array.isArray(messages)) {
-        messages.forEach((msg) => toast.error(`${field}: ${msg}`));
+        messages.forEach((msg) => toast.error(String(msg)));
       } else {
         toast.error(String(messages));
       }

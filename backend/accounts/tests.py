@@ -66,6 +66,39 @@ class AuthAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
 
+    def test_login_nonexistent_email(self):
+        url = reverse('login')
+        response = self.client.post(url, {
+            'email': 'doesnotexist@example.com', 'password': 'whatever123',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertIn('sign up', response.data['email'][0].lower())
+
+    def test_login_wrong_password(self):
+        User.objects.create_user(
+            email='test@example.com', full_name='Test User', password='testpass123',
+        )
+        response = self.client.post(reverse('login'), {
+            'email': 'test@example.com', 'password': 'wrongpassword',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
+        self.assertIn('incorrect', response.data['password'][0].lower())
+
+    def test_login_deactivated_account(self):
+        user = User.objects.create_user(
+            email='test@example.com', full_name='Test User', password='testpass123',
+        )
+        user.is_active = False
+        user.save()
+        response = self.client.post(reverse('login'), {
+            'email': 'test@example.com', 'password': 'testpass123',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertIn('deactivated', response.data['email'][0].lower())
+
     def test_profile_access(self):
         # Register and login
         url = reverse('register')

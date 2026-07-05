@@ -3,7 +3,6 @@
 import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth import authenticate
 from django.core import signing
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
@@ -175,19 +174,21 @@ class LoginSerializer(serializers.Serializer):
         email = attrs.get("email", "").strip().lower()
         password = attrs.get("password")
 
-        if not email or not password:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
             raise serializers.ValidationError(
-                'Both "email" and "password" are required.'
+                {"email": ["No account found with this email. Please sign up."]}
             )
 
-        user = authenticate(email=email, password=password)
-
-        if not user:
-            raise serializers.ValidationError(
-                "Unable to log in with the provided credentials."
-            )
         if not user.is_active:
-            raise serializers.ValidationError("This account has been deactivated.")
+            raise serializers.ValidationError(
+                {"email": ["This account has been deactivated. Contact an admin for help."]}
+            )
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                {"password": ["Incorrect password. Please try again."]}
+            )
 
         attrs["user"] = user
         return attrs

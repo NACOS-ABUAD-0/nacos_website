@@ -32,15 +32,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isLoading, o
     try {
       await onSubmit(formData);
     } catch (err: any) {
-      if (typeof err === "object") {
+      // The toast itself is already shown by AuthContext's error handler —
+      // this only needs to surface field-specific messages inline under
+      // each input (e.g. "email" / "password"), not toast them a second time.
+      if (err && typeof err === "object") {
         setErrors(err);
-        Object.entries(err).forEach(([field, messages]) => {
-          if (Array.isArray(messages)) {
-            messages.forEach((msg) => toast.error(`${field}: ${msg}`));
-          } else {
-            toast.error(`${field}: ${messages}`);
-          }
-        });
       } else {
         toast.error("Something went wrong.");
       }
