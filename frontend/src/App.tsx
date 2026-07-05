@@ -15,11 +15,9 @@ import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
 import Homepage from "./pages/homepage";
-import Executives from "./components/Executives";
 import Home from "./admin1/pages/Home";
 import Event from "./admin1/pages/Event";
 import Approval from "./admin1/pages/Approval";
-import Studentprofile from  "./admin1/pages/StudentProfile";
 import Metrics from "./admin1/pages/Metrics";
 import Settings from "./admin1/pages/Settings";
 
