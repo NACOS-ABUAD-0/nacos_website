@@ -55,6 +55,7 @@ import AdminSettings from "./admin1/pages/Settings";
 import AdminStudentProfile from "./admin1/pages/StudentProfile";
 import AdminMetrics from "./admin1/pages/Metrics";
 import AdminGallery from "./admin1/pages/Gallery";
+import AdminExecutives from "./admin1/pages/Executives";
 import AdminInquiries from "./admin1/pages/Inquiries";
 import UserManagement from "./admin1/pages/UserManagement";
 // ── Admin committee applications ───────────────────────────────────────────────
@@ -349,6 +350,14 @@ function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminGallery />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/executives"
+        element={
+          <RequireAdmin>
+            <AdminExecutives />
           </RequireAdmin>
         }
       />

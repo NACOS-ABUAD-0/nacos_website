@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'inquiries',
     'committees',
     'attendance',
+    'dashboard',
     'face_auth',
 
     # third party

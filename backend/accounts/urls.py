@@ -8,6 +8,7 @@ from .views import (
     LoginView,
     LogoutView,
     ProfileView,
+    ChangePasswordView,
     CSRFTokenView,
     VerifyEmailView,
     ResendVerificationEmailView,
@@ -24,6 +25,9 @@ from .views import (
     AdminListView,
     AdminUserListView,
     AdminUserDeleteView,  # NEW
+    AdminUserDetailView,
+    AdminUserBanView,
+    AdminUserUnbanView,
     # Student Profile & Notifications
     StudentProfileView,
     NotificationViewSet,
@@ -35,6 +39,7 @@ urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("auth/me/", ProfileView.as_view(), name="profile"),
+    path("auth/change-password/", ChangePasswordView.as_view(), name="change_password"),
     path("auth/csrf/", CSRFTokenView.as_view(), name="csrf_token"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
@@ -67,7 +72,10 @@ urlpatterns = [
 
     # Admin — User Management (NEW)
     path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
+    path("admin/users/<int:pk>/", AdminUserDetailView.as_view(), name="admin-user-detail"),
     path("admin/users/<int:pk>/delete/", AdminUserDeleteView.as_view(), name="admin-user-delete"),
+    path("admin/users/<int:pk>/ban/", AdminUserBanView.as_view(), name="admin-user-ban"),
+    path("admin/users/<int:pk>/unban/", AdminUserUnbanView.as_view(), name="admin-user-unban"),
 
     # ── Face Authentication ──────────────────────────────────────────────
     path("face-auth/", include("face_auth.urls")),

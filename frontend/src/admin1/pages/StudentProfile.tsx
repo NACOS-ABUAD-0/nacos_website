@@ -1,48 +1,13 @@
 // src/admin1/pages/StudentProfile.tsx
 
 import React from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
-import project1 from '../../assets/profile1.png'
-import project2 from '../../assets/profile2.png'
 import { Footer } from '../../components/Footer'
-
-interface Student {
-  id?: number
-  fullName?: string
-  email?: string
-  matricNo?: string
-  level?: number
-  status?: 'Active' | 'Pending' | 'Banned'
-}
-
-interface Project {
-  id: number
-  image: string
-  name: string
-  description: string
-}
-
-interface LocationState {
-  student?: Student
-}
-
-const PROJECTS: Project[] = [
-  {
-    id: 1,
-    image: project1,
-    name: 'Project Name',
-    description:
-      'Lorem ipsum dolor sit amet, consectetuadipiscing elit. Sed do eiusmod tempo incididunt ut labore et dolore magna aliqua. Vitae susc ipit vel vel facilisis venenatis. Semper risus in hendrerit gravida rutrum quisque non tellus.',
-  },
-  {
-    id: 2,
-    image: project2,
-    name: 'Project Name',
-    description:
-      'Lorem ipsum dolor sit amet, consectetuadipiscing elit. Sed do eiusmod tempo incididunt ut labore et dolore magna aliqua. Vitae susc ipit vel vel facilisis venenatis. Semper risus in hendrerit gravida rutrum quisque non tellus.',
-  },
-]
+import { fetchUser } from '../../services/adminUserService'
+import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex items-start gap-4 mb-4">
@@ -51,31 +16,49 @@ const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
   </div>
 )
 
-const ProjectCard: React.FC<{ project: Project }> = ({ project }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-    <img src={project.image} alt={project.name} className="w-full object-cover" style={{ height: '260px' }} />
-    <div className="p-5 flex flex-col flex-1">
-      <h3 className="text-[15px] font-bold text-[#1a7a3f] mb-2">{project.name}</h3>
-      <p className="text-[12px] text-gray-500 leading-relaxed flex-1 mb-5">{project.description}</p>
-      <button className="w-full bg-[#1a7a3f] hover:bg-[#155f32] text-white text-sm font-medium py-2.5 rounded-lg transition-colors duration-200">
-        View Project
-      </button>
-    </div>
-  </div>
-)
-
 export default function StudentProfile(): React.ReactElement {
   const navigate = useNavigate()
-  const location = useLocation()
-  const state    = location.state as LocationState | null
-  const student  = state?.student
+  const { id } = useParams<{ id: string }>()
+  const { handleBanUser, handleUnbanUser } = useAdminUsers()
 
-  const name         = student?.fullName ?? 'Olasumbo Nissi'
-  const email        = student?.email    ?? 'OlasumboNissi@gmail.com'
-  const matricNo     = student?.matricNo ?? '+44676987759'
-  const level        = student?.level    ?? 400
-  const status       = student?.status   ?? 'Active'
-  const availability = level >= 500 ? 'Graduated' : 'Available'
+  const { data: student, isLoading, error, refetch } = useQuery({
+    queryKey: ['admin-user', id],
+    queryFn: () => fetchUser(Number(id)),
+    enabled: !!id,
+  })
+
+  const handleBan = async (): Promise<void> => {
+    if (!student) return
+    const ok = await handleBanUser(student.id)
+    if (ok) { toast.success(`${student.full_name} has been banned.`); refetch() }
+    else toast.error('Failed to ban student.')
+  }
+
+  const handleUnban = async (): Promise<void> => {
+    if (!student) return
+    const ok = await handleUnbanUser(student.id)
+    if (ok) { toast.success(`${student.full_name} has been unbanned.`); refetch() }
+    else toast.error('Failed to unban student.')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1a7a3f]" />
+      </div>
+    )
+  }
+
+  if (error || !student) {
+    return (
+      <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center justify-center gap-4">
+        <p className="text-gray-500">Student not found.</p>
+        <button onClick={() => navigate('/admin/approvals')} className="text-[#1a7a3f] underline">
+          Back to Approvals
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -88,7 +71,7 @@ export default function StudentProfile(): React.ReactElement {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          {name}
+          {student.full_name}
         </button>
 
         <div className="bg-white rounded-2xl p-6 md:p-8 mb-8">
@@ -103,31 +86,34 @@ export default function StudentProfile(): React.ReactElement {
             <div className="w-px bg-gray-200 self-stretch" />
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-16 pt-1">
               <div>
-                <InfoRow label="Name"          value={name} />
-                <InfoRow label="Email"         value={email} />
-                <InfoRow label="Matric Number" value={matricNo} />
+                <InfoRow label="Name" value={student.full_name} />
+                <InfoRow label="Email" value={student.email} />
+                <InfoRow label="Matric Number" value={student.matric_number || '—'} />
               </div>
               <div>
-                <InfoRow label="Level"        value={String(level)} />
-                <InfoRow label="Availability" value={availability} />
-                <div className="flex items-start gap-4 mt-0">
+                <InfoRow label="Level" value={student.level || '—'} />
+                <InfoRow label="Department" value={student.department || '—'} />
+                <div className="flex items-start gap-4 mt-0 mb-4">
                   <span className="text-[13px] text-gray-400 w-28 shrink-0">Status</span>
                   <span className={`px-3 py-0.5 rounded-full text-xs font-semibold ${
-                    status === 'Banned'  ? 'bg-red-100 text-red-600' :
-                    status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
+                    student.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
                   }`}>
-                    {status}
+                    {student.is_active ? 'Active' : 'Banned'}
                   </span>
                 </div>
+                <button
+                  onClick={student.is_active ? handleBan : handleUnban}
+                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
+                    student.is_active
+                      ? 'bg-red-500 hover:bg-red-600 text-white'
+                      : 'bg-[#1a7a3f] hover:bg-[#155f32] text-white'
+                  }`}
+                >
+                  {student.is_active ? 'Ban Student' : 'Unban Student'}
+                </button>
               </div>
             </div>
           </div>
-        </div>
-
-        <h2 className="text-[20px] font-semibold mb-6">Projects Done</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10">
-          {PROJECTS.map((p) => <ProjectCard key={p.id} project={p} />)}
         </div>
       </main>
       <Footer />

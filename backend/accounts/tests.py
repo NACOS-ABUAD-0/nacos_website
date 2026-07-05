@@ -1,7 +1,7 @@
 # backend/accounts/tests.py
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from .models import User
 
@@ -78,3 +78,126 @@ class AuthAPITest(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['email'], 'test@example.com')
+
+
+class AdminUserBanTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.student = User.objects.create_user(
+            email='student@example.com', full_name='Student One', password='pass12345',
+        )
+        self.staff = User.objects.create_user(
+            email='staff@example.com', full_name='Staff One', password='pass12345', role='admin',
+        )
+        self.other_staff = User.objects.create_user(
+            email='staff2@example.com', full_name='Staff Two', password='pass12345', role='admin',
+        )
+
+    def test_non_admin_cannot_ban(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.patch(reverse('admin-user-ban', kwargs={'pk': self.student.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_ban_and_unban_student(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(reverse('admin-user-ban', kwargs={'pk': self.student.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.is_active)
+
+        response = self.client.patch(reverse('admin-user-unban', kwargs={'pk': self.student.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.student.refresh_from_db()
+        self.assertTrue(self.student.is_active)
+
+    def test_banned_student_cannot_login(self):
+        self.client.force_authenticate(user=self.staff)
+        self.client.patch(reverse('admin-user-ban', kwargs={'pk': self.student.pk}))
+
+        anon_client = APIClient()
+        response = anon_client.post(reverse('login'), {
+            'email': 'student@example.com', 'password': 'pass12345',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_admin_cannot_ban_self(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(reverse('admin-user-ban', kwargs={'pk': self.staff.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_admin_cannot_ban_another_admin(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(reverse('admin-user-ban', kwargs={'pk': self.other_staff.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_fetch_user_detail(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(reverse('admin-user-detail', kwargs={'pk': self.student.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], 'student@example.com')
+
+    def test_non_admin_cannot_fetch_user_detail(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(reverse('admin-user-detail', kwargs={'pk': self.student.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ChangePasswordTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='user@example.com', full_name='Some User', password='oldpass123',
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_wrong_current_password_rejected(self):
+        response = self.client.post(reverse('change_password'), {
+            'current_password': 'wrongpass',
+            'new_password': 'newpass456',
+            'new_password2': 'newpass456',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_weak_new_password_rejected(self):
+        response = self.client.post(reverse('change_password'), {
+            'current_password': 'oldpass123',
+            'new_password': '123',
+            'new_password2': '123',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_mismatched_new_passwords_rejected(self):
+        response = self.client.post(reverse('change_password'), {
+            'current_password': 'oldpass123',
+            'new_password': 'newpass456',
+            'new_password2': 'somethingelse789',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_successful_password_change(self):
+        response = self.client.post(reverse('change_password'), {
+            'current_password': 'oldpass123',
+            'new_password': 'newpass456',
+            'new_password2': 'newpass456',
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        anon_client = APIClient()
+        old_login = anon_client.post(reverse('login'), {
+            'email': 'user@example.com', 'password': 'oldpass123',
+        })
+        self.assertEqual(old_login.status_code, status.HTTP_400_BAD_REQUEST)
+
+        new_login = anon_client.post(reverse('login'), {
+            'email': 'user@example.com', 'password': 'newpass456',
+        })
+        self.assertEqual(new_login.status_code, status.HTTP_200_OK)
+
+    def test_anonymous_cannot_change_password(self):
+        anon_client = APIClient()
+        response = anon_client.post(reverse('change_password'), {
+            'current_password': 'oldpass123',
+            'new_password': 'newpass456',
+            'new_password2': 'newpass456',
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

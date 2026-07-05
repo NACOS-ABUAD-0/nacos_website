@@ -73,6 +73,14 @@ export interface Stats {
   skills: number;
   events: number;
   resources: number;
+  committees: number;
+  committee_applications: number;
+  gallery_images: number;
+  inquiries: number;
+  event_registrations: number;
+  class_sessions: number;
+  class_attendances: number;
+  executives: number;
 }
 
 export interface FeaturedProjectsResult {

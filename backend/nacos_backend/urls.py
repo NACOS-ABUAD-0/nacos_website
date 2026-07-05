@@ -42,9 +42,11 @@ urlpatterns = [
     path('api/', include('resources.urls')),
     path('api/', include('events.urls')),
     path('api/', include('gallery.urls')),
+    path('api/', include('executives.urls')),
     path('api/', include('inquiries.urls')),
     path('api/', include('committees.urls')),
     path('api/', include('face_auth.urls')),
     path('api/', include('attendance.urls')),
+    path('api/', include('dashboard.urls')),
 
 ]

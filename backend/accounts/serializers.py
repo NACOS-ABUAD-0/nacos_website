@@ -450,6 +450,27 @@ class AdminUserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    """Validates a current+new password pair for an authenticated user."""
+
+    current_password = serializers.CharField(write_only=True, style={"input_type": "password"})
+    new_password = serializers.CharField(
+        write_only=True, validators=[validate_password], style={"input_type": "password"},
+    )
+    new_password2 = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    def validate_current_password(self, value: str) -> str:
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["new_password"] != attrs["new_password2"]:
+            raise serializers.ValidationError({"new_password": "Passwords do not match."})
+        return attrs
+
+
 class AdminUserDeleteSerializer(serializers.Serializer):
     """
     Validates deletion credentials for secure user removal.

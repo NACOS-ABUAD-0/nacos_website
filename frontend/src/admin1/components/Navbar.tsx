@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { label: 'Class Attendance',       to: '/admin/class-attendance' },
   { label: 'Featured Projects',      to: '/admin/featured-projects' },
   { label: 'Committee Applications', to: '/admin/committee-applications' },
+  { label: 'Executives',             to: '/admin/executives' },
   { label: 'Gallery',                to: '/admin/gallery' },
   { label: 'Inquiries',              to: '/admin/inquiries' },
   { label: 'User Management',        to: '/admin/users' },

@@ -296,6 +296,13 @@ export const authAPI = {
   resendVerification: () =>
     api.post("/auth/resend-verification/")
       .catch(handleApiError),
+
+  changePassword: (currentPassword: string, newPassword: string, newPassword2: string) =>
+    api.post("/auth/change-password/", {
+      current_password: currentPassword,
+      new_password: newPassword,
+      new_password2: newPassword2,
+    }),
 };
 
 // ─── USERS ────────────────────────────────────────────────────────────────────

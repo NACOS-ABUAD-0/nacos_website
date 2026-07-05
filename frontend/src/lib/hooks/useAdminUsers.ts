@@ -12,7 +12,7 @@ import type {
   DeleteUserPayload,
   UserListParams,
 } from '../../services/adminUserService'
-import { fetchUsers, deleteUser } from '../../services/adminUserService'
+import { fetchUsers, deleteUser, banUser, unbanUser } from '../../services/adminUserService'
 
 // ─── Return Type ───────────────────────────────────────────────────────────────
 
@@ -20,8 +20,10 @@ interface UseAdminUsersReturn {
   users: UserRecord[]
   loading: boolean
   deleting: boolean
+  banning: boolean
   error: string | null
   deleteError: string | null
+  banError: string | null
   pagination: {
     count: number
     totalPages: number
@@ -33,12 +35,16 @@ interface UseAdminUsersReturn {
   searchQuery: string
   levelFilter: string
   roleFilter: string
+  statusFilter: 'all' | 'active' | 'banned'
   setSearchQuery: (q: string) => void
   setLevelFilter: (level: string) => void
   setRoleFilter: (role: string) => void
+  setStatusFilter: (status: 'all' | 'active' | 'banned') => void
   goToPage: (page: number) => void
   refreshUsers: () => Promise<void>
   handleDeleteUser: (userId: number, payload: DeleteUserPayload) => Promise<boolean>
+  handleBanUser: (userId: number) => Promise<boolean>
+  handleUnbanUser: (userId: number) => Promise<boolean>
   clearErrors: () => void
 }
 
@@ -48,8 +54,10 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
   const [users, setUsers] = useState<UserRecord[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [deleting, setDeleting] = useState<boolean>(false)
+  const [banning, setBanning] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [banError, setBanError] = useState<string | null>(null)
 
   const [currentPage, setCurrentPage] = useState<number>(1)
   const pageSize = 10
@@ -63,6 +71,9 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
   const [debouncedSearch, setDebouncedSearch] = useState<string>('')
   const [levelFilter, setLevelFilter] = useState<string>('')
   const [roleFilter, setRoleFilter] = useState<string>('')
+  // Defaults to 'all' so existing consumers (e.g. UserManagement.tsx) keep
+  // seeing every user regardless of ban status unless they opt into a filter.
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'banned'>('all')
 
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -81,6 +92,7 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
         ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
         ...(levelFilter && { level: levelFilter }),
         ...(roleFilter && { role: roleFilter }),
+        ...(statusFilter !== 'all' && { is_active: statusFilter === 'active' ? 'true' : 'false' }),
       }
 
       const data: PaginatedUserResponse = await fetchUsers(params)
@@ -97,14 +109,14 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     } finally {
       setLoading(false)
     }
-  }, [pageSize, debouncedSearch, levelFilter, roleFilter])
+  }, [pageSize, debouncedSearch, levelFilter, roleFilter, statusFilter])
 
   // ── Reset to page 1 whenever filters/search change ───────────────────────────
 
   useEffect(() => {
     setCurrentPage(1)
     loadUsers(1)
-  }, [debouncedSearch, levelFilter, roleFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, levelFilter, roleFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
   // loadUsers is intentionally omitted: we only want this to fire when the
   // filter values themselves change, not every time loadUsers is recreated.
 
@@ -166,6 +178,50 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     }
   }, [currentPage, loadUsers])
 
+  // ── handleBanUser / handleUnbanUser ──────────────────────────────────────────
+
+  const runBanAction = useCallback(async (
+    action: (userId: number) => Promise<UserRecord>,
+    userId: number,
+  ): Promise<boolean> => {
+    setBanning(true)
+    setBanError(null)
+
+    try {
+      await action(userId)
+      await loadUsers(currentPage)
+      return true
+    } catch (err) {
+      let message = 'Action failed. Please try again.'
+
+      if (err instanceof Error) {
+        message = err.message
+      }
+
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        if (axiosErr.response?.data?.error) {
+          message = axiosErr.response.data.error
+        }
+      }
+
+      setBanError(message)
+      return false
+    } finally {
+      setBanning(false)
+    }
+  }, [currentPage, loadUsers])
+
+  const handleBanUser = useCallback(
+    (userId: number) => runBanAction(banUser, userId),
+    [runBanAction],
+  )
+
+  const handleUnbanUser = useCallback(
+    (userId: number) => runBanAction(unbanUser, userId),
+    [runBanAction],
+  )
+
   // ── goToPage ─────────────────────────────────────────────────────────────────
 
   const goToPage = useCallback((page: number) => {
@@ -179,6 +235,7 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
   const clearErrors = useCallback(() => {
     setError(null)
     setDeleteError(null)
+    setBanError(null)
   }, [])
 
   // ── Return ────────────────────────────────────────────────────────────────────
@@ -187,8 +244,10 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     users,
     loading,
     deleting,
+    banning,
     error,
     deleteError,
+    banError,
     pagination: {
       count,
       totalPages,
@@ -200,12 +259,16 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     searchQuery,
     levelFilter,
     roleFilter,
+    statusFilter,
     setSearchQuery: handleSearchChange,
     setLevelFilter,
     setRoleFilter,
+    setStatusFilter,
     goToPage,
     refreshUsers: () => loadUsers(currentPage),
     handleDeleteUser,
+    handleBanUser,
+    handleUnbanUser,
     clearErrors,
   }
 }

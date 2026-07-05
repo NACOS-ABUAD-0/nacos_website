@@ -1,80 +1,33 @@
 // src/admin1/pages/Approval.tsx
 
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
-
-// ── Types ──────────────────────────────────────────────────────
-type StudentStatus = 'Active' | 'Pending' | 'Banned'
-
-interface Student {
-  id: number
-  matricNo: string
-  fullName: string
-  email: string
-  level: number
-  dateRegistered: Date
-  status: StudentStatus
-}
-
-type ActionType = 'view' | 'ban' | 'unban'
-
-// ── Mock Data ──────────────────────────────────────────────────
-const NAMES: string[] = [
-  'Boluwatife Oluwabukola', 'Chukwuemeka Adebayo', 'Fatima Al-Hassan',
-  'Oluwaseun Akinwale', 'Precious Nwosu', 'Samuel Okafor',
-  'Amaka Eze', 'David Adeyemi', 'Grace Okonkwo', 'Ibrahim Musa',
-  'Juliet Ogundele', 'Kelvin Nwachukwu', 'Lara Fashola',
-  'Michael Afolabi', 'Ngozi Ike',
-]
-const LEVELS: number[] = [100, 200, 300, 400]
-
-const generateStudents = (): Student[] =>
-  Array.from({ length: 45 }, (_, i) => ({
-    id: i + 1,
-    matricNo: `${20 + Math.floor(Math.random() * 4)}/SCI01/${String(i + 1).padStart(3, '0')}`,
-    fullName: NAMES[i % NAMES.length],
-    email: `${NAMES[i % NAMES.length].split(' ')[0]}Nissi@gmail.com`,
-    level: LEVELS[Math.floor(Math.random() * LEVELS.length)],
-    dateRegistered: new Date(2024, 0, Math.floor(Math.random() * 28) + 1),
-    status: (i < 35 ? 'Active' : i < 40 ? 'Pending' : 'Banned') as StudentStatus,
-  }))
-
-const ALL_STUDENTS: Student[] = generateStudents()
-
-const formatDate = (date: Date): { date: string; time: string } => {
-  const d = String(date.getDate()).padStart(2, '0')
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const y = date.getFullYear()
-  return { date: `${d} / ${m}/ ${y}`, time: '05.30 PM' }
-}
-
-const ITEMS_PER_PAGE = 7
+import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
+import type { UserRecord } from '../../services/adminUserService'
 
 // ── Status Badge ───────────────────────────────────────────────
-const StatusBadge: React.FC<{ status: StudentStatus }> = ({ status }) => {
-  const styles: Record<StudentStatus, string> = {
-    Active:  'bg-green-100 text-green-700',
-    Pending: 'bg-yellow-100 text-yellow-700',
-    Banned:  'bg-red-100 text-red-600',
-  }
-  return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] ?? styles.Pending}`}>
-      {status}
-    </span>
-  )
-}
+const StatusBadge: React.FC<{ isActive: boolean }> = ({ isActive }) => (
+  <span
+    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+      isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+    }`}
+  >
+    {isActive ? 'Active' : 'Banned'}
+  </span>
+)
 
 // ── Three-dot Action Menu ──────────────────────────────────────
 interface ActionMenuProps {
-  student: Student
-  onAction: (action: ActionType, student: Student) => void
+  user: UserRecord
+  onView: (user: UserRecord) => void
+  onBan: (user: UserRecord) => void
+  onUnban: (user: UserRecord) => void
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ student, onAction }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ user, onView, onBan, onUnban }) => {
   const [open, setOpen] = useState<boolean>(false)
-  const isBanned = student.status === 'Banned'
 
   return (
     <div className="relative">
@@ -84,7 +37,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ student, onAction }) => {
         className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="5"  r="1.5" />
+          <circle cx="12" cy="5" r="1.5" />
           <circle cx="12" cy="12" r="1.5" />
           <circle cx="12" cy="19" r="1.5" />
         </svg>
@@ -93,7 +46,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ student, onAction }) => {
       {open && (
         <div className="absolute right-0 top-8 z-50 w-40 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
           <button
-            onClick={() => { onAction('view', student); setOpen(false) }}
+            onClick={() => { onView(user); setOpen(false) }}
             className="w-full text-left px-4 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
             <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -102,9 +55,9 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ student, onAction }) => {
             </svg>
             View Profile
           </button>
-          {!isBanned ? (
+          {user.is_active ? (
             <button
-              onClick={() => { onAction('ban', student); setOpen(false) }}
+              onClick={() => { onBan(user); setOpen(false) }}
               className="w-full text-left px-4 py-2.5 text-[13px] text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -114,7 +67,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ student, onAction }) => {
             </button>
           ) : (
             <button
-              onClick={() => { onAction('unban', student); setOpen(false) }}
+              onClick={() => { onUnban(user); setOpen(false) }}
               className="w-full text-left px-4 py-2.5 text-[13px] text-[#1a7a3f] hover:bg-green-50 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -209,60 +162,35 @@ const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
 }
 
 // ── Main Component ─────────────────────────────────────────────
-type TabType = 'approved' | 'banned'
 
 const ApprovalPage: React.FC = () => {
   const navigate = useNavigate()
-  const [activeTab,    setActiveTab]    = useState<TabType>('approved')
-  const [search,       setSearch]       = useState<string>('')
-  const [levelFilter,  setLevelFilter]  = useState<string>('all')
-  const [dateFilter,   setDateFilter]   = useState<string>('all')
-  const [currentPage,  setCurrentPage]  = useState<number>(1)
-  const [students,     setStudents]     = useState<Student[]>(ALL_STUDENTS)
-  const [toast,        setToast]        = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
-  const handleAction = (action: ActionType, student: Student): void => {
-    if (action === 'ban') {
-      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: 'Banned' as StudentStatus } : s))
-      setToast(`${student.fullName} has been banned.`)
-    } else if (action === 'unban') {
-      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: 'Active' as StudentStatus } : s))
-      setToast(`${student.fullName} has been unbanned.`)
-    } else if (action === 'view') {
-      navigate(`/admin/approvals/${student.id}`, { state: { student } })
-    }
+  const {
+    users,
+    loading,
+    pagination,
+    searchQuery,
+    levelFilter,
+    statusFilter,
+    setSearchQuery,
+    setLevelFilter,
+    setStatusFilter,
+    goToPage,
+    handleBanUser,
+    handleUnbanUser,
+  } = useAdminUsers()
+
+  const handleBan = async (user: UserRecord): Promise<void> => {
+    const ok = await handleBanUser(user.id)
+    setToast(ok ? `${user.full_name} has been banned.` : 'Failed to ban student.')
   }
 
-  const filtered = useMemo<Student[]>(() => {
-    let list = students.filter((s) =>
-      activeTab === 'approved' ? s.status !== 'Banned' : s.status === 'Banned'
-    )
-    if (search) {
-      const q = search.toLowerCase()
-      list = list.filter((s) =>
-        s.fullName.toLowerCase().includes(q) ||
-        s.email.toLowerCase().includes(q) ||
-        s.matricNo.toLowerCase().includes(q)
-      )
-    }
-    if (levelFilter !== 'all') list = list.filter((s) => String(s.level) === levelFilter)
-    if (dateFilter !== 'all') {
-      const now = new Date()
-      list = list.filter((s) => {
-        const diff = (now.getTime() - s.dateRegistered.getTime()) / (1000 * 60 * 60 * 24)
-        if (dateFilter === '7')  return diff <= 7
-        if (dateFilter === '30') return diff <= 30
-        if (dateFilter === '90') return diff <= 90
-        return true
-      })
-    }
-    return list
-  }, [students, activeTab, search, levelFilter, dateFilter])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
-  const paginated  = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-
-  const handleTabChange = (tab: TabType): void => { setActiveTab(tab); setCurrentPage(1) }
+  const handleUnban = async (user: UserRecord): Promise<void> => {
+    const ok = await handleUnbanUser(user.id)
+    setToast(ok ? `${user.full_name} has been unbanned.` : 'Failed to unban student.')
+  }
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -275,7 +203,7 @@ const ApprovalPage: React.FC = () => {
           <h1 className="text-[28px] md:text-[32px] font-extrabold text-[#1a7a3f] tracking-wide mb-1">
             APPROVAL
           </h1>
-          <p className="text-sm text-gray-500">Review and manage student enrollments</p>
+          <p className="text-sm text-gray-500">Review and manage student accounts</p>
         </div>
 
         {/* Controls Row */}
@@ -283,19 +211,19 @@ const ApprovalPage: React.FC = () => {
           {/* Tabs */}
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => handleTabChange('approved')}
+              onClick={() => setStatusFilter('active')}
               className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 ${
-                activeTab === 'approved'
+                statusFilter === 'active'
                   ? 'bg-[#1a7a3f] text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Approved Students
+              Active Students
             </button>
             <button
-              onClick={() => handleTabChange('banned')}
+              onClick={() => setStatusFilter('banned')}
               className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 ${
-                activeTab === 'banned'
+                statusFilter === 'banned'
                   ? 'bg-red-500 text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
@@ -307,8 +235,8 @@ const ApprovalPage: React.FC = () => {
           {/* Search */}
           <div className="relative flex-1 max-w-xs md:max-w-sm">
             <input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search"
               className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-lg text-[13px] text-gray-700 bg-white focus:outline-none focus:border-[#1a7a3f] transition-colors"
             />
@@ -324,28 +252,12 @@ const ApprovalPage: React.FC = () => {
         <div className="flex gap-3 mb-5">
           <div className="relative">
             <select
-              value={levelFilter}
-              onChange={(e) => { setLevelFilter(e.target.value); setCurrentPage(1) }}
+              value={levelFilter || 'all'}
+              onChange={(e) => setLevelFilter(e.target.value === 'all' ? '' : e.target.value)}
               className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-600 bg-white focus:outline-none focus:border-[#1a7a3f] cursor-pointer transition-colors"
             >
               <option value="all">Level</option>
               {[100, 200, 300, 400, 500].map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
-            <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-
-          <div className="relative">
-            <select
-              value={dateFilter}
-              onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1) }}
-              className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-600 bg-white focus:outline-none focus:border-[#1a7a3f] cursor-pointer transition-colors"
-            >
-              <option value="all">All dates</option>
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
             </select>
             <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -370,45 +282,52 @@ const ApprovalPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {paginated.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-sm text-gray-400">
+                      Loading…
+                    </td>
+                  </tr>
+                ) : users.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-16 text-center text-sm text-gray-400">
                       No students found.
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((student, i) => {
-                    const { date, time } = formatDate(student.dateRegistered)
-                    return (
-                      <tr
-                        key={student.id}
-                        className={`transition-colors hover:bg-green-50 ${i < paginated.length - 1 ? 'border-b border-gray-50' : ''}`}
-                      >
-                        <td className="px-4 py-4 text-[13px] text-gray-600 whitespace-nowrap">
-                          {student.matricNo}
-                        </td>
-                        <td className="px-4 py-4 text-[13px] font-medium text-[#1a7a3f] whitespace-nowrap">
-                          {student.fullName}
-                        </td>
-                        <td className="px-4 py-4 text-[13px] text-[#1a7a3f] whitespace-nowrap">
-                          {student.email}
-                        </td>
-                        <td className="px-4 py-4 text-[13px] text-gray-600">
-                          {student.level}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <p className="text-[13px] text-gray-700">{date}</p>
-                          <p className="text-[12px] text-gray-400 mt-0.5">{time}</p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <StatusBadge status={student.status} />
-                        </td>
-                        <td className="px-4 py-4">
-                          <ActionMenu student={student} onAction={handleAction} />
-                        </td>
-                      </tr>
-                    )
-                  })
+                  users.map((user, i) => (
+                    <tr
+                      key={user.id}
+                      className={`transition-colors hover:bg-green-50 ${i < users.length - 1 ? 'border-b border-gray-50' : ''}`}
+                    >
+                      <td className="px-4 py-4 text-[13px] text-gray-600 whitespace-nowrap">
+                        {user.matric_number || '—'}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] font-medium text-[#1a7a3f] whitespace-nowrap">
+                        {user.full_name}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-[#1a7a3f] whitespace-nowrap">
+                        {user.email}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {user.level || '—'}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <p className="text-[13px] text-gray-700">{user.date_joined}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <StatusBadge isActive={user.is_active} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <ActionMenu
+                          user={user}
+                          onView={(u) => navigate(`/admin/approvals/${u.id}`)}
+                          onBan={handleBan}
+                          onUnban={handleUnban}
+                        />
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -417,9 +336,9 @@ const ApprovalPage: React.FC = () => {
 
         {/* Pagination */}
         <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={goToPage}
         />
       </main>
 

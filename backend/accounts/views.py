@@ -36,6 +36,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     AdminUserSerializer,
     AdminUserDeleteSerializer,
+    ChangePasswordSerializer,
 )
 from .utils import send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
@@ -162,6 +163,27 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Lets an authenticated user (any role) change their own password by
+    supplying their current password. Not admin-specific.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        if serializer.is_valid():
+            user = request.user
+            user.set_password(serializer.validated_data["new_password"])
+            user.save(update_fields=["password"])
+            logger.info("Password changed for user: %s", user.email)
+            return Response(
+                {"detail": "Password changed successfully."}, status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CSRFTokenView(APIView):
@@ -638,6 +660,10 @@ class AdminUserListView(APIView):
         if role_filter in ["user", "admin"]:
             queryset = queryset.filter(role=role_filter)
 
+        is_active_filter = request.query_params.get("is_active", "").strip().lower()
+        if is_active_filter in ["true", "false"]:
+            queryset = queryset.filter(is_active=(is_active_filter == "true"))
+
         # ── Pagination ─────────────────────────────────────────────────────
         page_size = min(int(request.query_params.get("page_size", 10)), 100)
         page_number = max(int(request.query_params.get("page", 1)), 1)
@@ -755,3 +781,72 @@ class AdminUserDeleteView(APIView):
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminUserDetailView(APIView):
+    """
+    GET /api/admin/users/<id>/
+    Fetches a single user by id for the admin dashboard's detail view.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request, pk=None):
+        try:
+            user = User.objects.select_related("student_profile").get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(AdminUserSerializer(user).data)
+
+
+class AdminUserBanView(APIView):
+    """
+    PATCH /api/admin/users/<id>/ban/
+    Deactivates a user's account (is_active=False), which already blocks
+    login via LoginSerializer. Cannot ban yourself or another admin.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def patch(self, request, pk=None):
+        try:
+            target_user = User.objects.select_related("student_profile").get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if target_user.id == request.user.id:
+            return Response(
+                {"error": "You cannot ban your own account."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if target_user.is_admin:
+            return Response(
+                {"error": "Cannot ban another admin account. Revoke admin privileges first."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        with transaction.atomic():
+            target_user.is_active = False
+            target_user.save(update_fields=["is_active"])
+
+        logger.info("Admin '%s' banned user '%s'.", request.user.email, target_user.email)
+        return Response(AdminUserSerializer(target_user).data)
+
+
+class AdminUserUnbanView(APIView):
+    """
+    PATCH /api/admin/users/<id>/unban/
+    Reactivates a previously banned account.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def patch(self, request, pk=None):
+        try:
+            target_user = User.objects.select_related("student_profile").get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            target_user.is_active = True
+            target_user.save(update_fields=["is_active"])
+
+        logger.info("Admin '%s' unbanned user '%s'.", request.user.email, target_user.email)
+        return Response(AdminUserSerializer(target_user).data)

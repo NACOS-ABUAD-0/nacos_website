@@ -10,6 +10,7 @@ export interface UserListParams {
   search?: string
   level?: string
   role?: string
+  is_active?: 'true' | 'false'
 }
 
 export interface UserRecord {
@@ -60,4 +61,29 @@ export async function fetchUsers(params: UserListParams): Promise<PaginatedUserR
  */
 export async function deleteUser(userId: number, payload: DeleteUserPayload): Promise<void> {
   await api.delete(`/admin/users/${userId}/delete/`, { data: payload })
+}
+
+/**
+ * Fetches a single user by ID. Requires admin authentication.
+ */
+export async function fetchUser(userId: number): Promise<UserRecord> {
+  const response = await api.get<UserRecord>(`/admin/users/${userId}/`)
+  return response.data
+}
+
+/**
+ * Deactivates a user's account, blocking login. Cannot ban yourself or
+ * another admin (enforced by the backend). Requires admin authentication.
+ */
+export async function banUser(userId: number): Promise<UserRecord> {
+  const response = await api.patch<UserRecord>(`/admin/users/${userId}/ban/`)
+  return response.data
+}
+
+/**
+ * Reactivates a previously banned account. Requires admin authentication.
+ */
+export async function unbanUser(userId: number): Promise<UserRecord> {
+  const response = await api.patch<UserRecord>(`/admin/users/${userId}/unban/`)
+  return response.data
 }
