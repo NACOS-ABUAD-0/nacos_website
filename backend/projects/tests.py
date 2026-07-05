@@ -118,3 +118,41 @@ class ProjectAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.project.refresh_from_db()
         self.assertEqual(self.project.title, 'Admin Updated Title')
+
+
+class ProjectLiveUrlRequirementTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='liveurltest@example.com', full_name='Live Url Tester', password='pass12345',
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_create_without_live_url_rejected(self):
+        response = self.client.post(reverse('project-list'), {
+            'title': 'No Link Project', 'description': 'Missing a live url',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('live_url', response.data)
+
+    def test_create_with_blank_live_url_rejected(self):
+        response = self.client.post(reverse('project-list'), {
+            'title': 'Blank Link Project', 'description': 'Blank live url', 'live_url': '',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('live_url', response.data)
+
+    def test_create_with_malformed_live_url_rejected(self):
+        response = self.client.post(reverse('project-list'), {
+            'title': 'Bad Link Project', 'description': 'Malformed url', 'live_url': 'not a url',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('live_url', response.data)
+
+    def test_create_with_valid_live_url_succeeds(self):
+        response = self.client.post(reverse('project-list'), {
+            'title': 'Real Project', 'description': 'Has a live url',
+            'live_url': 'https://real-project.vercel.app',
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['live_url'], 'https://real-project.vercel.app')

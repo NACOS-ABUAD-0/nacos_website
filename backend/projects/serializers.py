@@ -70,6 +70,15 @@ class ProjectSerializer(serializers.ModelSerializer):
         required=False,
     )
     has_collaboration_needs = serializers.BooleanField(read_only=True)
+    live_url = serializers.URLField(
+        required=True,
+        allow_blank=False,
+        error_messages={
+            'required': 'A live demo/deployment link is required.',
+            'blank': 'A live demo/deployment link is required.',
+            'invalid': 'Enter a valid URL (e.g. https://your-project.vercel.app).',
+        },
+    )
 
     def get_owner(self, obj):
         from accounts.serializers import UserSerializer
@@ -86,7 +95,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'owner', 'title', 'description',
             'tags', 'tag_ids',
-            'images', 'links',
+            'images', 'links', 'live_url',
             'created_at', 'updated_at',
             'is_featured', 'status',
             'like_count', 'is_liked_by_user',

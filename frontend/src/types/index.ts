@@ -23,6 +23,7 @@ export interface Project {
   owner: User;
   tags?: Skill[];
   links?: Record<string, string>;
+  live_url: string;
   images?: string[];
   // ✅ API returns is_featured — the old field name "featured" never existed
   // in the Django model, so project.featured was always undefined.
@@ -55,6 +56,7 @@ export interface ProjectFormData {
   description: string;
   tag_ids?: number[];
   links?: Record<string, string>;
+  live_url: string;
   images?: string[];
   collaboration_needs?: Omit<CollaborationNeed, 'id' | 'is_filled'>[];
 }

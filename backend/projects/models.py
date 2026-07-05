@@ -24,6 +24,11 @@ class Project(models.Model):
     tags = models.ManyToManyField(SkillTag, blank=True)
     images = models.JSONField(default=list, blank=True)
     links = models.JSONField(default=dict, blank=True)
+    # Required at the serializer layer (see ProjectSerializer) so every
+    # published project has somewhere for visitors to see it running live,
+    # not just source code. Kept blank=True here at the model/DB level to
+    # avoid a NOT-NULL migration against existing rows.
+    live_url = models.URLField(max_length=500, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_featured = models.BooleanField(default=False)

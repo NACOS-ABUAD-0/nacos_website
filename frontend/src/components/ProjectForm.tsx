@@ -39,6 +39,7 @@ const projectSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   tag_ids: z.array(z.union([z.string(), z.number()])).optional().default([]),
   links: z.record(z.string().min(1)).optional().default({}),
+  live_url: z.string().min(1, 'A live demo/deployment link is required.'),
   images: z.array(z.string().min(1)).optional().default([]),
   collaboration_needs: z.array(
     z.object({
@@ -95,6 +96,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
       description: '',
       tag_ids: [],
       links: {},
+      live_url: '',
       images: [],
       collaboration_needs: [],
     },
@@ -114,6 +116,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         description: project.description || '',
         tag_ids: project.tags?.map((tag: Skill) => tag.id) || [],
         links: project.links || {},
+        live_url: project.live_url || '',
         images: project.images || [],
         collaboration_needs:
           project.collaboration_needs?.map((need: CollaborationNeed) => ({
@@ -139,6 +142,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         description: '',
         tag_ids: [],
         links: {},
+        live_url: '',
         images: [],
         collaboration_needs: [],
       });
@@ -255,12 +259,20 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
       return;
     }
 
+    // Auto-prepend https:// on bare domains (e.g. "quantora.online") rather
+    // than rejecting them — mirrors this form's existing relaxed approach to
+    // URL input, just with a normalization step instead of a validation gap.
+    const normalizedLiveUrl = /^https?:\/\//i.test(data.live_url.trim())
+      ? data.live_url.trim()
+      : `https://${data.live_url.trim()}`;
+
     // Build a clean payload — do NOT spread ...data to avoid sending
     // both collaboration_needs (from schema) and collaboration_needs_data
     const formattedData = {
       title: data.title,
       description: data.description,
       tag_ids: data.tag_ids,
+      live_url: normalizedLiveUrl,
       links: linkInputs.reduce<Record<string, string>>((acc, { key, value }) => {
         if (key.trim() && value.trim()) acc[key.trim()] = value.trim();
         return acc;
@@ -378,6 +390,40 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                 />
               </svg>
               {errors.description.message}
+            </p>
+          )}
+        </div>
+
+        {/* Live Demo / Deployment Link */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="live_url"
+              className="block text-sm font-semibold text-gray-900"
+            >
+              Live Demo / Deployment Link
+            </label>
+            <span className="text-xs text-gray-500">Required</span>
+          </div>
+          <input
+            {...register('live_url')}
+            type="text"
+            className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-sm placeholder-gray-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200 bg-white"
+            placeholder="https://your-project.vercel.app"
+          />
+          <p className="text-xs text-gray-500">
+            A link where visitors can actually see your project running — not source code.
+          </p>
+          {errors.live_url && (
+            <p className="text-sm text-red-600 font-medium flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {errors.live_url.message}
             </p>
           )}
         </div>
