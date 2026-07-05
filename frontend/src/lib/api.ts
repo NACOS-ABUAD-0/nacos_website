@@ -371,6 +371,36 @@ export const adminCommitteeAPI = {
     api.patch(`/admin/committee-applications/${id}/reject/`, { admin_note }),
 };
 
+// ─── EVENTS (student-facing registration) ─────────────────────────────────────
+
+export const eventsAPI = {
+  register: (eventId: number | string) => api.post(`/events/${eventId}/register/`),
+  getMyRegistration: (eventId: number | string) => api.get(`/events/${eventId}/my-registration/`),
+};
+
+// ─── ADMIN EVENT ATTENDANCE ────────────────────────────────────────────────────
+
+export const adminAttendanceAPI = {
+  getRegistrations: (eventId: number | string, search?: string) =>
+    api.get("/admin/event-registrations/", { params: { event: eventId, search } }),
+  checkIn: (registrationId: number) =>
+    api.post(`/admin/event-registrations/${registrationId}/check-in/`),
+  checkInByToken: (eventId: number | string, token: string) =>
+    api.post("/admin/event-registrations/check-in-by-token/", { event: eventId, token }),
+};
+
+// ─── CLASS ATTENDANCE ──────────────────────────────────────────────────────────
+
+export const classAttendanceAPI = {
+  createSession: (courseCode: string) =>
+    api.post("/attendance/class-sessions/", { course_code: courseCode }),
+  getSessions: (courseCode?: string) =>
+    api.get("/attendance/class-sessions/", { params: { course_code: courseCode } }),
+  getSession: (id: number | string) => api.get(`/attendance/class-sessions/${id}/`),
+  closeSession: (id: number | string) => api.post(`/attendance/class-sessions/${id}/close/`),
+  scan: (token: string) => api.post("/attendance/scan/", { token }),
+};
+
 // ─── ADMIN USERS ─────────────────────────────────────────────────────────────
 
 export const adminUsersAPI = {

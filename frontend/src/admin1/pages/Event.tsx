@@ -1,6 +1,7 @@
 // src/admin1/pages/Event.tsx
 
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
@@ -61,9 +62,10 @@ interface DotsMenuProps {
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
+  onCheckIn: () => void
 }
 
-const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete }) => (
+const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete, onCheckIn }) => (
   <div className="relative">
     <button
       onClick={(e) => { e.stopPropagation(); onToggle() }}
@@ -75,6 +77,7 @@ const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete })
     </button>
     {open && (
       <div className="absolute right-0 top-7 w-36 bg-white rounded-xl shadow-lg border border-gray-100 z-50">
+        <button onClick={(e) => { e.stopPropagation(); onCheckIn() }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Check-in</button>
         <button onClick={(e) => { e.stopPropagation(); onEdit() }}   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Edit</button>
         <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50">Delete</button>
       </div>
@@ -101,9 +104,10 @@ interface EventCardProps {
   event: EventItem
   onEdit: (event: EventItem) => void
   onDelete: (event: EventItem) => void
+  onCheckIn: (event: EventItem) => void
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckIn }) => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false)
 
   const handleCardClick = (): void => {
@@ -133,6 +137,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete }) => {
             onToggle={() => setMenuOpen(o => !o)}
             onEdit={() => { setMenuOpen(false); onEdit(event) }}
             onDelete={() => { setMenuOpen(false); onDelete(event) }}
+            onCheckIn={() => { setMenuOpen(false); onCheckIn(event) }}
           />
         </div>
 
@@ -300,6 +305,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ event, onConfirm, onCancel, i
 // ─── Main component ───────────────────────────────────────────────────────────
 const Events: React.FC = () => {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [modal, setModal] = useState<'add' | EventItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EventItem | null>(null)
 
@@ -419,6 +425,7 @@ const Events: React.FC = () => {
                   event={event}
                   onEdit={setModal}
                   onDelete={setDeleteTarget}
+                  onCheckIn={(e) => navigate(`/admin/events/${e.id}/checkin`)}
                 />
               ))}
             </div>

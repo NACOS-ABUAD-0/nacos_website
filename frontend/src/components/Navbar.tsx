@@ -11,6 +11,7 @@ import {
   Grid,
   Folder,
   GraduationCap,
+  QrCode,
 } from "lucide-react";
 import NacosLogo from "/images/nacos_logo.png";
 import AbuadLogo from "/images/abuadLogo.png";
@@ -231,6 +232,11 @@ const Navbar = () => {
                           label: "My Projects",
                         },
                         {
+                          to: "/attendance/scan",
+                          icon: <QrCode className="w-4 h-4" />,
+                          label: "Scan Attendance",
+                        },
+                        {
                           to: "/lecturers",
                           icon: <GraduationCap className="w-4 h-4" />,
                           label: "Lecturers",
@@ -361,6 +367,7 @@ const Navbar = () => {
                 { to: "/dashboard", icon: <Grid className="w-4 h-4" />, label: "Dashboard" },
                 { to: "/profile", icon: <UserIcon className="w-4 h-4" />, label: "Profile" },
                 { to: "/my-projects", icon: <Folder className="w-4 h-4" />, label: "My Projects" },
+                { to: "/attendance/scan", icon: <QrCode className="w-4 h-4" />, label: "Scan Attendance" },
               ].map(({ to, icon, label }) => (
                 <NavLink
                   key={to}

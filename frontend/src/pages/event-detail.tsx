@@ -1,6 +1,8 @@
 // src/pages/event-detail.tsx  — uses real API data
-import { useParams, useNavigate } from "react-router-dom";
-import { useEvent } from "../lib/hooks/useEvents";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
+import { useEvent, useMyRegistration, useRegisterForEvent } from "../lib/hooks/useEvents";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { EventDetailSkeleton } from "../components/home/Skeletons";
@@ -9,6 +11,9 @@ export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: event, isLoading, error } = useEvent(id!);
+  const { isAuthenticated } = useAuth();
+  const { data: registration, isLoading: registrationLoading } = useMyRegistration(id!, isAuthenticated);
+  const registerMutation = useRegisterForEvent();
 
   if (isLoading) return <EventDetailSkeleton />;
 
@@ -143,6 +148,47 @@ export default function EventDetail() {
               </svg>
             </a>
           )}
+
+          {/* In-app QR check-in — independent of the external registration_url above */}
+          <div className="mt-6">
+            {!isAuthenticated ? (
+              <p className="text-gray-600">
+                <Link to="/login" className="text-[#006E3A] font-semibold hover:underline">
+                  Log in
+                </Link>{" "}
+                to register for check-in and get your QR code.
+              </p>
+            ) : registrationLoading ? (
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
+            ) : registration ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-6 w-fit">
+                {registration.checked_in_at ? (
+                  <span className="inline-block mb-4 px-4 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                    Checked in at{" "}
+                    {new Date(registration.checked_in_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                ) : (
+                  <p className="text-sm text-gray-600 mb-4">Show this QR code at the event for check-in.</p>
+                )}
+                <QRCodeSVG value={registration.token} size={180} />
+              </div>
+            ) : (
+              <button
+                onClick={() => registerMutation.mutate(id!)}
+                disabled={registerMutation.isPending || event.status === "completed"}
+                className="inline-flex items-center justify-center gap-2 w-full lg:w-auto px-8 py-4 bg-[#006E3A] text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all uppercase tracking-wide disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {event.status === "completed"
+                  ? "Registration closed"
+                  : registerMutation.isPending
+                  ? "Joining…"
+                  : "Join Event"}
+              </button>
+            )}
+          </div>
         </section>
 
         {/* RIGHT: poster */}

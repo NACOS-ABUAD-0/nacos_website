@@ -19,6 +19,7 @@ import { RegisterPage } from "./pages/register";
 import { DashboardPage } from "./pages/dashboard";
 import { ProfilePage } from "./pages/profile";
 import { VerifyEmailPage } from "./pages/verify-email";
+import ScanAttendance from "./pages/ScanAttendance";
 import Homepage from "./pages/homepage";
 import MyProjectsPage from "./pages/MyProjectsPage";
 import Executives from "./components/Executives";
@@ -48,6 +49,8 @@ import { CommitteeApplicationPage } from "./pages/CommitteeApplicationPage";
 import AdminHome from "./admin1/pages/Home";
 import AdminApproval from "./admin1/pages/Approval";
 import AdminEvents from "./admin1/pages/Event";
+import AdminEventCheckIn from "./admin1/pages/EventCheckIn";
+import AdminClassAttendance from "./admin1/pages/ClassAttendance";
 import AdminSettings from "./admin1/pages/Settings";
 import AdminStudentProfile from "./admin1/pages/StudentProfile";
 import AdminMetrics from "./admin1/pages/Metrics";
@@ -252,6 +255,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/attendance/scan"
+        element={
+          <RequireAuth>
+            <ScanAttendance />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/resources"
         element={
           <RequireAuth>
@@ -298,6 +309,22 @@ function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminEvents />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/events/:id/checkin"
+        element={
+          <RequireAdmin>
+            <AdminEventCheckIn />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/class-attendance"
+        element={
+          <RequireAdmin>
+            <AdminClassAttendance />
           </RequireAdmin>
         }
       />

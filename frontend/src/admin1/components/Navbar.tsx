@@ -9,6 +9,7 @@ import profileImg from '../../assets/profile.png'
 const NAV_LINKS = [
   { label: 'Home',                   to: '/admin' },
   { label: 'Events',                 to: '/admin/events' },
+  { label: 'Class Attendance',       to: '/admin/class-attendance' },
   { label: 'Featured Projects',      to: '/admin/featured-projects' },
   { label: 'Committee Applications', to: '/admin/committee-applications' },
   { label: 'Gallery',                to: '/admin/gallery' },

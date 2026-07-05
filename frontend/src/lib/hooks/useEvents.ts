@@ -130,3 +130,44 @@ export const useDeleteEvent = () => {
     },
   });
 };
+
+/**
+ * =========================
+ * ATTENDANCE (student-facing registration)
+ * =========================
+ */
+
+export interface EventRegistration {
+  id: number;
+  token: string;
+  checked_in_at: string | null;
+  created_at: string;
+}
+
+export const useMyRegistration = (eventId: string | number, enabled: boolean = true) =>
+  useQuery({
+    queryKey: ['event-registration', eventId],
+    queryFn: async () => {
+      try {
+        const response = await api.get(`/events/${eventId}/my-registration/`);
+        return response.data as EventRegistration;
+      } catch (err: any) {
+        if (err?.response?.status === 404) return null;
+        throw err;
+      }
+    },
+    enabled: !!eventId && enabled,
+  });
+
+export const useRegisterForEvent = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (eventId: string | number) =>
+      api.post(`/events/${eventId}/register/`).then(r => r.data as EventRegistration),
+
+    onSuccess: (_data, eventId) => {
+      qc.invalidateQueries({ queryKey: ['event-registration', eventId] });
+    },
+  });
+};

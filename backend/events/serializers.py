@@ -1,6 +1,9 @@
 # backend/events/serializers.py
 from rest_framework import serializers
-from .models import Event
+
+from accounts.serializers import UserSerializer
+
+from .models import Event, EventRegistration
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -36,3 +39,24 @@ class EventSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+
+class EventRegistrationSerializer(serializers.ModelSerializer):
+    """Student-facing: what a student sees for their own registration/QR."""
+
+    class Meta:
+        model = EventRegistration
+        fields = ['id', 'token', 'checked_in_at', 'created_at']
+        read_only_fields = fields
+
+
+class AdminEventRegistrationSerializer(serializers.ModelSerializer):
+    """Admin-facing: used by the check-in screen's roster + check-in responses."""
+
+    user = UserSerializer(read_only=True)
+    checked_in_by = UserSerializer(read_only=True)
+
+    class Meta:
+        model = EventRegistration
+        fields = ['id', 'user', 'token', 'checked_in_at', 'checked_in_by', 'created_at']
+        read_only_fields = fields
