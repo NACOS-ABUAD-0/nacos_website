@@ -1,6 +1,7 @@
 # backend/accounts/tests.py
 from django.test import TestCase
 from django.urls import reverse
+from django.core.cache import cache
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from .models import User
@@ -98,6 +99,22 @@ class AuthAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
         self.assertIn('deactivated', response.data['email'][0].lower())
+
+    def test_login_is_rate_limited_per_ip(self):
+        cache.clear()
+        try:
+            for _ in range(10):
+                response = self.client.post(reverse('login'), {
+                    'email': 'nobody@example.com', 'password': 'whatever123',
+                })
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+            response = self.client.post(reverse('login'), {
+                'email': 'nobody@example.com', 'password': 'whatever123',
+            })
+            self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
 
     def test_profile_access(self):
         # Register and login

@@ -78,6 +78,12 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_THROTTLE_RATES': {
+        # Caps how many login attempts one IP can make per minute, so the
+        # specific "no account" / "wrong password" error messages can't be
+        # used to mass-probe emails or brute-force a password.
+        'login': '10/min',
+    },
 }
 
 #  Middleware

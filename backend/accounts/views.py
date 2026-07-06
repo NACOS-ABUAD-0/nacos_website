@@ -6,6 +6,7 @@ from rest_framework import status, permissions, generics, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import login, logout
 from django.middleware.csrf import get_token
@@ -114,6 +115,8 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
