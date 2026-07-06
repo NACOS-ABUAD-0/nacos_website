@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { label: 'Executives',             to: '/admin/executives' },
   { label: 'Gallery',                to: '/admin/gallery' },
   { label: 'Inquiries',              to: '/admin/inquiries' },
+  { label: 'Complaints',             to: '/admin/complaints' },
   { label: 'User Management',        to: '/admin/users' },
 ]
 

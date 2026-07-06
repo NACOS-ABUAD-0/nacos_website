@@ -2,14 +2,33 @@
 
 
 from rest_framework import serializers
+from accounts.models import User
 from .models import Committee, CommitteeApplication
 from accounts.serializers import UserSerializer
 
 
+class CommitteeMemberSerializer(serializers.ModelSerializer):
+    """Minimal user info for a committee's leader/members — no email/matric exposed publicly."""
+    class Meta:
+        model = User
+        fields = ['id', 'full_name']
+
+
 class CommitteeSerializer(serializers.ModelSerializer):
+    leader = CommitteeMemberSerializer(read_only=True)
+    member_count = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
+
     class Meta:
         model = Committee
-        fields = ['id', 'name', 'description', 'created_at']
+        fields = ['id', 'name', 'description', 'leader', 'member_count', 'members', 'created_at']
+
+    def get_member_count(self, obj) -> int:
+        return obj.applications.filter(status='approved').count()
+
+    def get_members(self, obj) -> list:
+        approved = obj.applications.filter(status='approved').select_related('user')
+        return CommitteeMemberSerializer([a.user for a in approved], many=True).data
 
 
 class CommitteeApplicationSerializer(serializers.ModelSerializer):

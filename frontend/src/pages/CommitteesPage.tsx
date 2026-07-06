@@ -6,7 +6,7 @@ import { useCommittees, useCommitteeApplications } from '../lib/hooks/useCommitt
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { Users, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
+import { Users, ArrowRight, CheckCircle2, Clock, Crown } from 'lucide-react';
 
 export const CommitteesPage: React.FC = () => {
   const { isDark } = useTheme();
@@ -65,6 +65,16 @@ export const CommitteesPage: React.FC = () => {
                 <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                   {committee.description}
                 </p>
+                <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Crown className="w-3.5 h-3.5" />
+                    {committee.leader ? `Led by ${committee.leader.full_name}` : 'No leader yet'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    {committee.member_count} member{committee.member_count === 1 ? '' : 's'}
+                  </span>
+                </div>
                 <div className="mt-5">
                   {hasApplied ? (
                     <button

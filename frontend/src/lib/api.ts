@@ -146,10 +146,18 @@ export interface StudentProfileData {
   created_at: string;
 }
 
+export interface CommitteeMemberData {
+  id: number;
+  full_name: string;
+}
+
 export interface CommitteeData {
   id: number;
   name: string;
   description: string;
+  leader: CommitteeMemberData | null;
+  member_count: number;
+  members: CommitteeMemberData[];
   created_at: string;
 }
 
@@ -162,6 +170,27 @@ export interface CommitteeApplicationData {
   status: "pending" | "approved" | "rejected";
   admin_note: string;
   created_at: string;
+}
+
+export interface ComplaintData {
+  id: number;
+  subject: string;
+  message: string;
+  is_anonymous: boolean;
+  status: "new" | "in_progress" | "resolved" | "dismissed";
+  created_at: string;
+}
+
+export interface AdminComplaintData {
+  id: number;
+  user: { id: number; full_name: string; email: string; matric_number: string } | null;
+  is_anonymous: boolean;
+  subject: string;
+  message: string;
+  status: "new" | "in_progress" | "resolved" | "dismissed";
+  admin_note: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface NotificationData {
@@ -376,6 +405,23 @@ export const adminCommitteeAPI = {
     api.patch(`/admin/committee-applications/${id}/approve/`, { admin_note }),
   reject: (id: number, admin_note?: string) =>
     api.patch(`/admin/committee-applications/${id}/reject/`, { admin_note }),
+};
+
+// ─── COMPLAINTS ───────────────────────────────────────────────────────────────
+
+export const complaintsAPI = {
+  submit: (payload: { subject: string; message: string; is_anonymous: boolean }) =>
+    api.post("/complaints/", payload),
+  getMyComplaints: () =>
+    api.get<ComplaintData[]>("/complaints/my-complaints/"),
+};
+
+// ─── ADMIN COMPLAINTS ─────────────────────────────────────────────────────────
+
+export const adminComplaintAPI = {
+  getAll: () => api.get<PaginatedResponse<AdminComplaintData>>("/admin/complaints/"),
+  updateStatus: (id: number, statusValue: string, admin_note?: string) =>
+    api.patch(`/admin/complaints/${id}/update-status/`, { status: statusValue, admin_note }),
 };
 
 // ─── EVENTS (student-facing registration) ─────────────────────────────────────

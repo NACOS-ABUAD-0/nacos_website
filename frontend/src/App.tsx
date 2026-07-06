@@ -45,6 +45,7 @@ import LecturersPage from "./pages/LecturersPage";
 import { LikedProjectsPage } from "./pages/LikedProjectsPage";
 import { CommitteesPage } from "./pages/CommitteesPage";
 import { CommitteeApplicationPage } from "./pages/CommitteeApplicationPage";
+import { ComplaintPage } from "./pages/ComplaintPage";
 
 // ── Admin page imports ─────────────────────────────────────────────────────────
 import AdminHome from "./admin1/pages/Home";
@@ -62,6 +63,7 @@ import AdminInquiries from "./admin1/pages/Inquiries";
 import UserManagement from "./admin1/pages/UserManagement";
 // ── Admin committee applications ───────────────────────────────────────────────
 import AdminCommitteeApplications from "./admin1/pages/CommitteeApplications";
+import AdminComplaints from "./admin1/pages/Complaints";
 // ── NEW: Admin featured projects ───────────────────────────────────────────────
 import AdminFeaturedProjects from "./admin1/pages/FeaturedProjects";
 
@@ -198,6 +200,16 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <CommitteeApplicationPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* ── NEW: Complaints ──────────────────────────────────────────── */}
+      <Route
+        path="/complaints"
+        element={
+          <RequireAuth>
+            <ComplaintPage />
           </RequireAuth>
         }
       />
@@ -393,6 +405,15 @@ function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminCommitteeApplications />
+          </RequireAdmin>
+        }
+      />
+      {/* ── NEW: Admin Complaints ──────────────────────────────────────── */}
+      <Route
+        path="/admin/complaints"
+        element={
+          <RequireAdmin>
+            <AdminComplaints />
           </RequireAdmin>
         }
       />

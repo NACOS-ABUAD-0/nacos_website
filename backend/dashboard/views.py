@@ -6,6 +6,7 @@ from accounts.models import User
 from accounts.permissions import IsAdmin
 from attendance.models import ClassAttendance, ClassSession
 from committees.models import Committee, CommitteeApplication
+from complaints.models import Complaint
 from events.models import Event, EventRegistration
 from executives.models import Executive
 from gallery.models import GalleryImage
@@ -38,4 +39,5 @@ class AdminStatsView(APIView):
             "class_sessions": ClassSession.objects.count(),
             "class_attendances": ClassAttendance.objects.count(),
             "executives": Executive.objects.count(),
+            "complaints": Complaint.objects.count(),
         })

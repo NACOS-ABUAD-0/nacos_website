@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'attendance',
     'dashboard',
     'face_auth',
+    'complaints',
 
     # third party
     'rest_framework',
@@ -99,6 +100,7 @@ REST_FRAMEWORK = {
         # (the same one that spiked EC2 memory enough to stall the server
         # — see incident notes). Keep concurrent load low.
         'face_auth': '5/min',
+        'complaint': '10/hour',
     },
 }
 

@@ -7,6 +7,10 @@ from accounts.models import User
 class Committee(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField()
+    leader = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='led_committees',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

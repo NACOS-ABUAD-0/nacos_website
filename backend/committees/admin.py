@@ -6,7 +6,7 @@ from .models import Committee, CommitteeApplication
 
 @admin.register(Committee)
 class CommitteeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'created_at']
+    list_display = ['name', 'leader', 'created_at']
     search_fields = ['name']
 
 

@@ -48,5 +48,6 @@ urlpatterns = [
     path('api/', include('face_auth.urls')),
     path('api/', include('attendance.urls')),
     path('api/', include('dashboard.urls')),
+    path('api/', include('complaints.urls')),
 
 ]

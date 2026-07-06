@@ -3,10 +3,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { committeesAPI } from '../api';
 import { extractPaginatedData } from '../utils/pagination';
 
+export interface CommitteeMemberData {
+  id: number;
+  full_name: string;
+}
+
 export interface CommitteeData {
   id: number;
   name: string;
   description: string;
+  leader: CommitteeMemberData | null;
+  member_count: number;
+  members: CommitteeMemberData[];
   created_at: string;
 }
 
