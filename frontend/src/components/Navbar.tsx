@@ -12,6 +12,8 @@ import {
   Folder,
   GraduationCap,
   QrCode,
+  Users,
+  ClipboardList,
 } from "lucide-react";
 import NacosLogo from "/images/nacos_logo.png";
 import AbuadLogo from "/images/abuadLogo.png";
@@ -92,6 +94,7 @@ const Navbar = () => {
     { name: "Lecturers", path: "/lecturers" },
     { name: "Executives", path: "/executives" },
     { name: "Committees", path: "/committees" },
+    { name: "Collaboration Hub", path: "/collaboration-hub" },
     { name: "Complaints", path: "/complaints" },
     { name: "Contact", path: "/contact" },
   ];
@@ -313,6 +316,16 @@ const Navbar = () => {
                           label: "My Projects",
                         },
                         {
+                          to: "/my-collaborations",
+                          icon: <Users className="w-4 h-4" />,
+                          label: "My Collaborations",
+                        },
+                        {
+                          to: "/collaboration-requests",
+                          icon: <ClipboardList className="w-4 h-4" />,
+                          label: "Collaboration Requests",
+                        },
+                        {
                           to: "/attendance/scan",
                           icon: <QrCode className="w-4 h-4" />,
                           label: "Scan Attendance",
@@ -452,6 +465,8 @@ const Navbar = () => {
                 { to: "/dashboard", icon: <Grid className="w-4 h-4" />, label: "Dashboard" },
                 { to: "/profile", icon: <UserIcon className="w-4 h-4" />, label: "Profile" },
                 { to: "/my-projects", icon: <Folder className="w-4 h-4" />, label: "My Projects" },
+                { to: "/my-collaborations", icon: <Users className="w-4 h-4" />, label: "My Collaborations" },
+                { to: "/collaboration-requests", icon: <ClipboardList className="w-4 h-4" />, label: "Collaboration Requests" },
                 { to: "/attendance/scan", icon: <QrCode className="w-4 h-4" />, label: "Scan Attendance" },
               ].map(({ to, icon, label }) => (
                 <NavLink
