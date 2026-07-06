@@ -21,14 +21,14 @@ class InquiryViewSet(viewsets.ModelViewSet):
         # Anyone can submit; only admins can read/update/delete
         if self.action == 'create':
             return [AllowAny()]
-        return [AllowAny()]
+        return [IsAdminUser()]
 
     def get_serializer_class(self):
         if self.request.user and self.request.user.is_staff:
             return InquiryAdminSerializer
         return InquirySerializer
 
-    @action(detail=True, methods=['patch'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['patch'], permission_classes=[IsAdminUser])
     def update_status(self, request, pk=None):
         inquiry = self.get_object()
         new_status = request.data.get('status')
