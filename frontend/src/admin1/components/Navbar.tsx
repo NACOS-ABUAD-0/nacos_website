@@ -1,24 +1,32 @@
 // src/admin1/components/Navbar.tsx
 
 import React, { useState, useRef, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/nacos_logo.png'
 import profileImg from '../../assets/profile.png'
 import { useAuth } from '../../context/AuthContext'
 
-const NAV_LINKS = [
-  { label: 'Home',                   to: '/admin' },
-  { label: 'Events',                 to: '/admin/events' },
+// Split into "primary" (always visible on desktop) and "more" (tucked into
+// an overflow dropdown) — keeps the bar a single line at any width instead
+// of wrapping onto a second row as more admin sections get added over time.
+const PRIMARY_NAV_LINKS = [
+  { label: 'Home',            to: '/admin' },
+  { label: 'Events',          to: '/admin/events' },
+  { label: 'Inquiries',       to: '/admin/inquiries' },
+  { label: 'User Management', to: '/admin/users' },
+]
+
+const MORE_NAV_LINKS = [
   { label: 'Class Attendance',       to: '/admin/class-attendance' },
   { label: 'Featured Projects',      to: '/admin/featured-projects' },
   { label: 'Committee Applications', to: '/admin/committee-applications' },
   { label: 'Executives',             to: '/admin/executives' },
   { label: 'Gallery',                to: '/admin/gallery' },
-  { label: 'Inquiries',              to: '/admin/inquiries' },
   { label: 'Complaints',             to: '/admin/complaints' },
-  { label: 'User Management',        to: '/admin/users' },
 ]
+
+const NAV_LINKS = [...PRIMARY_NAV_LINKS, ...MORE_NAV_LINKS]
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin',
@@ -29,24 +37,34 @@ const ROLE_LABELS: Record<string, string> = {
 const Navbar: React.FC = () => {
   const [dropdownOpen, setDropdownOpen]   = useState<boolean>(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false)
+  const [moreMenuOpen, setMoreMenuOpen]     = useState<boolean>(false)
   const dropdownRef  = useRef<HTMLDivElement>(null)
+  const moreMenuRef  = useRef<HTMLDivElement>(null)
   const navigate     = useNavigate()
+  const location     = useLocation()
   const { user, logout } = useAuth()
 
-  const navLinks = user?.role === 'super_admin'
-    ? [...NAV_LINKS, { label: 'Manage Admins', to: '/admin/manage-admins' }]
-    : NAV_LINKS
+  const moreLinks = user?.role === 'super_admin'
+    ? [...MORE_NAV_LINKS, { label: 'Manage Admins', to: '/admin/manage-admins' }]
+    : MORE_NAV_LINKS
+
+  // Full flat list — used by the mobile drawer, which already scrolls and
+  // has no overflow concern regardless of item count.
+  const navLinks = [...PRIMARY_NAV_LINKS, ...moreLinks]
 
   const handleLogout = (): void => {
     logout()
     navigate('/login')
   }
 
-  // Close profile dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false)
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -72,14 +90,14 @@ const Navbar: React.FC = () => {
         </div>
 
         {/* Desktop Nav Links */}
-        <ul className="hidden md:flex items-center gap-6 lg:gap-8">
-          {navLinks.map(({ label, to }) => (
+        <ul className="hidden md:flex items-center gap-5 lg:gap-7">
+          {PRIMARY_NAV_LINKS.map(({ label, to }) => (
             <li key={label}>
               <NavLink
                 to={to}
                 end={to === '/admin'}
                 className={({ isActive }) =>
-                  `text-[14px] font-medium pb-1 transition-colors duration-200 ${
+                  `text-[14px] font-medium pb-1 whitespace-nowrap transition-colors duration-200 ${
                     isActive
                       ? 'text-[#1a7a3f] border-b-2 border-[#1a7a3f]'
                       : 'text-gray-500 hover:text-[#1a7a3f]'
@@ -90,6 +108,54 @@ const Navbar: React.FC = () => {
               </NavLink>
             </li>
           ))}
+
+          {/* More dropdown — secondary admin sections, keeps the bar from wrapping */}
+          <li className="relative" ref={moreMenuRef}>
+            <button
+              onClick={() => setMoreMenuOpen((prev) => !prev)}
+              aria-haspopup="menu"
+              aria-expanded={moreMenuOpen}
+              className={`flex items-center gap-1 text-[14px] font-medium pb-1 whitespace-nowrap transition-colors duration-200 ${
+                moreLinks.some((item) => location.pathname.startsWith(item.to))
+                  ? 'text-[#1a7a3f]'
+                  : 'text-gray-500 hover:text-[#1a7a3f]'
+              }`}
+            >
+              More
+              <svg
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${moreMenuOpen ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {moreMenuOpen && (
+              <div
+                role="menu"
+                aria-label="More admin sections"
+                className="absolute left-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 py-2 overflow-hidden"
+              >
+                {moreLinks.map(({ label, to }) => (
+                  <NavLink
+                    key={label}
+                    to={to}
+                    role="menuitem"
+                    onClick={() => setMoreMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `block px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'text-[#1a7a3f] bg-green-50'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-[#1a7a3f]'
+                      }`
+                    }
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </li>
         </ul>
 
         {/* Right side: profile avatar + hamburger */}

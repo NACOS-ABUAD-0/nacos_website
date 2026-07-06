@@ -23,6 +23,7 @@ type NavItem = { name: string; path: string };
 const Navbar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const { isDark } = useTheme();
   const { user, logout, isAuthenticated } = useAuth();
@@ -30,8 +31,9 @@ const Navbar = () => {
   const location = useLocation();
 
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Close user dropdown on outside click ─────────────────────────────────
+  // ── Close dropdowns on outside click ──────────────────────────────────────
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
       if (
@@ -39,6 +41,12 @@ const Navbar = () => {
         !userMenuRef.current.contains(e.target as Node)
       ) {
         setIsUserMenuOpen(false);
+      }
+      if (
+        moreMenuRef.current &&
+        !moreMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsMoreMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleOutsideClick);
@@ -49,6 +57,7 @@ const Navbar = () => {
   useEffect(() => {
     setIsMobileOpen(false);
     setIsUserMenuOpen(false);
+    setIsMoreMenuOpen(false);
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -59,30 +68,40 @@ const Navbar = () => {
   };
 
   // ── Nav items ─────────────────────────────────────────────────────────────
-  const authNavItems: NavItem[] = [
+  // Split into "primary" (always visible on desktop) and "more" (tucked into
+  // an overflow dropdown) — keeps the bar a single line at any width instead
+  // of wrapping/crowding as more nav items get added over time.
+  const primaryAuthNavItems: NavItem[] = [
     { name: "Dashboard", path: "/dashboard" },
     { name: "Projects", path: "/projects" },
     { name: "Events", path: "/events" },
     { name: "Resources", path: "/resources" },
-    { name: "Lecturers", path: "/lecturers" },
     { name: "Gallery", path: "/gallery" },
+  ];
+  const moreAuthNavItems: NavItem[] = [
+    { name: "Lecturers", path: "/lecturers" },
     { name: "Executives", path: "/executives" },
     { name: "Committees", path: "/committees" },
     { name: "Complaints", path: "/complaints" },
     { name: "Contact", path: "/contact" },
   ];
 
-  const publicNavItems: NavItem[] = [
+  const primaryPublicNavItems: NavItem[] = [
     { name: "Home", path: "/" },
     { name: "Projects", path: "/projects" },
     { name: "Events", path: "/events" },
-    { name: "Lecturers", path: "/lecturers" },
     { name: "Gallery", path: "/gallery" },
+  ];
+  const morePublicNavItems: NavItem[] = [
+    { name: "Lecturers", path: "/lecturers" },
     { name: "Executives", path: "/executives" },
     { name: "Contact", path: "/contact" },
   ];
 
-  const navItems = isAuthenticated ? authNavItems : publicNavItems;
+  const primaryNavItems = isAuthenticated ? primaryAuthNavItems : primaryPublicNavItems;
+  const moreNavItems = isAuthenticated ? moreAuthNavItems : morePublicNavItems;
+  // Mobile drawer shows the full flat list — it already scrolls, no overflow concern there.
+  const navItems = [...primaryNavItems, ...moreNavItems];
 
   // ── Derived display values ────────────────────────────────────────────────
   const firstName = user?.full_name?.split?.(" ")[0] ?? "User";
@@ -114,13 +133,13 @@ const Navbar = () => {
         </NavLink>
 
         {/* ── Desktop links ────────────────────────────────────────────── */}
-        <div className="hidden lg:flex items-center gap-5">
-          {navItems.map((item) => (
+        <div className="hidden lg:flex items-center gap-4 xl:gap-5">
+          {primaryNavItems.map((item) => (
             <NavLink
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                `text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                   isActive
                     ? "text-[#006E3A]"
                     : `${textMuted} hover:text-[#006E3A]`
@@ -133,6 +152,56 @@ const Navbar = () => {
               {item.name}
             </NavLink>
           ))}
+
+          {/* More dropdown — secondary nav items, keeps the bar from wrapping */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              onClick={() => setIsMoreMenuOpen((s) => !s)}
+              aria-haspopup="menu"
+              aria-expanded={isMoreMenuOpen}
+              className={`text-sm font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+                moreNavItems.some((item) => location.pathname.startsWith(item.path) && item.path !== "/")
+                  ? "text-[#006E3A]"
+                  : `${textMuted} hover:text-[#006E3A]`
+              }`}
+            >
+              More
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${isMoreMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {isMoreMenuOpen && (
+              <div
+                role="menu"
+                aria-label="More navigation links"
+                className={`absolute right-0 mt-3 w-48 rounded-2xl shadow-2xl border py-2 z-50 ${bgPanel} ${
+                  isDark ? "border-white/10" : "border-gray-200/60"
+                }`}
+              >
+                {moreNavItems.map((item) => (
+                  <NavLink
+                    key={item.name}
+                    to={item.path}
+                    role="menuitem"
+                    onClick={() => setIsMoreMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
+                        isActive
+                          ? "text-[#006E3A] bg-green-50 dark:bg-green-500/10"
+                          : isDark
+                          ? "text-gray-300 hover:bg-white/10 hover:text-white"
+                          : "text-gray-700 hover:bg-green-50 hover:text-[#006E3A]"
+                      }`
+                    }
+                  >
+                    {item.name === "Lecturers" && <GraduationCap className="w-3.5 h-3.5" />}
+                    {item.name}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Desktop right: auth actions ──────────────────────────────── */}
