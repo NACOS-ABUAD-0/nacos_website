@@ -1,6 +1,7 @@
 # backend/accounts/views.py
 
 import logging
+from django.conf import settings
 from django.db.models import Q
 from rest_framework import status, permissions, generics, viewsets
 from rest_framework.decorators import action
@@ -575,7 +576,8 @@ class PasswordResetRequestView(APIView):
 
         # Re-use the existing email infrastructure
         from .utils import _send_email   # internal helper — see note in utils.py
-        reset_url = f"{request.scheme}://{request.get_host()}/reset-password?uid={uid}&token={token}"
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://nacosabuad.org')
+        reset_url = f"{frontend_url}/reset-password?uid={uid}&token={token}"
 
         try:
             _send_password_reset_email(user, reset_url)

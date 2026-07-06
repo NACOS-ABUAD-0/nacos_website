@@ -126,6 +126,22 @@ class AuthAPITest(APITestCase):
         from django.conf import settings
         self.assertEqual(settings.PASSWORD_RESET_TIMEOUT, 1800)
 
+    def test_password_reset_email_links_to_frontend_not_api_host(self):
+        from django.conf import settings
+        from django.core import mail
+
+        User.objects.create_user(
+            email='resetlink@example.com', full_name='Reset Link', password='oldpass123',
+        )
+        response = self.client.post(
+            reverse('password_reset'), {'email': 'resetlink@example.com'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://nacosabuad.org')
+        self.assertIn(f"{frontend_url}/reset-password?", mail.outbox[0].body)
+        self.assertNotIn('testserver', mail.outbox[0].body)
+
     def test_password_reset_token_rejected_after_30_minutes(self):
         cache.clear()
         user = User.objects.create_user(
