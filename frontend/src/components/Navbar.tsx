@@ -110,7 +110,7 @@ const Navbar = () => {
 
   // ── Shared class helpers ──────────────────────────────────────────────────
   const textBase = isDark ? "text-white" : "text-gray-900";
-  const textMuted = isDark ? "text-gray-300" : "text-gray-700";
+  const textMuted = isDark ? "text-gray-300" : "text-black";
   const bgPanel = isDark
     ? "bg-black/95 backdrop-blur-xl"
     : "bg-white/95 backdrop-blur-xl";
