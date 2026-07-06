@@ -359,3 +359,28 @@ class SuperAdminTierTest(APITestCase):
         self.assertIn('admin@example.com', emails)
         # MAX_ADMINS count/slots only reflect the regular ADMIN tier.
         self.assertEqual(response.data['count'], 1)
+
+
+@override_settings(
+    ADMINS=[("NACOS Admin", "test-admin@example.com")],
+    DEBUG=False,
+    ROOT_URLCONF='nacos_backend.test_urls',
+)
+class AdminErrorEmailTest(TestCase):
+    """
+    Confirms an unhandled exception (a real bug, not a normal 400/401/403/
+    404/429 that DRF already turns into a JSON response) actually reaches
+    Django's AdminEmailHandler and sends mail to ADMINS.
+    """
+
+    def test_unhandled_exception_emails_admins(self):
+        from django.core import mail
+        from django.test import Client
+
+        client = Client(raise_request_exception=False)
+        response = client.get('/__test_crash__/')
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["test-admin@example.com"])
+        self.assertIn("Deliberate test crash", mail.outbox[0].body)

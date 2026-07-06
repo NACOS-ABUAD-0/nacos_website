@@ -267,6 +267,15 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'
 
+# Unhandled server errors (500s) get emailed here via Django's built-in
+# AdminEmailHandler — see LOGGING below. Comma-separated in the env var,
+# e.g. ADMIN_EMAILS=you@example.com,other-admin@example.com
+ADMINS = [("NACOS Admin", email) for email in _split_env_list("ADMIN_EMAILS", [])]
+MANAGERS = ADMINS
+# Avoids error emails going out as root@localhost, which many mail
+# providers spam-filter or reject outright.
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
 print("=" * 50)
 print("EMAIL_HOST:", EMAIL_HOST)
 print("EMAIL_PORT:", EMAIL_PORT)
@@ -296,10 +305,24 @@ LOGGING = {
     "formatters": {
         "verbose": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
     },
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+    },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        # Emails everyone in ADMINS the full traceback whenever an
+        # unhandled exception reaches Django (i.e. a real bug, not an
+        # expected 400/401/403/404/429 — DRF already turns those into
+        # normal JSON responses without raising). Only fires when
+        # DEBUG=False, matching production.
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+        },
     },
     "loggers": {
         "resources": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console", "mail_admins"], "level": "ERROR", "propagate": False},
     },
 }
