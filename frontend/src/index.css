@@ -3,6 +3,16 @@
 @tailwind utilities;
 @import "tailwindcss";
 
+/* Defensive safety net against mystery horizontal overflow on mobile (an
+   element slightly wider than the viewport lets the whole page pan left/
+   right). Doesn't affect any component's own intentional horizontal
+   scroll area (e.g. overflow-x-auto tables/carousels) — those manage
+   their own scroll context independently of the page level. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 @keyframes slide {
   0%,
   100% {

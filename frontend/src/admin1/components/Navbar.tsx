@@ -171,7 +171,7 @@ const Navbar: React.FC = () => {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+              <div className="absolute right-0 mt-3 w-56 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
                 {/* Profile Info */}
                 <div className="flex flex-col items-center pt-6 pb-4 px-4 border-b border-gray-100">
                   <div className="relative">
