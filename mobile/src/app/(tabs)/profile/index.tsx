@@ -39,6 +39,13 @@ export default function ProfileScreen() {
 
         <View className="mt-8">
           <MenuRow icon="notifications-outline" label="Notifications" onPress={() => router.push('/notifications')} />
+          <MenuRow icon="rocket-outline" label="My Projects" onPress={() => router.push('/projects/my-projects')} />
+          <MenuRow icon="heart-outline" label="Liked Projects" onPress={() => router.push('/projects/liked')} />
+          <MenuRow
+            icon="people-outline"
+            label="My Collaborations"
+            onPress={() => router.push('/projects/my-collaborations')}
+          />
         </View>
 
         <View className="mt-10">

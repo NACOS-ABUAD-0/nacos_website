@@ -287,5 +287,99 @@ export const cloudinaryAPI = {
   },
 };
 
+// ─── PROJECTS ───────────────────────────────────────────────────────────────
+
+export interface ProjectOwner {
+  id: number;
+  email: string;
+  full_name: string;
+  matric_number: string;
+  is_staff: boolean;
+  role: string;
+}
+
+export interface SkillTagData {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
+export interface CollaborationNeedData {
+  id?: number;
+  skill_type: 'frontend' | 'backend' | 'ui_ux' | 'ai_ml' | 'documentation' | 'others';
+  skill_type_display?: string;
+  custom_skill?: string;
+  description?: string;
+  is_filled?: boolean;
+}
+
+export interface CollaborationRequestData {
+  id: number;
+  project: number;
+  project_title: string;
+  need: number | null;
+  need_skill: string | null;
+  applicant: number;
+  applicant_name: string;
+  applicant_email: string;
+  phone_number: string;
+  message: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectData {
+  id: number;
+  owner: ProjectOwner;
+  title: string;
+  description: string;
+  tags: SkillTagData[];
+  images: string[];
+  links: Record<string, string>;
+  live_url: string;
+  created_at: string;
+  updated_at: string;
+  is_featured: boolean;
+  status: 'draft' | 'published';
+  like_count: number;
+  is_liked_by_user: boolean;
+  collaboration_needs: CollaborationNeedData[];
+  has_collaboration_needs: boolean;
+}
+
+export const projectsAPI = {
+  getProjects: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ProjectData>>('/projects/', { params }),
+
+  getProject: (id: number | string) => api.get<ProjectData>(`/projects/${id}/`),
+
+  getMyProjects: () => api.get<PaginatedResponse<ProjectData> | ProjectData[]>('/projects/my-projects/'),
+
+  getLiked: () => api.get<PaginatedResponse<ProjectData> | ProjectData[]>('/projects/liked/'),
+
+  likeProject: (id: number | string) => api.post(`/projects/${id}/like/`),
+  unlikeProject: (id: number | string) => api.post(`/projects/${id}/unlike/`),
+};
+
+export const collaborationAPI = {
+  apply: (
+    projectId: number | string,
+    payload: { need_id?: number | null; phone_number: string; message: string },
+  ) => api.post(`/projects/${projectId}/apply_collaborate/`, payload),
+
+  getRequests: (projectId: number | string) =>
+    api.get<PaginatedResponse<CollaborationRequestData>>(`/projects/${projectId}/collaboration_requests/`),
+
+  acceptRequest: (projectId: number | string, requestId: number) =>
+    api.patch(`/projects/${projectId}/requests/${requestId}/accept/`),
+
+  rejectRequest: (projectId: number | string, requestId: number) =>
+    api.patch(`/projects/${projectId}/requests/${requestId}/reject/`),
+
+  getMyCollaborations: () =>
+    api.get<PaginatedResponse<ProjectData> | ProjectData[]>('/projects/my-collaborations/'),
+};
+
 export default api;
 export { api };

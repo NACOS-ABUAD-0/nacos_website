@@ -39,7 +39,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="projects/index"
+        name="projects"
         options={{
           title: 'Projects',
           tabBarIcon: ({ color, size }) => <Ionicons name="rocket" color={color} size={size} />,
