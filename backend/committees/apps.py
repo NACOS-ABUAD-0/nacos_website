@@ -89,6 +89,14 @@ class CommitteesConfig(AppConfig):
                     "running of the current Association."
                 ),
             },
+            {
+                "name": "NACOS Sports Committee",
+                "description": (
+                    "Chaired by the Sports Director. Organizes sporting activities, "
+                    "fitness programmes, and inter-departmental competitions for "
+                    "NACOS ABUAD members."
+                ),
+            },
         ]
 
         # Defensive: this runs on EVERY management command (including
