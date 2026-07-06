@@ -300,7 +300,7 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
         <>
           <button
             onClick={goToPrev}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 lg:-ml-6 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors focus:outline-none z-10"
+            className="absolute left-0 top-1/2 -translate-y-1/2 sm:-ml-4 lg:-ml-6 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors focus:outline-none z-10"
             aria-label="Previous events"
           >
             <svg
@@ -319,7 +319,7 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 lg:-mr-6 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors focus:outline-none z-10"
+            className="absolute right-0 top-1/2 -translate-y-1/2 sm:-mr-4 lg:-mr-6 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors focus:outline-none z-10"
             aria-label="Next events"
           >
             <svg

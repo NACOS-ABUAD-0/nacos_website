@@ -136,12 +136,12 @@ const ManageAdmins: React.FC = () => {
           ) : (
             <div className="divide-y divide-gray-50">
               {data?.admins.map(admin => (
-                <div key={admin.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{admin.full_name}</p>
-                    <p className="text-xs text-gray-500">{admin.email} · {admin.matric_number ?? '—'}</p>
+                <div key={admin.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{admin.full_name}</p>
+                    <p className="text-xs text-gray-500 truncate">{admin.email} · {admin.matric_number ?? '—'}</p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                       admin.role === 'super_admin' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'
                     }`}>

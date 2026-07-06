@@ -204,7 +204,7 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
           <input value={form.title} onChange={e => set('title', e.target.value)}
             placeholder="Event title" className="border p-2 rounded-lg text-sm" />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">Start *</label>
               <input type="datetime-local" value={toLocal(form.start_time)}

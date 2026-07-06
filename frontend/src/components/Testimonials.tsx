@@ -11,7 +11,7 @@ export default function Testimonials() {
         about NACOS"
       />
 
-      <div className="flex flex-col md:flex-row items-center justify-center mt-10">
+      <div className="flex flex-col lg:flex-row flex-wrap items-center justify-center gap-6 mt-10">
         <TestimonialCard
           name="Abdulazeez Jamiu Oladipupo"
           level="Computer Science 300 Level"

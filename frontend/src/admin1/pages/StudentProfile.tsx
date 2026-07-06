@@ -78,7 +78,7 @@ export default function StudentProfile(): React.ReactElement {
         </button>
 
         <div className="bg-white rounded-2xl p-6 md:p-8 mb-8">
-          <div className="flex flex-row items-stretch gap-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-5 sm:gap-8">
             <div className="flex items-center justify-center shrink-0">
               <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 overflow-hidden">
                 <svg className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -86,7 +86,7 @@ export default function StudentProfile(): React.ReactElement {
                 </svg>
               </div>
             </div>
-            <div className="w-px bg-gray-200 self-stretch" />
+            <div className="hidden sm:block w-px bg-gray-200 self-stretch" />
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-16 pt-1">
               <div>
                 <InfoRow label="Name" value={student.full_name} />

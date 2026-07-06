@@ -13,7 +13,7 @@ const TestimonialCard: React.FC<TestimonialProps> = ({
   isActive,
 }) => (
   <div
-    className={`p-6 rounded-[10px] flex flex-col gap-4 w-full md:w-[380px] transition-all duration-300 ${
+    className={`p-6 rounded-[10px] flex flex-col gap-4 w-full max-w-[380px] transition-all duration-300 ${
       isActive
         ? "bg-white shadow-[0px_1px_15px_0px_rgba(0,0,0,0.1)] scale-105 z-10"
         : "bg-[#E8F4F8]"

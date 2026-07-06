@@ -134,7 +134,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
             </button>
 
             {/* Clickable Page Numbers */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                 (pageNum) => (
                   <button

@@ -91,7 +91,7 @@ const ClassAttendance: React.FC = () => {
 
             {session.is_open ? (
               <>
-                <QRCodeSVG value={session.token} size={260} />
+                <QRCodeSVG value={session.token} size={260} style={{ width: '100%', height: 'auto', maxWidth: 260 }} />
                 <p className="text-lg font-semibold text-gray-900 mt-5">
                   {session.attendee_count} student{session.attendee_count !== 1 ? 's' : ''} scanned
                 </p>
@@ -127,40 +127,42 @@ const ClassAttendance: React.FC = () => {
           {sessions.length === 0 ? (
             <p className="text-gray-500 text-center py-8">No sessions yet.</p>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Course</th>
-                  <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Opened</th>
-                  <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Attendees</th>
-                  <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map(s => (
-                  <tr
-                    key={s.id}
-                    className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => setActiveSessionId(s.id)}
-                  >
-                    <td className="py-2 px-2 text-sm font-medium text-gray-900">{s.course_code}</td>
-                    <td className="py-2 px-2 text-sm text-gray-500">
-                      {new Date(s.opened_at).toLocaleDateString()} {formatTime(s.opened_at)}
-                    </td>
-                    <td className="py-2 px-2 text-sm text-gray-500">{s.attendee_count}</td>
-                    <td className="py-2 px-2">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          s.is_open ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {s.is_open ? 'Open' : 'Closed'}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left">
+                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Course</th>
+                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Opened</th>
+                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Attendees</th>
+                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 uppercase">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sessions.map(s => (
+                    <tr
+                      key={s.id}
+                      className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setActiveSessionId(s.id)}
+                    >
+                      <td className="py-2 px-2 text-sm font-medium text-gray-900 whitespace-nowrap">{s.course_code}</td>
+                      <td className="py-2 px-2 text-sm text-gray-500 whitespace-nowrap">
+                        {new Date(s.opened_at).toLocaleDateString()} {formatTime(s.opened_at)}
+                      </td>
+                      <td className="py-2 px-2 text-sm text-gray-500 whitespace-nowrap">{s.attendee_count}</td>
+                      <td className="py-2 px-2 whitespace-nowrap">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            s.is_open ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {s.is_open ? 'Open' : 'Closed'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </main>

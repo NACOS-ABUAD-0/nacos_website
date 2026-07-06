@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-black text-white border-t border-white">
+    <footer className="relative bg-black text-white border-t border-white">
       {/* Added gradient background and top border for premium depth */}
       <div className="max-w-[1500px] mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Enhanced spacing and structure */}

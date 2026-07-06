@@ -190,8 +190,7 @@ export const FaceCapture: React.FC<FaceCaptureProps> = ({
 
       {/* Camera viewport */}
       <div
-        className="relative rounded-2xl overflow-hidden bg-gray-900 shadow-lg"
-        style={{ width: 320, height: 240 }}
+        className="relative rounded-2xl overflow-hidden bg-gray-900 shadow-lg w-full max-w-[320px] aspect-[4/3] mx-auto"
       >
         {/*
           KEY CHANGE: autoPlay + playsInline + muted

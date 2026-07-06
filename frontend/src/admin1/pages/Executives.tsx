@@ -216,7 +216,7 @@ const ExecutiveModal: React.FC<ExecutiveModalProps> = ({ initial, onSave, onClos
               rows={3} placeholder="Short bio..." className="border p-2 rounded-lg text-sm w-full mt-1 resize-none" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">Email</label>
               <input type="email" value={form.email} onChange={e => set('email', e.target.value)}

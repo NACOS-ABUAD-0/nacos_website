@@ -85,7 +85,7 @@ export default function ContactPage() {
 
         {/* HERO */}
         <div className="bg-gradient-to-br from-[#006E3A] to-[#004d28] text-white py-24 px-6 text-center">
-          <h1 className="text-5xl font-extrabold mb-4 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
             Get In Touch
           </h1>
 

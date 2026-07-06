@@ -284,7 +284,7 @@ const Inquiries: React.FC = () => {
               <h1 className="text-[28px] font-extrabold text-[#1a7a3f] mb-1">INQUIRIES</h1>
               <p className="text-sm text-gray-500">Contact form submissions and sponsorship applications.</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 text-center">
                 <p className="text-xl font-bold text-blue-700">{newCount}</p>
                 <p className="text-[11px] text-blue-500 font-medium">New</p>

@@ -618,7 +618,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           <div className="space-y-3">
             {linkInputs.map((link, index) => (
               <div key={index} className="flex gap-3 items-start">
-                <div className="flex-1 grid grid-cols-2 gap-3">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     type="text"
                     placeholder="Platform (github, demo, website)"

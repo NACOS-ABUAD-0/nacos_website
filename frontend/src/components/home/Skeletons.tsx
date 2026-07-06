@@ -156,7 +156,7 @@ export const EventCardSkeleton: React.FC = () => (
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.45, ease: cubicBezier(0.22, 1, 0.36, 1) }}
-    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group w-[450px]"
+    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group w-full"
   >
     <div className="bg-gradient-to-br from-blue-50 to-green-50 relative overflow-hidden aspect-[4/5]">
       <motion.div
