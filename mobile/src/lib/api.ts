@@ -139,5 +139,30 @@ export const authAPI = {
     }),
 };
 
+// ─── NOTIFICATIONS ──────────────────────────────────────────────────────────
+
+export interface NotificationData {
+  id: number;
+  title: string;
+  message: string;
+  notification_type: 'committee' | 'system';
+  is_read: boolean;
+  data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export const notificationsAPI = {
+  getAll: () => api.get<PaginatedResponse<NotificationData>>('/notifications/'),
+  markRead: (id: number) => api.patch(`/notifications/${id}/read/`),
+  deleteNotification: (id: number) => api.delete(`/notifications/${id}/`),
+};
+
 export default api;
 export { api };
