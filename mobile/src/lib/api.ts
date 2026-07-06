@@ -164,5 +164,44 @@ export const notificationsAPI = {
   deleteNotification: (id: number) => api.delete(`/notifications/${id}/`),
 };
 
+// ─── EVENTS ─────────────────────────────────────────────────────────────────
+
+export interface EventData {
+  id: number;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  is_remote: boolean;
+  poster_url: string | null;
+  description: string;
+  registration_url: string | null;
+  contact_email: string | null;
+  is_published: boolean;
+  status: 'upcoming' | 'ongoing' | 'completed';
+  media: { poster: string | null };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventRegistrationData {
+  id: number;
+  token: string;
+  checked_in_at: string | null;
+  created_at: string;
+}
+
+export const eventsAPI = {
+  getEvents: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<EventData>>('/events/', { params }),
+
+  getEvent: (id: number | string) => api.get<EventData>(`/events/${id}/`),
+
+  register: (id: number | string) => api.post<EventRegistrationData>(`/events/${id}/register/`),
+
+  getMyRegistration: (id: number | string) =>
+    api.get<EventRegistrationData>(`/events/${id}/my-registration/`),
+};
+
 export default api;
 export { api };
