@@ -203,5 +203,89 @@ export const eventsAPI = {
     api.get<EventRegistrationData>(`/events/${id}/my-registration/`),
 };
 
+// ─── RESOURCES ──────────────────────────────────────────────────────────────
+
+export interface ResourceCategoryData {
+  id: number;
+  name: string;
+  description: string;
+}
+
+export interface ResourceTagData {
+  id: number;
+  name: string;
+}
+
+export interface ResourceData {
+  id: number;
+  title: string;
+  description: string;
+  url: string;
+  download_url: string | null;
+  course_code: string | null;
+  year: string | null;
+  category: ResourceCategoryData | null;
+  tags: ResourceTagData[];
+  file_type: string;
+  file_size: number | null;
+  file_size_display: string;
+  file_icon: string;
+  download_count: number;
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_by: { id: number; full_name: string } | null;
+  created_at: string;
+}
+
+export const resourcesAPI = {
+  getResources: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ResourceData>>('/resources/', { params }),
+
+  getResource: (id: number | string) => api.get<ResourceData>(`/resources/${id}/`),
+
+  getCategories: () => api.get<ResourceCategoryData[]>('/resource-categories/'),
+
+  getTags: () => api.get<ResourceTagData[]>('/resource-tags/'),
+
+  trackDownload: (id: number | string) => api.post(`/resources/${id}/track_download/`),
+
+  submit: (payload: Record<string, unknown>) => api.post('/resources/submit/', payload),
+};
+
+// ─── CLOUDINARY (resource file uploads) ─────────────────────────────────────
+// Mirrors the web app's signed-upload flow: the backend signs a folder +
+// timestamp, and the file goes straight from the device to Cloudinary,
+// bypassing our own backend entirely for the actual bytes.
+
+export const cloudinaryAPI = {
+  uploadResourceFile: async (file: { uri: string; name: string; mimeType: string }) => {
+    const { data } = await api.post<{
+      cloud_name: string;
+      api_key: string;
+      timestamp: number;
+      signature: string;
+      folder: string;
+    }>('/cloudinary/sign-resource/');
+
+    const formData = new FormData();
+    // React Native's FormData accepts this shape (uri/name/type) for file
+    // parts — it is not a real Blob/File like on web.
+    formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as any);
+    formData.append('api_key', data.api_key);
+    formData.append('timestamp', String(data.timestamp));
+    formData.append('signature', data.signature);
+    formData.append('folder', data.folder);
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${data.cloud_name}/auto/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || 'Upload failed');
+    }
+    return response.json() as Promise<{ secure_url: string }>;
+  },
+};
+
 export default api;
 export { api };

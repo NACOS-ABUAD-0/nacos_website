@@ -32,7 +32,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="resources/index"
+        name="resources"
         options={{
           title: 'Resources',
           tabBarIcon: ({ color, size }) => <Ionicons name="document-text" color={color} size={size} />,
