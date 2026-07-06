@@ -381,5 +381,20 @@ export const collaborationAPI = {
     api.get<PaginatedResponse<ProjectData> | ProjectData[]>('/projects/my-collaborations/'),
 };
 
+// ─── ASSISTANT ──────────────────────────────────────────────────────────────
+
+export interface AssistantMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export const assistantAPI = {
+  sendMessage: (message: string) => api.post<AssistantMessage>('/assistant/chat/', { message }),
+  getMessages: () => api.get<AssistantMessage[]>('/assistant/messages/'),
+  clearConversation: () => api.post('/assistant/clear/'),
+};
+
 export default api;
 export { api };
