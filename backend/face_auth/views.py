@@ -3,6 +3,7 @@ import logging
 from django.contrib.auth import login
 from rest_framework import permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -32,6 +33,8 @@ class FaceRegisterView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'face_auth'
 
     def post(self, request):
         serializer = FaceRegisterSerializer(data=request.data)
@@ -106,6 +109,8 @@ class FaceLoginView(APIView):
 
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'face_auth'
 
     def post(self, request):
         serializer = FaceLoginSerializer(data=request.data)

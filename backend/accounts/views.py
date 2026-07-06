@@ -78,6 +78,8 @@ def _sync_admin_status(user: User) -> bool:
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'register'
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -199,6 +201,8 @@ class CSRFTokenView(APIView):
 class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'email_token'
 
     def post(self, request):
         uidb64 = request.data.get("uid")
@@ -228,6 +232,8 @@ class VerifyEmailView(APIView):
 
 class ResendVerificationEmailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'email_token'
 
     def post(self, request):
         user = request.user
@@ -492,6 +498,8 @@ class CheckEmailView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'email_check'
 
     def post(self, request):
         serializer = CheckEmailSerializer(data=request.data)
@@ -511,6 +519,8 @@ class VerifyStudentIdentityView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'email_check'
 
     def post(self, request):
         serializer = VerifyStudentSerializer(data=request.data)
@@ -541,6 +551,8 @@ class PasswordResetRequestView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -596,7 +608,7 @@ def _send_password_reset_email(user: User, reset_url: str) -> None:
     body = (
         f"Hi {user.full_name},\n\n"
         "You requested a password reset. Click the link below to set a new password.\n"
-        "This link expires in 1 hour.\n\n"
+        "This link expires in 30 minutes.\n\n"
         f"{reset_url}\n\n"
         "If you did not request this, please ignore this email.\n\n"
         "— NACOS ABUAD"
@@ -615,6 +627,8 @@ class PasswordResetConfirmView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)

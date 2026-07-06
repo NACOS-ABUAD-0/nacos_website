@@ -83,8 +83,30 @@ REST_FRAMEWORK = {
         # specific "no account" / "wrong password" error messages can't be
         # used to mass-probe emails or brute-force a password.
         'login': '10/min',
+        # Account-creation spam.
+        'register': '5/hour',
+        # check-email / verify-student — both used pre-registration and
+        # both leak "does this email/matric exist" — throttle to blunt
+        # mass enumeration.
+        'email_check': '20/hour',
+        # Email verification (token-based; brute force is impractical, but
+        # still capped to stop spam re-sends).
+        'email_token': '5/min',
+        # Prevents email-bombing a target inbox with reset requests, and
+        # caps confirm attempts against a guessed/leaked token.
+        'password_reset': '5/hour',
+        # Face recognition runs a heavy TensorFlow inference per request
+        # (the same one that spiked EC2 memory enough to stall the server
+        # — see incident notes). Keep concurrent load low.
+        'face_auth': '5/min',
     },
 }
+
+# Password-reset links expire in 30 minutes (Django's default_token_generator
+# checks this against PASSWORD_RESET_TIMEOUT, in seconds). Without this
+# override Django defaults to 3 days, which doesn't match what the reset
+# email itself tells users ("this link expires in 30 minutes").
+PASSWORD_RESET_TIMEOUT = 1800
 
 #  Middleware
 MIDDLEWARE = [

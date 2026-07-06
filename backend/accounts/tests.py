@@ -1,7 +1,13 @@
 # backend/accounts/tests.py
-from django.test import TestCase
+import datetime
+from unittest.mock import patch
+
+from django.contrib.auth.tokens import default_token_generator
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.core.cache import cache
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from .models import User
@@ -115,6 +121,32 @@ class AuthAPITest(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         finally:
             cache.clear()
+
+    def test_password_reset_timeout_is_30_minutes(self):
+        from django.conf import settings
+        self.assertEqual(settings.PASSWORD_RESET_TIMEOUT, 1800)
+
+    def test_password_reset_token_rejected_after_30_minutes(self):
+        cache.clear()
+        user = User.objects.create_user(
+            email='resettest@example.com', full_name='Reset Test', password='oldpass123',
+        )
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Sanity check: the token is valid right after issuance.
+        self.assertTrue(default_token_generator.check_token(user, token))
+
+        # Simulate 31 minutes passing by moving the token generator's clock
+        # forward, rather than sleeping in the test.
+        future = datetime.datetime.now() + datetime.timedelta(minutes=31)
+        with patch.object(default_token_generator, '_now', return_value=future):
+            response = self.client.post(reverse('password_reset_confirm'), {
+                'uid': uid, 'token': token,
+                'password': 'newpass456', 'password2': 'newpass456',
+            })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('expired', str(response.data).lower())
 
     def test_profile_access(self):
         # Register and login
