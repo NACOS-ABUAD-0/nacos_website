@@ -60,6 +60,15 @@ const Navbar = () => {
     setIsMoreMenuOpen(false);
   }, [location.pathname]);
 
+  // ── Lock body scroll while the mobile menu is open, so scrolling inside
+  //    the dropdown scrolls the dropdown, not the page behind it ──────────
+  useEffect(() => {
+    document.body.style.overflow = isMobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileOpen]);
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -375,10 +384,14 @@ const Navbar = () => {
       </div>
 
       {/* ── Mobile dropdown ──────────────────────────────────────────────── */}
+      {/* `fixed` (not `absolute`) so it's anchored to the viewport, not the
+          page — combined with the body-scroll-lock above and its own
+          max-height + overflow-y-auto below, scrolling here scrolls the
+          dropdown's contents instead of the page behind it. */}
       <div
         id="mobile-menu"
         className={`
-          absolute right-4 top-[68px] w-[55%] max-w-xs
+          fixed right-4 top-[68px] w-[55%] max-w-xs max-h-[calc(100vh-84px)] overflow-y-auto
           transform transition-all duration-300 ease-in-out
           lg:hidden rounded-2xl shadow-2xl py-4
           ${bgPanel} ${isDark ? "border border-white/10" : "border border-gray-200/60"}
