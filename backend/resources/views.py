@@ -1,21 +1,29 @@
 # backend/resources/views.py
-from rest_framework import viewsets, filters, status
-from rest_framework.decorators import action
+import hashlib
+import time
+import uuid
+
+from django.conf import settings
+from rest_framework import viewsets, filters, status, permissions
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
+
+from accounts.permissions import IsAdmin
 from .models import Resource, ResourceCategory, ResourceTag, ResourceDownload
 from .serializers import (
     ResourceSerializer, ResourceDetailSerializer,
-    ResourceCategorySerializer, ResourceTagSerializer
+    ResourceCategorySerializer, ResourceTagSerializer,
+    ResourceSubmitSerializer, AdminResourceSerializer,
 )
 
 import json
 from pathlib import Path
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
 
@@ -28,7 +36,10 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        queryset = Resource.objects.filter(is_public=True)
+        # status defaults to APPROVED for every existing/Drive-synced/admin
+        # row, so this is a no-op for them — only PENDING/REJECTED student
+        # submissions get excluded here.
+        queryset = Resource.objects.filter(is_public=True, status=Resource.Status.APPROVED)
 
         # Filter by search query
         search = self.request.query_params.get('search', None)
@@ -113,3 +124,96 @@ class DriveResourcesView(APIView):
         with json_path.open() as f:
             data = json.load(f)
         return Response(data)
+
+
+class ResourceSubmitView(APIView):
+    """
+    POST /api/resources/submit/
+    Students submit a resource they've already uploaded to Cloudinary
+    (see cloudinary_sign_resource). Starts PENDING — invisible in the
+    public list until an admin approves it.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'resource_submit'
+
+    def post(self, request):
+        serializer = ResourceSubmitSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        resource = serializer.save(
+            submitted_by=request.user,
+            status=Resource.Status.PENDING,
+            drive_file_id=f"upload-{uuid.uuid4()}",
+        )
+        return Response(ResourceSerializer(resource).data, status=status.HTTP_201_CREATED)
+
+
+class AdminResourceViewSet(viewsets.ModelViewSet):
+    """Full CRUD + moderation for admins, at /api/admin/resources/."""
+    queryset = Resource.objects.all().select_related('category', 'submitted_by').prefetch_related('tags')
+    serializer_class = AdminResourceSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status', 'category']
+
+    def perform_create(self, serializer):
+        # Admin-authored resources need a drive_file_id too (unique, no
+        # real Drive file behind them) and are approved immediately.
+        serializer.save(
+            drive_file_id=f"admin-{uuid.uuid4()}",
+            status=Resource.Status.APPROVED,
+        )
+
+    @action(detail=True, methods=['patch'])
+    def approve(self, request, pk=None):
+        resource = self.get_object()
+        resource.status = Resource.Status.APPROVED
+        resource.admin_note = request.data.get('admin_note', resource.admin_note)
+        resource.save(update_fields=['status', 'admin_note', 'updated_at'])
+        return Response(AdminResourceSerializer(resource).data)
+
+    @action(detail=True, methods=['patch'])
+    def reject(self, request, pk=None):
+        resource = self.get_object()
+        resource.status = Resource.Status.REJECTED
+        resource.admin_note = request.data.get('admin_note', resource.admin_note)
+        resource.save(update_fields=['status', 'admin_note', 'updated_at'])
+        return Response(AdminResourceSerializer(resource).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def cloudinary_sign_resource(request):
+    """
+    Same signed-upload pattern as projects.views.cloudinary_sign, but for
+    resource files (PDFs/docs/zips, not images) — signs a separate folder
+    so the existing project-image upload path is untouched.
+    """
+    cloud_name = settings.CLOUDINARY_CLOUD_NAME
+    api_key = settings.CLOUDINARY_API_KEY
+    api_secret = settings.CLOUDINARY_API_SECRET
+    if not all([cloud_name, api_key, api_secret]):
+        return Response(
+            {"detail": "Cloudinary is not configured on the server."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    folder = settings.CLOUDINARY_RESOURCES_FOLDER
+    timestamp = int(time.time())
+    params_to_sign = {"folder": folder, "timestamp": timestamp}
+    signature_base = "&".join(
+        f"{key}={params_to_sign[key]}" for key in sorted(params_to_sign)
+    )
+    signature = hashlib.sha1(
+        f"{signature_base}{api_secret}".encode("utf-8")
+    ).hexdigest()
+
+    return Response({
+        "cloud_name": cloud_name,
+        "api_key": api_key,
+        "timestamp": timestamp,
+        "signature": signature,
+        "folder": folder,
+    })

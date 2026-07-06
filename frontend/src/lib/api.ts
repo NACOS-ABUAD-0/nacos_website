@@ -545,6 +545,41 @@ export const cloudinaryAPI = {
     }
     return response.json() as Promise<{ secure_url: string }>;
   },
+
+  /**
+   * Uploads a non-image resource file (PDF/doc/zip/etc.) via a separate
+   * signed folder (POST /api/cloudinary/sign-resource/) and Cloudinary's
+   * /auto/upload endpoint, which auto-detects the file's resource type
+   * instead of assuming "image" like the upload() method above.
+   */
+  uploadResourceFile: async (file: File) => {
+    const { data } = await api.post<{
+      cloud_name: string;
+      api_key: string;
+      timestamp: number;
+      signature: string;
+      folder: string;
+    }>("/cloudinary/sign-resource/");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("api_key", data.api_key);
+    formData.append("timestamp", String(data.timestamp));
+    formData.append("signature", data.signature);
+    formData.append("folder", data.folder);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${data.cloud_name}/auto/upload`,
+      { method: "POST", body: formData }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        (err as { error?: { message?: string } })?.error?.message || "Upload failed"
+      );
+    }
+    return response.json() as Promise<{ secure_url: string }>;
+  },
 };
 
 // ─── COLLABORATION ────────────────────────────────────────────────────────────
@@ -609,6 +644,28 @@ export const resourcesAPI = {
     api.post(`/resources/${id}/track_download/`),
 
   getCount: () => api.get("/resources/count/"),
+
+  submit: (payload: Record<string, unknown>) =>
+    api.post("/resources/submit/", payload),
+};
+
+export const adminResourceAPI = {
+  getAll: (params?: Record<string, unknown>) =>
+    api.get("/admin/resources/", { params }),
+
+  create: (payload: Record<string, unknown>) =>
+    api.post("/admin/resources/", payload),
+
+  update: (id: string | number, payload: Record<string, unknown>) =>
+    api.patch(`/admin/resources/${id}/`, payload),
+
+  delete: (id: string | number) => api.delete(`/admin/resources/${id}/`),
+
+  approve: (id: string | number) =>
+    api.patch(`/admin/resources/${id}/approve/`),
+
+  reject: (id: string | number, admin_note?: string) =>
+    api.patch(`/admin/resources/${id}/reject/`, { admin_note }),
 };
 
 // ─── HOMEPAGE ─────────────────────────────────────────────────────────────────

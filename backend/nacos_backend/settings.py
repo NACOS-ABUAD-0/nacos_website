@@ -103,6 +103,7 @@ REST_FRAMEWORK = {
         'face_auth': '5/min',
         'complaint': '10/hour',
         'ai_assistant': '30/hour',
+        'resource_submit': '10/hour',
     },
 }
 
@@ -298,6 +299,9 @@ CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
 CLOUDINARY_UPLOAD_FOLDER = os.getenv("CLOUDINARY_UPLOAD_FOLDER", "nacos/projects")
+# Separate folder for resource file uploads (PDFs/docs/zips, not images) —
+# keeps the existing project-image upload path untouched.
+CLOUDINARY_RESOURCES_FOLDER = os.getenv("CLOUDINARY_RESOURCES_FOLDER", "nacos/resources")
 
 # AI Assistant (Google Gemini — free tier). Blank until a key is provided;
 # the assistant responds with a "not configured yet" message rather than

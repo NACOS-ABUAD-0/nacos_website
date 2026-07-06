@@ -17,10 +17,15 @@ class ResourceCategory(models.Model):
 
 
 class Resource(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+
     # Core fields
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    url = models.URLField()  # Google Drive view link
+    url = models.URLField()  # Google Drive view link, or a Cloudinary URL for uploads
     download_url = models.URLField(blank=True, null=True)  # Direct download link
 
     # Categorization
@@ -32,12 +37,25 @@ class Resource(models.Model):
     # File metadata
     file_type = models.CharField(max_length=100)
     file_size = models.BigIntegerField(null=True, blank=True)  # Size in bytes
-    drive_file_id = models.CharField(max_length=100, unique=True)  # Google Drive file ID
+    # Historically a real Google Drive file ID; for direct uploads this is a
+    # synthetic "upload-<uuid>" value instead (see ResourceSubmitView) — kept
+    # as-is rather than renaming/restructuring the field for this feature.
+    drive_file_id = models.CharField(max_length=100, unique=True)
 
     # Additional metadata
     drive_metadata = models.JSONField(default=dict, blank=True)  # Store full Drive metadata
     is_public = models.BooleanField(default=True)
     download_count = models.PositiveIntegerField(default=0)
+
+    # Student submissions (as opposed to Drive-synced/admin-added resources)
+    # start at PENDING and stay out of the public list until an admin
+    # approves them. Default APPROVED so every existing/Drive-synced/
+    # admin-created resource behaves exactly as before.
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.APPROVED, db_index=True)
+    submitted_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='submitted_resources',
+    )
+    admin_note = models.TextField(blank=True)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -54,11 +72,12 @@ class Resource(models.Model):
         if not self.file_size:
             return "Unknown"
 
+        size = float(self.file_size)
         for unit in ['B', 'KB', 'MB', 'GB']:
-            if self.file_size < 1024.0:
-                return f"{self.file_size:.1f} {unit}"
-            self.file_size /= 1024.0
-        return f"{self.file_size:.1f} TB"
+            if size < 1024.0:
+                return f"{size:.1f} {unit}"
+            size /= 1024.0
+        return f"{size:.1f} TB"
 
     def get_file_icon(self):
         """Get appropriate icon based on file type"""

@@ -65,6 +65,7 @@ import UserManagement from "./admin1/pages/UserManagement";
 // ── Admin committee applications ───────────────────────────────────────────────
 import AdminCommitteeApplications from "./admin1/pages/CommitteeApplications";
 import AdminComplaints from "./admin1/pages/Complaints";
+import AdminResources from "./admin1/pages/Resources";
 // ── NEW: Admin featured projects ───────────────────────────────────────────────
 import AdminFeaturedProjects from "./admin1/pages/FeaturedProjects";
 
@@ -425,6 +426,15 @@ function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminComplaints />
+          </RequireAdmin>
+        }
+      />
+      {/* ── NEW: Admin Resources ────────────────────────────────────────── */}
+      <Route
+        path="/admin/resources"
+        element={
+          <RequireAdmin>
+            <AdminResources />
           </RequireAdmin>
         }
       />

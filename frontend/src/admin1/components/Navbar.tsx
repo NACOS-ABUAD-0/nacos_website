@@ -24,6 +24,7 @@ const MORE_NAV_LINKS = [
   { label: 'Executives',             to: '/admin/executives' },
   { label: 'Gallery',                to: '/admin/gallery' },
   { label: 'Complaints',             to: '/admin/complaints' },
+  { label: 'Resources',              to: '/admin/resources' },
 ]
 
 const NAV_LINKS = [...PRIMARY_NAV_LINKS, ...MORE_NAV_LINKS]
