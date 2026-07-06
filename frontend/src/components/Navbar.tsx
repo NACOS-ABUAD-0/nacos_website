@@ -77,6 +77,7 @@ const Navbar = () => {
     { name: "Events", path: "/events" },
     { name: "Resources", path: "/resources" },
     { name: "Gallery", path: "/gallery" },
+    { name: "Assistant", path: "/assistant" },
   ];
   const moreAuthNavItems: NavItem[] = [
     { name: "Lecturers", path: "/lecturers" },

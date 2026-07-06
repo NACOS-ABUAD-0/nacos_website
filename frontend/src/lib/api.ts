@@ -193,6 +193,13 @@ export interface AdminComplaintData {
   updated_at: string;
 }
 
+export interface AssistantMessageData {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 export interface NotificationData {
   id: number;
   title: string;
@@ -422,6 +429,15 @@ export const adminComplaintAPI = {
   getAll: () => api.get<PaginatedResponse<AdminComplaintData>>("/admin/complaints/"),
   updateStatus: (id: number, statusValue: string, admin_note?: string) =>
     api.patch(`/admin/complaints/${id}/update-status/`, { status: statusValue, admin_note }),
+};
+
+// ─── AI ASSISTANT ─────────────────────────────────────────────────────────────
+
+export const assistantAPI = {
+  sendMessage: (message: string) =>
+    api.post<AssistantMessageData>("/assistant/chat/", { message }),
+  getMessages: () => api.get<AssistantMessageData[]>("/assistant/messages/"),
+  clearConversation: () => api.post("/assistant/clear/"),
 };
 
 // ─── EVENTS (student-facing registration) ─────────────────────────────────────

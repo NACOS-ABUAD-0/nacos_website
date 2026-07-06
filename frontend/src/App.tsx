@@ -46,6 +46,7 @@ import { LikedProjectsPage } from "./pages/LikedProjectsPage";
 import { CommitteesPage } from "./pages/CommitteesPage";
 import { CommitteeApplicationPage } from "./pages/CommitteeApplicationPage";
 import { ComplaintPage } from "./pages/ComplaintPage";
+import { AssistantPage } from "./pages/AssistantPage";
 
 // ── Admin page imports ─────────────────────────────────────────────────────────
 import AdminHome from "./admin1/pages/Home";
@@ -210,6 +211,16 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <ComplaintPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* ── NEW: AI Assistant ────────────────────────────────────────── */}
+      <Route
+        path="/assistant"
+        element={
+          <RequireAuth>
+            <AssistantPage />
           </RequireAuth>
         }
       />

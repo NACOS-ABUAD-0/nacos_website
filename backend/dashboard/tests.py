@@ -49,7 +49,7 @@ class AdminStatsTest(APITestCase):
             'students', 'projects', 'skills', 'events', 'resources',
             'committees', 'committee_applications', 'gallery_images',
             'inquiries', 'event_registrations', 'class_sessions',
-            'class_attendances', 'executives',
+            'class_attendances', 'executives', 'complaints',
         }
         self.assertEqual(set(response.data.keys()), expected_keys)
         for key in expected_keys:
