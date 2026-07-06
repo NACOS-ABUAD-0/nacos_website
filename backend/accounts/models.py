@@ -163,3 +163,25 @@ class Notification(models.Model):
 
     def __str__(self) -> str:
         return f"Notification for {self.user.email}: {self.title}"
+
+
+# ─── Push Notifications (mobile) ───────────────────────────────────────────────
+
+class DeviceToken(models.Model):
+    """
+    An Expo push token registered by the mobile app. One row per physical
+    device — `token` is globally unique (Expo issues a fresh one per device
+    install), so re-registering the same device just updates its `user` FK
+    (handles logout/login as a different account on the same phone).
+    """
+    class Platform(models.TextChoices):
+        IOS = "ios", "iOS"
+        ANDROID = "android", "Android"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="device_tokens")
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(max_length=10, choices=Platform.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"{self.platform} device for {self.user.email}"

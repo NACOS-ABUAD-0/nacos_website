@@ -390,6 +390,11 @@ export interface AssistantMessage {
   created_at: string;
 }
 
+export const devicesAPI = {
+  registerDevice: (token: string, platform: 'ios' | 'android') =>
+    api.post('/notifications/register-device/', { token, platform }),
+};
+
 export const assistantAPI = {
   sendMessage: (message: string) => api.post<AssistantMessage>('/assistant/chat/', { message }),
   getMessages: () => api.get<AssistantMessage[]>('/assistant/messages/'),

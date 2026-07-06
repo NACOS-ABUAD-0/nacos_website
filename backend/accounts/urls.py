@@ -31,6 +31,7 @@ from .views import (
     # Student Profile & Notifications
     StudentProfileView,
     NotificationViewSet,
+    RegisterDeviceView,
 )
 
 urlpatterns = [
@@ -79,6 +80,9 @@ urlpatterns = [
 
     # ── Face Authentication ──────────────────────────────────────────────
     path("face-auth/", include("face_auth.urls")),
+
+    # Push notifications (mobile)
+    path("notifications/register-device/", RegisterDeviceView.as_view(), name="register-device"),
 ]
 
 router = DefaultRouter()

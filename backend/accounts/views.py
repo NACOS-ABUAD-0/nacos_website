@@ -21,7 +21,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from . import models
-from .models import User, StudentProfile, Notification
+from .models import User, StudentProfile, Notification, DeviceToken
 from .permissions import IsAdmin, IsSuperAdmin
 from .serializers import (
     RegisterSerializer,
@@ -39,6 +39,7 @@ from .serializers import (
     AdminUserSerializer,
     AdminUserDeleteSerializer,
     ChangePasswordSerializer,
+    DeviceTokenSerializer,
 )
 from .utils import send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
@@ -328,6 +329,25 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         notification = self.get_object()
         notification.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RegisterDeviceView(APIView):
+    """
+    POST /api/notifications/register-device/
+    Upserts the mobile app's Expo push token for the current user. `token`
+    is globally unique — re-registering the same device (e.g. after a
+    different user logs in) just reassigns it to the new user.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = DeviceTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        DeviceToken.objects.update_or_create(
+            token=serializer.validated_data['token'],
+            defaults={'user': request.user, 'platform': serializer.validated_data['platform']},
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

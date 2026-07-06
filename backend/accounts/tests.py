@@ -400,3 +400,79 @@ class AdminErrorEmailTest(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["test-admin@example.com"])
         self.assertIn("Deliberate test crash", mail.outbox[0].body)
+
+class DeviceTokenTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='device@example.com', full_name='Device User', password='pass12345',
+        )
+
+    def test_anonymous_cannot_register_device(self):
+        response = self.client.post('/api/notifications/register-device/', {
+            'token': 'ExponentPushToken[abc123]', 'platform': 'ios',
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_can_register_device(self):
+        from .models import DeviceToken
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post('/api/notifications/register-device/', {
+            'token': 'ExponentPushToken[abc123]', 'platform': 'ios',
+        })
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        token = DeviceToken.objects.get(token='ExponentPushToken[abc123]')
+        self.assertEqual(token.user, self.user)
+        self.assertEqual(token.platform, 'ios')
+
+    def test_reregistering_same_token_reassigns_user(self):
+        from .models import DeviceToken
+
+        other_user = User.objects.create_user(
+            email='other-device@example.com', full_name='Other User', password='pass12345',
+        )
+        DeviceToken.objects.create(user=other_user, token='ExponentPushToken[shared]', platform='android')
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post('/api/notifications/register-device/', {
+            'token': 'ExponentPushToken[shared]', 'platform': 'android',
+        })
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(DeviceToken.objects.filter(token='ExponentPushToken[shared]').count(), 1)
+        token = DeviceToken.objects.get(token='ExponentPushToken[shared]')
+        self.assertEqual(token.user, self.user)
+
+
+class PushNotificationSignalTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='push@example.com', full_name='Push User', password='pass12345',
+        )
+
+    @patch('accounts.signals.requests.post')
+    def test_creating_notification_sends_push_to_registered_devices(self, mock_post):
+        from .models import DeviceToken, Notification
+
+        DeviceToken.objects.create(user=self.user, token='ExponentPushToken[xyz]', platform='ios')
+        Notification.objects.create(user=self.user, title='Hello', message='World')
+
+        mock_post.assert_called_once()
+        _, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['json'][0]['to'], 'ExponentPushToken[xyz]')
+        self.assertEqual(kwargs['json'][0]['title'], 'Hello')
+
+    @patch('accounts.signals.requests.post')
+    def test_no_push_attempted_without_registered_devices(self, mock_post):
+        from .models import Notification
+
+        Notification.objects.create(user=self.user, title='Hello', message='World')
+        mock_post.assert_not_called()
+
+    @patch('accounts.signals.requests.post', side_effect=Exception('network down'))
+    def test_push_failure_does_not_raise(self, mock_post):
+        from .models import DeviceToken, Notification
+
+        DeviceToken.objects.create(user=self.user, token='ExponentPushToken[xyz]', platform='ios')
+        # Should not raise even though the push call fails internally.
+        Notification.objects.create(user=self.user, title='Hello', message='World')

@@ -8,7 +8,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 
-from .models import User, StudentProfile, Notification
+from .models import User, StudentProfile, Notification, DeviceToken
 from .admin_whitelist import normalize_matric, MAX_ADMINS
 
 # ─── Shared Constants ──────────────────────────────────────────────────────────
@@ -495,3 +495,13 @@ class AdminUserDeleteSerializer(serializers.Serializer):
     def validate_full_name(self, value: str) -> str:
         """Normalize full name by collapsing whitespace for exact matching."""
         return " ".join(value.strip().split())
+
+# ─── Device Token (mobile push notifications) ──────────────────────────────────
+
+class DeviceTokenSerializer(serializers.Serializer):
+    # Plain Serializer, not ModelSerializer: the view does an explicit
+    # update_or_create on `token` (unique=True at the model level), so a
+    # ModelSerializer's auto-generated UniqueValidator would wrongly reject
+    # re-registering a device that's already in the table.
+    token = serializers.CharField(max_length=255)
+    platform = serializers.ChoiceField(choices=DeviceToken.Platform.choices)

@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { registerForPushNotificationsAsync } from '@/lib/pushNotifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,6 +26,12 @@ function RootNavigator() {
       SplashScreen.hideAsync();
     }
   }, [isLoading]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      registerForPushNotificationsAsync();
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (
