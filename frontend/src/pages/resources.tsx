@@ -114,6 +114,16 @@ export const ResourcesPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Lock background scroll while the modal is open — otherwise on mobile
+  // the page scrolls instead of the modal's own scrollable content, making
+  // the lower part of the form (file picker, submit button) unreachable.
+  useEffect(() => {
+    document.body.style.overflow = showSubmitForm ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showSubmitForm]);
+
   useEffect(() => {
     if (showSubmitForm && categories.length === 0) {
       resourcesAPI

@@ -574,6 +574,18 @@ export const DashboardPage: React.FC = () => {
                     )}
                   </motion.button>
 
+                  {/* Mobile-only backdrop: on small screens the dropdown becomes a
+                      centered overlay (see className below), so tapping outside it
+                      needs its own dismiss target instead of relying on anchored
+                      dropdown behavior that only works once there's room to the
+                      side of the bell icon. */}
+                  {showNotifDropdown && (
+                    <div
+                      className="fixed inset-0 z-40 bg-black/30 sm:hidden"
+                      onClick={() => setShowNotifDropdown(false)}
+                    />
+                  )}
+
                   <AnimatePresence>
                     {showNotifDropdown && (
                       <motion.div
@@ -581,7 +593,7 @@ export const DashboardPage: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.96 }}
                         transition={{ duration: 0.2 }}
-                        className={`absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] ${t.card} border rounded-2xl shadow-xl z-50 overflow-hidden`}
+                        className={`fixed left-1/2 top-20 -translate-x-1/2 w-[calc(100vw-2rem)] max-h-[80vh] sm:absolute sm:left-auto sm:top-auto sm:translate-x-0 sm:right-0 sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)] ${t.card} border rounded-2xl shadow-xl z-50 overflow-hidden`}
                       >
                         <div className={`p-4 border-b ${t.divider}`}>
                           <h3 className={`text-sm font-bold ${t.t1}`}>Notifications</h3>
