@@ -10,7 +10,11 @@ interface Props {
 
 export function PrimaryButton({ title, onPress, loading, disabled, variant = 'primary' }: Props) {
   const isDisabled = disabled || loading;
-  const base = 'flex-1 items-center justify-center rounded-lg py-3';
+  // `w-full` (not `flex-1`) — fills whatever width its parent gives it,
+  // whether that's the full screen width (the common case) or one slot in a
+  // `flex-row` of equal-width siblings (wrap each in a `flex-1` View at the
+  // call site for that case — see register.tsx / resources/[id].tsx).
+  const base = 'w-full items-center justify-center rounded-lg py-3';
   const styles =
     variant === 'primary'
       ? `bg-primary ${isDisabled ? 'opacity-50' : ''}`

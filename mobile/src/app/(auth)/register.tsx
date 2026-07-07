@@ -183,8 +183,12 @@ export default function RegisterScreen() {
               />
               {error ? <Text className="mb-3 text-sm text-red-500">{error}</Text> : null}
               <View className="flex-row gap-3">
-                <PrimaryButton title="Back" onPress={() => setStep(1)} variant="secondary" disabled={isLoading} />
-                <PrimaryButton title={isLoading ? 'Verifying…' : 'Verify'} onPress={handleIdentitySubmit} loading={isLoading} />
+                <View className="flex-1">
+                  <PrimaryButton title="Back" onPress={() => setStep(1)} variant="secondary" disabled={isLoading} />
+                </View>
+                <View className="flex-1">
+                  <PrimaryButton title={isLoading ? 'Verifying…' : 'Verify'} onPress={handleIdentitySubmit} loading={isLoading} />
+                </View>
               </View>
             </View>
           )}
@@ -233,12 +237,16 @@ export default function RegisterScreen() {
               />
               {error ? <Text className="mb-3 text-sm text-red-500">{error}</Text> : null}
               <View className="flex-row gap-3">
-                <PrimaryButton title="Back" onPress={() => setStep(2)} variant="secondary" disabled={isLoading} />
-                <PrimaryButton
-                  title={isLoading ? 'Creating account…' : 'Create Account'}
-                  onPress={handlePasswordSubmit}
-                  loading={isLoading}
-                />
+                <View className="flex-1">
+                  <PrimaryButton title="Back" onPress={() => setStep(2)} variant="secondary" disabled={isLoading} />
+                </View>
+                <View className="flex-1">
+                  <PrimaryButton
+                    title={isLoading ? 'Creating account…' : 'Create Account'}
+                    onPress={handlePasswordSubmit}
+                    loading={isLoading}
+                  />
+                </View>
               </View>
             </View>
           )}

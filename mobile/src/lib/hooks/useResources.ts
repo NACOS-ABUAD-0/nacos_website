@@ -17,6 +17,13 @@ export function useResource(id: number | string) {
   });
 }
 
+export function useDriveResources() {
+  return useQuery({
+    queryKey: ['drive-resources'],
+    queryFn: async () => (await resourcesAPI.getDriveResources()).data,
+  });
+}
+
 export function useResourceCategories() {
   return useQuery({
     queryKey: ['resource-categories'],

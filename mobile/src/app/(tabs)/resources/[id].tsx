@@ -78,8 +78,12 @@ export default function ResourceDetailScreen() {
         )}
 
         <View className="mt-8 flex-row gap-3">
-          <PrimaryButton title="View" onPress={handleView} variant="secondary" />
-          <PrimaryButton title="Download" onPress={handleDownload} />
+          <View className="flex-1">
+            <PrimaryButton title="View" onPress={handleView} variant="secondary" />
+          </View>
+          <View className="flex-1">
+            <PrimaryButton title="Download" onPress={handleDownload} />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
