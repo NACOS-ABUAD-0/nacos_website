@@ -19,6 +19,7 @@ import NacosLogo from "/images/nacos_logo.png";
 import AbuadLogo from "/images/abuadLogo.png";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useScrollLock } from "../lib/hooks/useScrollLock";
 
 type NavItem = { name: string; path: string };
 
@@ -64,12 +65,7 @@ const Navbar = () => {
 
   // ── Lock body scroll while the mobile menu is open, so scrolling inside
   //    the dropdown scrolls the dropdown, not the page behind it ──────────
-  useEffect(() => {
-    document.body.style.overflow = isMobileOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobileOpen]);
+  useScrollLock(isMobileOpen);
 
   const handleLogout = () => {
     logout();

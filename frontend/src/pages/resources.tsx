@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import api from "../lib/api";
 import { resourcesAPI, cloudinaryAPI } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { useScrollLock } from "../lib/hooks/useScrollLock";
 
 import {
   Search,
@@ -109,6 +110,7 @@ export const ResourcesPage: React.FC = () => {
   const [submitYear, setSubmitYear] = useState("");
   const [submitCategoryId, setSubmitCategoryId] = useState("");
   const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -117,12 +119,7 @@ export const ResourcesPage: React.FC = () => {
   // Lock background scroll while the modal is open — otherwise on mobile
   // the page scrolls instead of the modal's own scrollable content, making
   // the lower part of the form (file picker, submit button) unreachable.
-  useEffect(() => {
-    document.body.style.overflow = showSubmitForm ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showSubmitForm]);
+  useScrollLock(showSubmitForm);
 
   useEffect(() => {
     if (showSubmitForm && categories.length === 0) {
@@ -473,14 +470,31 @@ export const ResourcesPage: React.FC = () => {
                         {MAX_FILE_SIZE_MB}MB)
                       </label>
                       <input
+                        ref={fileInputRef}
                         type="file"
                         required
                         accept={ALLOWED_FILE_TYPES}
                         onChange={(e) =>
                           setSubmitFile(e.target.files?.[0] ?? null)
                         }
-                        className="w-full text-sm"
+                        className="hidden"
                       />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full flex flex-col items-center justify-center gap-2 py-8 px-4 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#006E3A] hover:bg-green-50/50 transition-colors text-center"
+                      >
+                        <Upload className="w-6 h-6 text-gray-400" />
+                        {submitFile ? (
+                          <span className="text-sm font-medium text-gray-800 break-all px-2">
+                            {submitFile.name}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            Tap to choose a file
+                          </span>
+                        )}
+                      </button>
                     </div>
 
                     {submitError && (
