@@ -5,8 +5,8 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
 from accounts.models import User
-from projects.models import Project
-from resources.models import Resource
+from projects.models import Project, SkillTag
+from resources.models import Resource, ResourceTag
 from .models import Conversation, Message
 from .services import retrieve_context
 
@@ -114,3 +114,53 @@ class RetrieveContextTest(APITestCase):
     def test_no_matches_returns_empty_string(self):
         context = retrieve_context('zzz_nonexistent_query_zzz')
         self.assertEqual(context, '')
+
+    def test_finds_project_from_full_sentence_query_via_keyword_extraction(self):
+        # Regression test for the exact bug reported: a full natural-sentence
+        # question never matched anything because the whole sentence was
+        # used as one literal `icontains` substring.
+        Project.objects.create(
+            owner=self.owner, title='Campus Marketplace', description='A finance app.',
+            status='published', live_url='https://marketplace.example.com',
+        )
+        context = retrieve_context('is there any project on the site about a marketplace?')
+        self.assertIn('Campus Marketplace', context)
+
+    def test_finds_project_by_exact_tag_name_not_in_title_or_description(self):
+        # 'React' is pre-seeded by projects/migrations/0002_seed_skills.py.
+        tag, _ = SkillTag.objects.get_or_create(name='React')
+        project = Project.objects.create(
+            owner=self.owner, title='Quantora', description='A finance app.',
+            status='published', live_url='https://quantora.online',
+        )
+        project.tags.add(tag)
+        context = retrieve_context('was there any project that had react or tailwind as a tech stack')
+        self.assertIn('Quantora', context)
+
+    def test_pending_resource_excluded_from_context(self):
+        Resource.objects.create(
+            title='Pending Notes', description='Not yet approved.',
+            url='https://drive.google.com/2', file_type='pdf', drive_file_id='pending1',
+            status=Resource.Status.PENDING,
+        )
+        context = retrieve_context('pending notes')
+        self.assertNotIn('Pending Notes', context)
+
+    def test_rejected_resource_excluded_from_context(self):
+        Resource.objects.create(
+            title='Rejected Notes', description='Was rejected.',
+            url='https://drive.google.com/3', file_type='pdf', drive_file_id='rejected1',
+            status=Resource.Status.REJECTED,
+        )
+        context = retrieve_context('rejected notes')
+        self.assertNotIn('Rejected Notes', context)
+
+    def test_finds_resource_by_exact_tag_name(self):
+        tag = ResourceTag.objects.create(name='Algorithms')
+        resource = Resource.objects.create(
+            title='CSC301 Notes', description='Course material.',
+            url='https://drive.google.com/4', file_type='pdf', drive_file_id='tagged1',
+        )
+        resource.tags.add(tag)
+        context = retrieve_context('do you have anything on algorithms')
+        self.assertIn('CSC301 Notes', context)
