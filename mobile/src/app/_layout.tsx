@@ -46,6 +46,8 @@ function RootNavigator() {
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="notifications" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="attendance-scan" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="admin" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="(auth)" />

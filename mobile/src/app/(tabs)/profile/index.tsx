@@ -48,6 +48,13 @@ export default function ProfileScreen() {
           />
         </View>
 
+        {isAdmin && (
+          <View className="mt-6">
+            <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-400">Admin Tools</Text>
+            <MenuRow icon="qr-code-outline" label="Event Check-in Scanner" onPress={() => router.push('/admin/checkin')} />
+          </View>
+        )}
+
         <View className="mt-10">
           <PrimaryButton title="Log Out" onPress={() => logout()} variant="secondary" />
         </View>

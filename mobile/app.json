@@ -44,6 +44,12 @@
         {
           "color": "#006E3A"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow NACOS ABUAD to use the camera to scan QR codes for class attendance and event check-in."
+        }
       ]
     ],
     "experiments": {

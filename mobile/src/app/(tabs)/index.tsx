@@ -6,11 +6,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 
-const QUICK_LINKS: { label: string; icon: keyof typeof Ionicons.glyphMap; href: '/events' | '/resources' | '/projects' | '/assistant' }[] = [
+const QUICK_LINKS: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  href: '/events' | '/resources' | '/projects' | '/assistant' | '/attendance-scan';
+}[] = [
   { label: 'Events', icon: 'calendar', href: '/events' },
   { label: 'Resources', icon: 'document-text', href: '/resources' },
   { label: 'Projects', icon: 'rocket', href: '/projects' },
   { label: 'Assistant', icon: 'chatbubble-ellipses', href: '/assistant' },
+  { label: 'Scan Attendance', icon: 'qr-code', href: '/attendance-scan' },
 ];
 
 export default function HomeScreen() {

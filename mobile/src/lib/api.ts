@@ -426,5 +426,33 @@ export const assistantAPI = {
   clearConversation: () => api.post('/assistant/clear/'),
 };
 
+// ─── ATTENDANCE (QR scanning) ───────────────────────────────────────────────
+
+export interface ScanAttendanceResponse {
+  status: 'recorded' | 'already_recorded';
+  course_code: string;
+}
+
+export const attendanceAPI = {
+  scan: (token: string) => api.post<ScanAttendanceResponse>('/attendance/scan/', { token }),
+};
+
+export interface AdminCheckInResponse {
+  status: 'checked_in' | 'already_checked_in';
+  registration: {
+    id: number;
+    user: { id: number; full_name: string };
+    checked_in_at: string | null;
+  };
+}
+
+export const adminAttendanceAPI = {
+  checkInByToken: (eventId: number | string, token: string) =>
+    api.post<AdminCheckInResponse>('/admin/event-registrations/check-in-by-token/', {
+      event: eventId,
+      token,
+    }),
+};
+
 export default api;
 export { api };
