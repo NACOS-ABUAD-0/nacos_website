@@ -48,6 +48,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4045f53c-ceaa-4b3c-8b7d-b2286f4170e4"
+      }
+    },
+    "owner": "benzone"
   }
 }
