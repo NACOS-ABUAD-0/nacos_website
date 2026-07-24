@@ -27,10 +27,8 @@ def _allowed_hosts():
     if raw:
         return [h.strip() for h in raw.split(",") if h.strip()]
     if DEBUG:
-        return ["127.0.0.1", "localhost"]
-    raise ImproperlyConfigured(
-        "DJANGO_ALLOWED_HOSTS must be set (comma-separated hostnames) when DJANGO_DEBUG is disabled."
-    )
+        return ["127.0.0.1", "localhost", "nacosabuad.org", "www.nacosabuad.org"]
+    return ["nacosabuad.org", "www.nacosabuad.org"]
 
 
 ALLOWED_HOSTS = _allowed_hosts()
