@@ -142,24 +142,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     # ── Create ─────────────────────────────────────────────────────────────
 
-    def create(self, validated_data: dict) -> User:
-        from .admin_whitelist import is_whitelisted_admin
-
+def create(self, validated_data: dict) -> User:
         validated_data.pop("password2")
         password = validated_data.pop("password")
 
         # Create the user (matric_number is already normalized by validate_matric_number)
         user: User = User.objects.create_user(password=password, **validated_data)
-
-        # ── Auto-promote whitelisted admins ────────────────────────────────
-        # If this user's name + matric match the sealed whitelist,
-        # grant admin immediately without any manual intervention.
-        if is_whitelisted_admin(user.full_name, user.matric_number):
-            current_admin_count = User.objects.filter(role=User.Role.ADMIN).count()
-            if current_admin_count < MAX_ADMINS:
-                user.role = User.Role.ADMIN
-                # is_staff is synced automatically in User.save()
-                user.save(update_fields=["role", "is_staff"])
 
         return user
 
