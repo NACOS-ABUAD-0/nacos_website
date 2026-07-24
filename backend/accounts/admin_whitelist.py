@@ -29,9 +29,13 @@ ADMIN_WHITELIST: list[AdminEntry] = [
         "full_name": "AMALAHA Jelfrey Chigozie",
         "matric_number": "23/SCI01/030",
     },
+    {
+        "full_name": "Chisom Dunu",
+        "matric_number": "23/SCI01/010",
+    },
 ]
 # ─── MAX ADMIN LIMIT (enforced at the view layer as well) ─────────────────────
-MAX_ADMINS: int = 3
+MAX_ADMINS: int = 4
 
 
 # ─── Utility Functions ─────────────────────────────────────────────────────────
