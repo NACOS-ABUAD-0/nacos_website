@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Project } from '../types';
 import { useLikeProject, useUnlikeProject } from '../lib/hooks/useProjects';
+import { optimizeImage } from '../lib/cloudinary';
 
 interface ProjectCardProps {
   project: Project;
@@ -37,8 +38,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       {project.images && project.images.length > 0 ? (
         <div className="relative h-48 overflow-hidden bg-gray-100">
           <img
-            src={project.images[0]}
+            src={optimizeImage(project.images[0], 800)}
             alt={project.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
           {project.is_featured && (

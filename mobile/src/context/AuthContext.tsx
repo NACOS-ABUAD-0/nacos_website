@@ -16,7 +16,6 @@ export interface User {
   is_email_verified: boolean;
   is_staff?: boolean;
   role: UserRole;
-  face_login_enabled?: boolean;
 }
 
 interface AuthState {

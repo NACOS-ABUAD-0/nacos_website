@@ -12,7 +12,10 @@ class ExecutiveViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     parser_classes = [parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['is_active']
+    # The list is small (a few dozen per administration), and the public page
+    # groups it by session client-side, so return it in one unpaginated response.
+    pagination_class = None
+    filterset_fields = ['is_active', 'session']
     search_fields = ['name', 'title', 'job_description', 'email']
     ordering_fields = ['display_order', 'name', 'created_at']
     ordering = ['display_order', 'name']

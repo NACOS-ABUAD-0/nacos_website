@@ -35,6 +35,7 @@ import {
 } from "../lib/hooks/useHomepage";
 import type { ProjectItem } from "../lib/hooks/useHomepage";
 import { useSEO } from "../lib/seo";
+import { optimizeImage } from "../lib/cloudinary";
 import { useAuth } from "../context/AuthContext";
 import Facilities from "../components/Facilities";
 import ScrollVelocity from "../components/reactbits/ScrollVelocity";
@@ -286,7 +287,7 @@ const LECTURERS: Lecturer[] = [
     name: "Professor Bunmi Abiola",
     position: "Head of Department",
     office: "D54 College of Science",
-    image: "/images/lecturers/Hod.png",
+    image: "/images/lecturers/Hod.jpg",
   },
   {
     id: 2,
@@ -297,17 +298,52 @@ const LECTURERS: Lecturer[] = [
   },
   {
     id: 3,
-    name: "Mr. Awopetu Felix",
+    name: "Dr. Sayan Oluwafemi",
     position: "Lecturer",
-    office: "Coming soon",
-    image: "/images/lecturers/Mr Awopetu Felix.jpg",
+    office: "D24 College of Science",
+    image: "/images/lecturers/Dr Sayan Oluwafemi.jpg",
   },
   {
     id: 4,
-    name: "Mr. Sayan Oluwafemi",
+    name: "Dr. Tope-oke",
     position: "Lecturer",
-    office: "D24 College of Science",
-    image: "/images/lecturers/Mr Sayan Oluwafemi.jpg",
+    office: "C15 College of Science",
+    image: "/images/lecturers/Dr Tope.jpeg",
+  },
+  {
+    id: 5,
+    name: "Mrs. Babalola Gbemisola",
+    position: "Lecturer",
+    office: "C24 College of Science",
+    image: "",
+  },
+  {
+    id: 6,
+    name: "Dr. Mebawondu Josephine",
+    position: "Lecturer",
+    office: "D23 College of Science",
+    image: "",
+  },
+  {
+    id: 7,
+    name: "Dr. Obamiyi Stephen",
+    position: "Lecturer",
+    office: "D37 Aisle 4 College of Science",
+    image: "",
+  },
+  {
+    id: 8,
+    name: "Dr. Atachin James",
+    position: "Lecturer",
+    office: "D21 College of Science",
+    image: "/images/lecturers/Dr Atachin.jpeg",
+  },
+  {
+    id: 9,
+    name: "Dr. Oluwatoki Tolani",
+    position: "Lecturer",
+    office: "D37 Aisle 5 College of Science",
+    image: "/images/lecturers/Dr Oluwatoki.jpeg",
   },
 ];
 
@@ -704,9 +740,10 @@ const EventImageWithFallback: React.FC<{ src: string; alt: string }> = ({
   return (
     <div className="relative overflow-hidden h-48">
       <img
-        src={src}
+        src={optimizeImage(src, 800)}
         alt={alt}
         loading="lazy"
+        decoding="async"
         className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
         onError={() => setFailed(true)}
       />
@@ -1112,9 +1149,10 @@ const ProjectImageWithFallback: React.FC<{ src: string; alt: string }> = ({
   return (
     <div className="relative overflow-hidden h-48">
       <img
-        src={src}
+        src={optimizeImage(src, 800)}
         alt={alt}
         loading="lazy"
+        decoding="async"
         className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
         onError={() => setFailed(true)}
       />

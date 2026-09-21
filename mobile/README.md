@@ -49,7 +49,6 @@ src/
 - **Project create/edit** — the web `ProjectForm.tsx` is an 804-line dynamic
   form (tags, links, image uploads, collaboration-needs arrays). Mobile v1
   ships browse/apply/my-collaborations only.
-- **Face login** — optional feature on web, skipped entirely for mobile v1.
 - **QR scanning** — students only display their own registration QR code;
   admin check-in scanning remains a web/admin-panel feature.
 

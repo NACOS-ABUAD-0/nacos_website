@@ -25,7 +25,6 @@ export interface UserRecord {
   is_active: boolean
   is_email_verified: boolean
   date_joined: string
-  face_login_enabled: boolean
 }
 
 export interface PaginatedUserResponse {

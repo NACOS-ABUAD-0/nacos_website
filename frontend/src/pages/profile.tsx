@@ -6,7 +6,6 @@ import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { Mail } from "lucide-react";
-import {ProfileFaceSetup} from "../components/ProfileFaceSetup";
 
 export const ProfilePage: React.FC = () => {
   const { user, updateProfile, resendVerificationEmail, isLoading } = useAuth();
@@ -353,8 +352,6 @@ export const ProfilePage: React.FC = () => {
               </div>
             </div>
           )}
-          <ProfileFaceSetup />
-
           {/* Profile completion guidance */}
           {!user.profile_complete && (
             <div className="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">

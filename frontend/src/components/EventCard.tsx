@@ -1,6 +1,7 @@
 // src/components/EventCard.tsx
 
 import { Link } from "react-router-dom";
+import { optimizeImage } from "../lib/cloudinary";
 
 export type EventStatus = "upcoming" | "ongoing" | "completed";
 
@@ -60,7 +61,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
       {event.poster_url ? (
         <div className="relative overflow-hidden aspect-square bg-gray-100">
           <img
-            src={event.poster_url}
+            src={optimizeImage(event.poster_url, 800)}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"

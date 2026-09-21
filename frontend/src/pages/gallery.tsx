@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 import SectionHeader from '../components/SectionHeader'
 import PageHeader from '../components/PageHeader'
 import { useGallery } from '../lib/hooks/useGallery'
+import { optimizeImage } from '../lib/cloudinary'
 import { GallerySkeleton } from '../components/home/Skeletons'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -189,8 +190,10 @@ export default function Gallery({ isHome }: GalleryProps) {
                 onClick={() => setSelectedImage(image)}
               >
                 <img
-                  src={image.resolved_url ?? '/placeholder.jpg'}
+                  src={optimizeImage(image.resolved_url ?? '/placeholder.jpg', 800)}
                   alt={image.alt_text || image.caption}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-auto object-cover group-hover:scale-105 transition duration-500"
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
@@ -253,7 +256,7 @@ export default function Gallery({ isHome }: GalleryProps) {
             >
               <div className="relative">
                 <img
-                  src={selectedImage.resolved_url}
+                  src={optimizeImage(selectedImage.resolved_url, 1600)}
                   alt={selectedImage.alt_text || selectedImage.caption}
                   className="w-full max-h-[500px] object-cover"
                 />

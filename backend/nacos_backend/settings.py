@@ -26,9 +26,14 @@ def _allowed_hosts():
     raw = os.getenv("DJANGO_ALLOWED_HOSTS")
     if raw:
         return [h.strip() for h in raw.split(",") if h.strip()]
+    hosts = ["nacosabuad.org", "www.nacosabuad.org", "api.nacosabuad.org"]
+    # Render sets this automatically to the service's *.onrender.com hostname.
+    render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+    if render_host:
+        hosts.append(render_host)
     if DEBUG:
-        return ["127.0.0.1", "localhost", "nacosabuad.org", "www.nacosabuad.org"]
-    return ["nacosabuad.org", "www.nacosabuad.org"]
+        hosts += ["127.0.0.1", "localhost"]
+    return hosts
 
 
 ALLOWED_HOSTS = _allowed_hosts()
@@ -54,7 +59,6 @@ INSTALLED_APPS = [
     'committees',
     'attendance',
     'dashboard',
-    'face_auth',
     'complaints',
     'assistant',
 
@@ -95,10 +99,6 @@ REST_FRAMEWORK = {
         # Prevents email-bombing a target inbox with reset requests, and
         # caps confirm attempts against a guessed/leaked token.
         'password_reset': '5/hour',
-        # Face recognition runs a heavy TensorFlow inference per request
-        # (the same one that spiked EC2 memory enough to stall the server
-        # — see incident notes). Keep concurrent load low.
-        'face_auth': '5/min',
         'complaint': '10/hour',
         'ai_assistant': '30/hour',
         'resource_submit': '10/hour',
@@ -115,6 +115,7 @@ PASSWORD_RESET_TIMEOUT = 1800
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -147,7 +148,7 @@ WSGI_APPLICATION = 'nacos_backend.wsgi.application'
 #
 # Priority order:
 #   1. DATABASE_URL env var          (production — Heroku / Railway style)
-#   2. POSTGRES_HOST / DB_HOST var   (production — EC2 / ECS discrete vars)
+#   2. POSTGRES_HOST / DB_HOST var   (production — discrete vars)
 #   3. SQLite fallback               (local dev — no env vars needed)
 #
 _database_url = os.getenv("DATABASE_URL")
@@ -254,6 +255,14 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+# collectstatic target; WhiteNoise serves it (Render has no nginx in front).
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Render terminates TLS at its proxy and forwards plain HTTP to gunicorn, so
+# trust its X-Forwarded-Proto header. Without this request.is_secure() is
+# always False (wrong http:// absolute URLs, e.g. in emailed links).
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'

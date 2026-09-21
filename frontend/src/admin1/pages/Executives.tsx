@@ -3,19 +3,23 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
-import { api } from '../../lib/api'
+import { api, cloudinaryAPI } from '../../lib/api'
 import toast from 'react-hot-toast'
+import { formatSession, isValidSession, sortSessionsDesc } from '../../lib/sessions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Executive {
   id: number
   name: string
   title: string
+  session: string
+  level: string
   job_description: string
   email: string
   phone: string
   website: string
   linkedin_url: string
+  photo_link: string
   photo_url: string | null
   display_order: number
   is_active: boolean
@@ -24,6 +28,8 @@ interface Executive {
 interface ExecutiveFormData {
   name: string
   title: string
+  session: string
+  level: string
   job_description: string
   email: string
   phone: string
@@ -31,6 +37,7 @@ interface ExecutiveFormData {
   linkedin_url: string
   display_order: number
   is_active: boolean
+  photo_link: string
   photoFile: File | null
 }
 
@@ -41,23 +48,45 @@ const fetchAllExecutives = (): Promise<Executive[]> =>
   })
 
 const EMPTY_FORM: ExecutiveFormData = {
-  name: '', title: '', job_description: '', email: '', phone: '',
-  website: '', linkedin_url: '', display_order: 0, is_active: true, photoFile: null,
+  name: '', title: '', session: '', level: '', job_description: '', email: '', phone: '',
+  website: '', linkedin_url: '', display_order: 0, is_active: true, photo_link: '', photoFile: null,
 }
 
-const buildFormData = (form: ExecutiveFormData): FormData => {
-  const fd = new FormData()
-  fd.append('name', form.name)
-  fd.append('title', form.title)
-  fd.append('job_description', form.job_description)
-  fd.append('email', form.email)
-  fd.append('phone', form.phone)
-  fd.append('website', form.website)
-  fd.append('linkedin_url', form.linkedin_url)
-  fd.append('display_order', String(form.display_order))
-  fd.append('is_active', String(form.is_active))
-  if (form.photoFile) fd.append('photo', form.photoFile)
-  return fd
+// Photos are uploaded straight to Cloudinary (the same signed flow the project
+// and resource uploads use); the executive then just stores the resulting URL.
+const buildPayload = async (form: ExecutiveFormData) => {
+  let photo_link = form.photo_link
+  if (form.photoFile) {
+    photo_link = (await cloudinaryAPI.upload(form.photoFile)).secure_url
+  }
+  return {
+    name: form.name,
+    title: form.title,
+    session: form.session,
+    level: form.level,
+    job_description: form.job_description,
+    email: form.email,
+    phone: form.phone,
+    website: form.website,
+    linkedin_url: form.linkedin_url,
+    display_order: form.display_order,
+    is_active: form.is_active,
+    photo_link,
+  }
+}
+
+// Pull a readable message out of a DRF error (either {detail} or {field: [msgs]}).
+const apiErrorMessage = (err: any, fallback: string): string => {
+  const data = err?.response?.data
+  if (!data) return err instanceof Error && err.message ? err.message : fallback
+  if (typeof data.detail === 'string') return data.detail
+  const first = Object.entries(data)[0]
+  if (first) {
+    const [field, msgs] = first as [string, unknown]
+    const msg = Array.isArray(msgs) ? msgs[0] : msgs
+    return `${field}: ${String(msg)}`
+  }
+  return fallback
 }
 
 // ─── Three-dot menu ───────────────────────────────────────────────────────────
@@ -135,6 +164,7 @@ const ExecutiveCard: React.FC<ExecutiveCardProps> = ({ executive, onEdit, onDele
       <div className="p-4">
         <h3 className="text-[15px] font-bold text-black">{executive.name}</h3>
         <p className="text-[13px] text-[#1a7a3f] font-medium">{executive.title}</p>
+        {executive.level && <p className="text-[12px] text-gray-500 mt-0.5">{executive.level}</p>}
       </div>
     </div>
   )
@@ -143,21 +173,24 @@ const ExecutiveCard: React.FC<ExecutiveCardProps> = ({ executive, onEdit, onDele
 // ─── Modal ────────────────────────────────────────────────────────────────────
 interface ExecutiveModalProps {
   initial: Executive | null
+  sessions: string[]
+  defaultSession: string
   onSave: (form: ExecutiveFormData) => void
   onClose: () => void
   isSaving: boolean
 }
 
-const ExecutiveModal: React.FC<ExecutiveModalProps> = ({ initial, onSave, onClose, isSaving }) => {
+const ExecutiveModal: React.FC<ExecutiveModalProps> = ({ initial, sessions, defaultSession, onSave, onClose, isSaving }) => {
   const [form, setForm] = useState<ExecutiveFormData>(
     initial
       ? {
-          name: initial.name, title: initial.title, job_description: initial.job_description,
+          name: initial.name, title: initial.title, session: initial.session, level: initial.level,
+          job_description: initial.job_description,
           email: initial.email, phone: initial.phone, website: initial.website,
           linkedin_url: initial.linkedin_url, display_order: initial.display_order,
-          is_active: initial.is_active, photoFile: null,
+          is_active: initial.is_active, photo_link: initial.photo_link, photoFile: null,
         }
-      : EMPTY_FORM
+      : { ...EMPTY_FORM, session: defaultSession }
   )
   const [preview, setPreview] = useState<string | null>(initial?.photo_url ?? null)
 
@@ -174,7 +207,11 @@ const ExecutiveModal: React.FC<ExecutiveModalProps> = ({ initial, onSave, onClos
       toast.error('Name and title are required.')
       return
     }
-    onSave(form)
+    if (!isValidSession(form.session.trim())) {
+      toast.error('Session must look like 26/27 (two consecutive years).')
+      return
+    }
+    onSave({ ...form, session: form.session.trim() })
   }
 
   return (
@@ -208,6 +245,31 @@ const ExecutiveModal: React.FC<ExecutiveModalProps> = ({ initial, onSave, onClos
             <label className="text-xs font-semibold text-gray-500 uppercase">Title *</label>
             <input value={form.title} onChange={e => set('title', e.target.value)}
               placeholder="President, Vice President, ..." className="border p-2 rounded-lg text-sm w-full mt-1" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase">Session *</label>
+              <input
+                list="executive-sessions"
+                value={form.session}
+                onChange={e => set('session', e.target.value)}
+                placeholder="e.g. 27/28"
+                maxLength={5}
+                className="border p-2 rounded-lg text-sm w-full mt-1"
+              />
+              <datalist id="executive-sessions">
+                {sessions.map(sn => <option key={sn} value={sn} />)}
+              </datalist>
+              <p className="text-[11px] text-gray-400 mt-1">
+                Pick an existing session, or type a new one to start a new administration.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase">Level</label>
+              <input value={form.level} onChange={e => set('level', e.target.value)}
+                placeholder="Computer Science 400 Level" className="border p-2 rounded-lg text-sm w-full mt-1" />
+            </div>
           </div>
 
           <div>
@@ -273,11 +335,16 @@ const ExecutiveModal: React.FC<ExecutiveModalProps> = ({ initial, onSave, onClos
 const Executives: React.FC = () => {
   const qc = useQueryClient()
   const [modal, setModal] = useState<'add' | Executive | null>(null)
+  const [sessionFilter, setSessionFilter] = useState<string | null>(null) // null = newest
 
   const { data: executives = [], isLoading, error, refetch } = useQuery<Executive[]>({
     queryKey: ['admin-executives'],
     queryFn: fetchAllExecutives,
   })
+
+  const sessions = sortSessionsDesc([...new Set(executives.map(e => e.session))])
+  const activeSession = sessionFilter && sessions.includes(sessionFilter) ? sessionFilter : (sessions[0] ?? '')
+  const visibleExecutives = executives.filter(e => e.session === activeSession)
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin-executives'] })
@@ -285,17 +352,17 @@ const Executives: React.FC = () => {
   }
 
   const createMutation = useMutation({
-    mutationFn: (form: ExecutiveFormData) =>
-      api.post('/executives/', buildFormData(form), { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
-    onSuccess: () => { invalidate(); setModal(null); toast.success('Executive added!') },
-    onError: (err: any) => toast.error(err?.response?.data?.detail ?? 'Failed to add executive.'),
+    mutationFn: async (form: ExecutiveFormData) =>
+      api.post('/executives/', await buildPayload(form)).then(r => r.data),
+    onSuccess: (created: Executive) => { invalidate(); setModal(null); setSessionFilter(created.session); toast.success('Executive added!') },
+    onError: (err: any) => toast.error(apiErrorMessage(err, 'Failed to add executive.')),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, form }: { id: number; form: ExecutiveFormData }) =>
-      api.patch(`/executives/${id}/`, buildFormData(form), { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
-    onSuccess: () => { invalidate(); setModal(null); toast.success('Executive updated!') },
-    onError: (err: any) => toast.error(err?.response?.data?.detail ?? 'Failed to update executive.'),
+    mutationFn: async ({ id, form }: { id: number; form: ExecutiveFormData }) =>
+      api.patch(`/executives/${id}/`, await buildPayload(form)).then(r => r.data),
+    onSuccess: (updated: Executive) => { invalidate(); setModal(null); setSessionFilter(updated.session); toast.success('Executive updated!') },
+    onError: (err: any) => toast.error(apiErrorMessage(err, 'Failed to update executive.')),
   })
 
   const deleteMutation = useMutation({
@@ -326,7 +393,7 @@ const Executives: React.FC = () => {
           <div>
             <h1 className="text-[28px] font-extrabold text-[#1a7a3f] mb-1">EXECUTIVES</h1>
             <p className="text-sm text-gray-500 max-w-md">
-              Manage NACOS executives — changes reflect on the public executives page immediately.
+              Manage NACOS executives by session — changes reflect on the public executives page immediately. To start a new administration, add an executive with a new session (e.g. 27/28).
             </p>
           </div>
           <button
@@ -360,9 +427,30 @@ const Executives: React.FC = () => {
           </div>
         )}
 
-        {!isLoading && executives.length > 0 && (
+        {!isLoading && sessions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-5">
+            {sessions.map(sn => (
+              <button
+                key={sn}
+                onClick={() => setSessionFilter(sn)}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                  sn === activeSession
+                    ? 'bg-[#1a7a3f] text-white border-[#1a7a3f]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                {formatSession(sn)}
+                <span className="ml-2 opacity-70 font-normal">
+                  {executives.filter(e => e.session === sn).length}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && visibleExecutives.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {executives.map(executive => (
+            {visibleExecutives.map(executive => (
               <ExecutiveCard key={executive.id} executive={executive} onEdit={setModal} onDelete={handleDelete} />
             ))}
           </div>
@@ -370,7 +458,7 @@ const Executives: React.FC = () => {
       </main>
 
       {modal && (
-        <ExecutiveModal initial={editInitial} onSave={handleSave} onClose={() => setModal(null)} isSaving={isSaving} />
+        <ExecutiveModal initial={editInitial} sessions={sessions} defaultSession={activeSession} onSave={handleSave} onClose={() => setModal(null)} isSaving={isSaving} />
       )}
 
       <Footer />

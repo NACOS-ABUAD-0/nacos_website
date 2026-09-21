@@ -22,7 +22,7 @@ const lecturers: Lecturer[] = [
     name: "Professor Bunmi Abiola",
     position: "Head of Department",
     office: "D54 college of Science",
-    image: "/images/lecturers/Hod.png",
+    image: "/images/lecturers/Hod.jpg",
   },
 
   {
@@ -34,19 +34,53 @@ const lecturers: Lecturer[] = [
   },
   {
     id: 3,
-    name: "Mr. Awopetu Felix",
-    position: "Lecturer",
-    office: "Coming soon",
-    image: "/images/lecturers/Mr Awopetu Felix.jpg",
-  },
-  {
-    id: 4,
     name: "Dr. Sayan Oluwafemi",
     position: "Lecturer",
     office: "D24 College of Science",
-    image: "/images/lecturers/Mr Sayan Oluwafemi.jpg", // ⚠️ Convert to .jpg/.png for browser support
+    image: "/images/lecturers/Dr Sayan Oluwafemi.jpg", // ⚠️ Convert to .jpg/.png for browser support
   },
-
+  {
+    id: 4,
+    name: "Dr. Tope-oke",
+    position: "Lecturer",
+    office: "C15 College of Science",
+    image: "/images/lecturers/Dr Tope.jpeg",
+  },
+  {
+    id: 5,
+    name: "Mrs. Babalola Gbemisola",
+    position: "Lecturer",
+    office: "C24 College of Science",
+    image: "",
+  },
+  {
+    id: 6,
+    name: "Dr. Mebawondu Josephine",
+    position: "Lecturer",
+    office: "D23 College of Science",
+    image: "",
+  },
+  {
+    id: 7,
+    name: "Dr. Obamiyi Stephen",
+    position: "Lecturer",
+    office: "D37 Aisle 4 College of Science",
+    image: "",
+  },
+  {
+    id: 8,
+    name: "Dr. Atachin James",
+    position: "Lecturer",
+    office: "D21 College of Science",
+    image: "/images/lecturers/Dr Atachin.jpeg",
+  },
+  {
+    id: 9,
+    name: "Dr. Oluwatoki Tolani",
+    position: "Lecturer",
+    office: "D37 Aisle 5 College of Science",
+    image: "/images/lecturers/Dr Oluwatoki.jpeg",
+  },
 ];
 
 // ── Helpers ────────────────────────────────────────────

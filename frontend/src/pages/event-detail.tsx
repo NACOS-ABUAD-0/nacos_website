@@ -5,6 +5,7 @@ import { useEvent, useMyRegistration, useRegisterForEvent } from "../lib/hooks/u
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
+import { optimizeImage } from "../lib/cloudinary";
 import { EventDetailSkeleton } from "../components/home/Skeletons";
 
 export default function EventDetail() {
@@ -195,7 +196,7 @@ export default function EventDetail() {
         <section className="w-full lg:w-1/2 min-h-[400px] lg:h-auto overflow-hidden bg-gray-100">
           {event.media?.poster ? (
             <img
-              src={event.media.poster}
+              src={optimizeImage(event.media.poster, 1200)}
               className="w-full h-full object-cover"
               alt={event.title}
             />

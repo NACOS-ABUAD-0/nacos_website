@@ -78,9 +78,6 @@ urlpatterns = [
     path("admin/users/<int:pk>/ban/", AdminUserBanView.as_view(), name="admin-user-ban"),
     path("admin/users/<int:pk>/unban/", AdminUserUnbanView.as_view(), name="admin-user-unban"),
 
-    # ── Face Authentication ──────────────────────────────────────────────
-    path("face-auth/", include("face_auth.urls")),
-
     # Push notifications (mobile)
     path("notifications/register-device/", RegisterDeviceView.as_view(), name="register-device"),
 ]

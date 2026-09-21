@@ -149,31 +149,11 @@ const SlideDots: React.FC<{ total: number; current: number; onDotClick: (i: numb
 
 export const Hero: React.FC<HeroProps> = () => {
   const images = [
-    "/heroImages/hero1.jpeg",
-    "/heroImages/hero2.jpeg",
-    "/heroImages/hero3.jpeg",
-    "/heroImages/hero4.jpeg",
-    "/heroImages/hero5.jpeg",
-    "/heroImages/hero6.jpeg",
-    "/heroImages/hero7.jpeg",
     "/heroImages/hero8.jpeg",
-    "/heroImages/hero9.jpeg",
     "/heroImages/hero10.jpeg",
-    "/heroImages/hero11.jpeg",
     "/heroImages/hero12.jpeg",
-    "/heroImages/hero13.jpeg",
     "/heroImages/hero14.jpeg",
-    "/heroImages/hero15.jpeg",
-    "/heroImages/hero16.jpeg",
-    "/heroImages/hero17.jpeg",
-    "/heroImages/hero18.jpeg",
-    "/heroImages/hero19.jpeg",
-    "/heroImages/hero20.jpeg",
-    "/heroImages/hero21.jpeg",
     "/heroImages/hero22.jpeg",
-    "/heroImages/hero23.jpeg",
-    "/heroImages/hero24.jpeg",
-    "/heroImages/hero25.jpeg",
     "/heroImages/hero26.jpeg",
   ];
 

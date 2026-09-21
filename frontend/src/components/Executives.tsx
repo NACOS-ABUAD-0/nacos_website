@@ -7,6 +7,9 @@ import { Footer } from "./Footer";
 import PageHeader from "./PageHeader";
 import { Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAllExecutives } from "../lib/hooks/useExecutives";
+import type { ExecutiveRecord } from "../lib/hooks/useExecutives";
+import { formatSession, sortSessionsDesc } from "../lib/sessions";
 
 type Executive = {
   id: number;
@@ -22,6 +25,16 @@ interface ExecutivesProps {
   isHome: boolean;
 }
 
+const toExecutive = (r: ExecutiveRecord): Executive => ({
+  id: r.id,
+  name: r.name,
+  position: r.title,
+  level: r.level,
+  email: r.email,
+  image: r.photo_url ?? "",
+  session: r.session,
+});
+
 export default function Executives({ isHome }: ExecutivesProps) {
   const location = useLocation();
 
@@ -32,71 +45,47 @@ export default function Executives({ isHome }: ExecutivesProps) {
     }
   }, [location]);
 
-  // CURRENT ADMINISTRATION — 2026/27 session.
-  // Populate this array with the incoming executives' names, roles, and
-  // photos (place photos in /public/images/executives/2026-2027/).
-  const executivesCurrent: Executive[] = [
-    { id: 1, name: "Ifediba Chimdalu", position: "President", level: "Computer Science 400 Level", email: "chimdaluifediba@gmail.com", image: "/images/executives/2026-2027/ifediba.png", session:"26/27" },
-    {id: 2, name : "Apakala AbdulAzeez", position : "Vice President", level : "Computer Science 300 Level", email : "abdulazeezapakala@gmail.com", image : "/images/executives/2026-2027/apakala.jpeg", session:"26/27"},
-    {id: 3, name : "Bayo-Yusuf Ayomikun", position : "General Secretary", level : "Computer Science 400 Level", email : "aj.bayoyusuf@gmail.com", image : "/images/executives/2026-2027/mikun.jpg", session:"26/27"},
-    {id: 4, name : "Dunu Benjamin", position : "Software Director", level : "Computer Science 400 Level", email : "dunuchisom1@gmail.com", image : "/images/executives/2026-2027/benjamin.jpeg", session:"26/27"},
-    {id: 5, name : "", position : "Chief Of Staff", level : "", email : "", image : "", session:"26/27"},
-    {id: 6, name : "Temiloluwa Samuel", position : "Hardware Director", level : "Computer Science 300 Level", email : "samilesanmi@gmail.com", image : "/images/executives/2026-2027/temi.jpeg", session:"26/27"},
-    {id: 7, name : "Afolabi Folafoluwa", position : "Social Director", level : "Computer Science 400 Level", email : "afolabifolafoluwa188@gmail.com", image : "/images/executives/2026-2027/fola.jpeg", session:"26/27"},
-    {id: 8 , name : "Adebayo Blessing", position : "Welfare Director", level : "Computer Science 400 Level", email : "blessingadebayo147@gmail.com", image : "", session:"26/27"},
-    {id:9, name : "Daramola Oluwadamisi", position : "Financial Secretary", level : "Computer Science 400 Level", email : "damisidaramola@gmail.com", image : "/images/executives/2026-2027/damisi.jpeg", session:"26/27"},
-    {id: 10, name : "Temitope-Andero Enoch", position : "Academic Director", level : "Computer Science 400 Level", email : "enochtemitope16@gmail.com", image : "", session:"26/27"},
-    {id: 11, name : "Samuel Ibrahim", position : "Public Relation Officer", level : "Computer Science 300 Level", email : "samueljbro@gmail.com", image : "/images/executives/2026-2027/samuel.png", session:"26/27"},
-    {id: 12, name : "Jimoh Ayomide", position : "Sports Director", level : "Computer Science 300 Level", email : "Jimohayomide655@gmail.com", image : "/images/executives/2026-2027/sodiq.jpeg", session:"26/27"},
-    
-  ];
+  // Executives come from the API (managed in the admin panel). Each one carries
+  // its session; the newest session is the current administration.
+  const { data: records = [], isLoading, isError, refetch } = useAllExecutives();
 
-  // PAST ADMINISTRATION — 2025/26 session (archived, read-only reference).
-  const executivesPast: Executive[] = [
-    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", email: "najeebahbada07@gmail.com", image: "/images/executives/2025-2026/Bada.jpg", session:"25/26" },
-    { id: 2, name: "Amalaha Jelfrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", email: "jelfreyamalaha@gmail.com", image: "/images/executives/2025-2026/jeff2.jpg", session:"25/26" },
-    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", email: "oyekunlevictor73@gmail.com", image: "/images/executives/2025-2026/victor.jpg", session:"25/26" },
-    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", email: "feranmihassa97@gmail.com", image: "/images/executives/2025-2026/hassan.jpg", session:"25/26" },
-    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", email: "chimdaluifediba@gmail.com", image: "/images/executives/2025-2026/ifediba.png", session:"25/26" },
-    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", email: "jamiuabdulazeez689@gmail.com", image: "/images/executives/2025-2026/jamiu.png", session:"25/26" },
-    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", email: "kunmiibitoye91@gmail.com", image: "/images/executives/2025-2026/akinkunmi.png", session:"25/26" },
-    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", email: "developerssholotan@gmail.com", image: "/images/executives/2025-2026/mj.png", session:"25/26" },
-    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", email: "juliustony05@gmail.com", image: "/images/executives/2025-2026/tony.png", session:"25/26" },
-    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", email: "udutachyoluchi@gmail.com", image: "/images/executives/2025-2026/oluhci.png", session:"25/26" },
-    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", email: "adedotunayinde07@gmail.com", image: "/images/executives/2025-2026/dotun.png", session:"25/26" },
-    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", email: "chidiebubeiwuanyanwu859@gmail.com", image: "/images/executives/2025-2026/ebube.png", session:"25/26" },
-  ];
+  const sessions = useMemo(
+    () => sortSessionsDesc([...new Set(records.map((r) => r.session))]),
+    [records]
+  );
+  const currentSession = sessions[0] ?? "";
 
-  // Which session is being viewed on the full executives page.
-  // Defaults to the current (26/27) session; falls back to the past
-  // session if the current one hasn't been populated yet.
-  const [activeSession, setActiveSession] = useState<"current" | "past">(
-    executivesCurrent.length > 0 ? "current" : "past"
+  // null = "follow the newest session"; set once the visitor picks one.
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const activeSession =
+    selectedSession && sessions.includes(selectedSession) ? selectedSession : currentSession;
+
+  const executives = useMemo(
+    () => records.filter((r) => r.session === activeSession).map(toExecutive),
+    [records, activeSession]
   );
 
-  const executives = activeSession === "current" ? executivesCurrent : executivesPast;
-
-  // Homepage carousel always prefers the current administration, falling
-  // back to the past session so the section isn't empty in the meantime.
-  const homeExecutives = executivesCurrent.length > 0 ? executivesCurrent : executivesPast;
+  // Homepage carousel: always the current administration.
+  const homeExecutives = useMemo(
+    () => records.filter((r) => r.session === currentSession).map(toExecutive),
+    [records, currentSession]
+  );
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
-  const [levelFilter, setLevelFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 8;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, roleFilter, levelFilter, activeSession]);
+  }, [search, roleFilter, activeSession]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
   const roles = [...new Set(executives.map(e => e.position))];
-  const levels = [...new Set(executives.map(e => e.session))];
 
   const filteredExecutives = useMemo(() => {
     return executives.filter(e => {
@@ -106,13 +95,17 @@ export default function Executives({ isHome }: ExecutivesProps) {
         e.level.toLowerCase().includes(search.toLowerCase());
 
       const matchesRole = roleFilter ? e.position === roleFilter : true;
-      const matchesLevel = levelFilter ? e.session === levelFilter : true;
 
-      return matchesSearch && matchesRole && matchesLevel;
+      return matchesSearch && matchesRole;
     });
-  }, [search, roleFilter, levelFilter, executives]);
+  }, [search, roleFilter, executives]);
 
   const totalPages = Math.ceil(filteredExecutives.length / itemsPerPage);
+
+  const handleSessionChange = (session: string) => {
+    setSelectedSession(session);
+    setRoleFilter(""); // roles differ between administrations
+  };
 
   const displayData = isHome
     ? filteredExecutives.slice(0, 3) // fallback, but carousel uses all
@@ -134,80 +127,78 @@ export default function Executives({ isHome }: ExecutivesProps) {
         />
       )}
 
-      {/* SESSION TOGGLE */}
-      {!isHome && (
-        <div className="max-w-6xl mx-auto px-4 mt-8 flex flex-col items-center gap-4">
-          <div className="inline-flex rounded-xl border p-1 bg-gray-50">
-            <button
-              onClick={() => setActiveSession("current")}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                activeSession === "current"
-                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              2026/27 Administration (Current)
-            </button>
-            <button
-              onClick={() => setActiveSession("past")}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                activeSession === "past"
-                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              2025/26 Administration (Past)
-            </button>
+      {/* ARCHIVE BANNER */}
+      {!isHome && activeSession !== currentSession && (
+        <div className="max-w-6xl mx-auto px-4 mt-8">
+          <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-center font-bold">
+            You are viewing the {formatSession(activeSession)} administration — archived for reference only.
           </div>
+        </div>
+      )}
 
-          {activeSession === "past" && (
-            <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-center font-bold">
-              You are viewing the 2025/26 Past Administration — archived for reference only.
-            </div>
+      {/* SESSION + SEARCH + FILTER */}
+      {!isHome && sessions.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 mt-6 flex flex-col lg:flex-row gap-4">
+          <select
+            value={activeSession}
+            onChange={(e) => handleSessionChange(e.target.value)}
+            aria-label="Select administration session"
+            className="border rounded-xl px-3 py-2 text-sm font-semibold text-[#006E3A] bg-white"
+          >
+            {sessions.map((session) => (
+              <option key={session} value={session}>
+                {formatSession(session)}
+                {session === currentSession ? " (Current)" : ""}
+              </option>
+            ))}
+          </select>
+
+          {executives.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 border rounded-xl px-3 py-2 w-full">
+                <Search className="w-4 h-4 text-gray-400" />
+                <input
+                  placeholder="Search executives..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full outline-none text-sm"
+                />
+              </div>
+
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="border rounded-xl px-3 py-2 text-sm"
+              >
+                <option value="">All Roles</option>
+                {roles.map(r => <option key={r}>{r}</option>)}
+              </select>
+            </>
           )}
         </div>
       )}
 
-      {/* SEARCH + FILTER */}
-      {!isHome && executives.length > 0 && (
-        <div className="max-w-6xl mx-auto px-4 mt-6 flex flex-col lg:flex-row gap-4">
-          <div className="flex items-center gap-2 border rounded-xl px-3 py-2 w-full">
-            <Search className="w-4 h-4 text-gray-400" />
-            <input
-              placeholder="Search executives..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full outline-none text-sm"
-            />
-          </div>
-
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="border rounded-xl px-3 py-2 text-sm"
-          >
-            <option value="">All Roles</option>
-            {roles.map(r => <option key={r}>{r}</option>)}
-          </select>
-
-          <select
-            value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
-            className="border rounded-xl px-3 py-2 text-sm"
-          >
-            <option value="">Session</option>
-            {levels.map(l => <option key={l}>{l}</option>)}
-          </select>
-        </div>
-      )}
-
       {/* GRID or CAROUSEL */}
-      {isHome ? (
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
+        </div>
+      ) : isError ? (
+        <div className="max-w-2xl mx-auto text-center py-20 px-4">
+          <p className="text-gray-500 text-lg mb-4">We couldn't load the executives right now.</p>
+          <button
+            onClick={() => refetch()}
+            className="bg-[#006E3A] text-white px-6 py-2 rounded-lg"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : isHome ? (
         <ExecutivesCarousel executives={homeExecutives} />
       ) : executives.length === 0 ? (
         <div className="max-w-2xl mx-auto text-center py-20 px-4">
           <p className="text-gray-500 text-lg">
-            Executive profiles for the 2026/27 session are being finalized — check back soon!
+            Executive profiles will be published here soon — check back!
           </p>
         </div>
       ) : (

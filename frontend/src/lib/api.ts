@@ -2,7 +2,7 @@
 
 import axios from "axios";
 
-// ─── URL CONSTRUCTION ────────────────────────────────────────────────────────
+// ─── URL CONSTRUCTION 
 
 export function buildBaseURL(): string {
   const raw = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000")
@@ -13,7 +13,7 @@ export function buildBaseURL(): string {
 
 const BASE_URL = buildBaseURL();
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── HELPERS ─────────
 
 /**
  * Returns true if the JWT access token stored in localStorage is expired
@@ -32,7 +32,7 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
-// ─── AXIOS INSTANCES ──────────────────────────────────────────────────────────
+// ─── AXIOS INSTANCES ──
 
 /**
  * Authenticated instance — attaches JWT and handles silent token refresh.
@@ -53,7 +53,7 @@ export const publicApi = axios.create({
   withCredentials: false,
 });
 
-// ─── REQUEST INTERCEPTOR: attach JWT (api instance only) ─────────────────────
+// ─── REQUEST INTERCEPTOR
 
 api.interceptors.request.use(
   (config) => {
@@ -117,7 +117,7 @@ api.interceptors.response.use(
   }
 );
 
-// ─── ERROR UNWRAPPER ──────────────────────────────────────────────────────────
+// ─── ERROR UNWRAPPER ──
 
 const handleApiError = (error: unknown) => {
   const axiosError = error as { response?: { data?: unknown } };
@@ -125,7 +125,7 @@ const handleApiError = (error: unknown) => {
   throw { detail: "Something went wrong. Please try again." };
 };
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
+// ─── TYPES ────────────
 
 export interface PaginatedResponse<T> {
   count: number;
@@ -234,7 +234,7 @@ export interface CollaborationRequestData {
   updated_at: string;
 }
 
-// ─── AUTH ────────────────────────────────────────────────────────────────────
+// ─── AUTH ────────────
 
 export const authAPI = {
   checkEmail: (email: string) =>
@@ -341,13 +341,13 @@ export const authAPI = {
     }),
 };
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
+// ─── USERS ────────────
 
 export const usersAPI = {
   getCount: () => api.get("/users/count/"),
 };
 
-// ─── STUDENT PROFILE ──────────────────────────────────────────────────────────
+// ─── STUDENT PROFILE ──
 
 export const studentAPI = {
   getProfile: () => api.get<StudentProfileData>("/student/profile/"),
@@ -355,7 +355,7 @@ export const studentAPI = {
     api.patch<StudentProfileData>("/student/profile/", data),
 };
 
-// ─── PROJECTS ────────────────────────────────────────────────────────────────
+// ─── PROJECTS ────────
 
 export const projectsAPI = {
   getProjects: (params?: Record<string, unknown>) =>
@@ -381,7 +381,7 @@ export const projectsAPI = {
   unlikeProject: (id: string | number) => api.post(`/projects/${id}/unlike/`),
 };
 
-// ─── COMMITTEES ───────────────────────────────────────────────────────────────
+// ─── COMMITTEES ───────
 
 export const committeesAPI = {
   getAll: () => api.get<PaginatedResponse<CommitteeData>>("/committees/"),
@@ -395,7 +395,7 @@ export const committeesAPI = {
     api.get<PaginatedResponse<CommitteeApplicationData>>("/committee-applications/my-applications/"),
 };
 
-// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+// ─── NOTIFICATIONS ────
 
 export const notificationsAPI = {
   getAll: () => api.get<PaginatedResponse<NotificationData>>("/notifications/"),
@@ -403,7 +403,7 @@ export const notificationsAPI = {
   deleteNotification: (id: number) => api.delete(`/notifications/${id}/`),
 };
 
-// ─── ADMIN COMMITTEE ──────────────────────────────────────────────────────────
+// ─── ADMIN COMMITTEE ──
 
 export const adminCommitteeAPI = {
   getApplications: () =>
@@ -414,7 +414,7 @@ export const adminCommitteeAPI = {
     api.patch(`/admin/committee-applications/${id}/reject/`, { admin_note }),
 };
 
-// ─── COMPLAINTS ───────────────────────────────────────────────────────────────
+// ─── COMPLAINTS ───────
 
 export const complaintsAPI = {
   submit: (payload: { subject: string; message: string; is_anonymous: boolean }) =>
@@ -423,7 +423,7 @@ export const complaintsAPI = {
     api.get<ComplaintData[]>("/complaints/my-complaints/"),
 };
 
-// ─── ADMIN COMPLAINTS ─────────────────────────────────────────────────────────
+// ─── ADMIN COMPLAINTS ─
 
 export const adminComplaintAPI = {
   getAll: () => api.get<PaginatedResponse<AdminComplaintData>>("/admin/complaints/"),
@@ -431,7 +431,7 @@ export const adminComplaintAPI = {
     api.patch(`/admin/complaints/${id}/update-status/`, { status: statusValue, admin_note }),
 };
 
-// ─── AI ASSISTANT ─────────────────────────────────────────────────────────────
+// ─── AI ASSISTANT ─────
 
 export const assistantAPI = {
   sendMessage: (message: string) =>
@@ -458,7 +458,7 @@ export const adminAttendanceAPI = {
     api.post("/admin/event-registrations/check-in-by-token/", { event: eventId, token }),
 };
 
-// ─── CLASS ATTENDANCE ──────────────────────────────────────────────────────────
+// ─── CLASS ATTENDANCE ──
 
 export const classAttendanceAPI = {
   createSession: (courseCode: string) =>
@@ -470,7 +470,7 @@ export const classAttendanceAPI = {
   scan: (token: string) => api.post("/attendance/scan/", { token }),
 };
 
-// ─── ADMIN USERS ─────────────────────────────────────────────────────────────
+// ─── ADMIN USERS ─────
 
 export const adminUsersAPI = {
   /**
@@ -497,7 +497,7 @@ export const adminUsersAPI = {
   ) => api.delete(`/admin/users/${id}/delete/`, { data: payload }),
 };
 
-// ─── CLOUDINARY ───────────────────────────────────────────────────────────────
+// ─── CLOUDINARY ───────
 
 export const cloudinaryAPI = {
   /**
@@ -582,7 +582,7 @@ export const cloudinaryAPI = {
   },
 };
 
-// ─── COLLABORATION ────────────────────────────────────────────────────────────
+// ─── COLLABORATION ────
 
 export const collaborationAPI = {
   apply: (projectId: number | string, payload: {
@@ -620,13 +620,13 @@ export const collaborationAPI = {
   getMyCollaborations: () => api.get('/projects/my-collaborations/'),
 };
 
-// ─── SKILLS / TAGS ────────────────────────────────────────────────────────────
+// ─── SKILLS / TAGS ────
 
 export const skillsAPI = {
   getSkills: () => api.get("/skilltags/"),
 };
 
-// ─── RESOURCES ────────────────────────────────────────────────────────────────
+// ─── RESOURCES ────────
 
 export const resourcesAPI = {
   getResources: (params?: Record<string, unknown>) =>
@@ -668,7 +668,7 @@ export const adminResourceAPI = {
     api.patch(`/admin/resources/${id}/reject/`, { admin_note }),
 };
 
-// ─── HOMEPAGE ─────────────────────────────────────────────────────────────────
+// ─── HOMEPAGE ─────────
 
 export const homepageAPI = {
   getStats: () => api.get("/admin/stats/"),

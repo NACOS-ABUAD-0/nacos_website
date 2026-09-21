@@ -1,0 +1,212 @@
+[
+  {
+    "session": "26/27",
+    "title": "President",
+    "name": "Ifediba Chimdalu",
+    "level": "Computer Science 400 Level",
+    "email": "chimdaluifediba@gmail.com",
+    "photo": "2026-2027/jayden.jpeg",
+    "display_order": 1
+  },
+  {
+    "session": "26/27",
+    "title": "Vice President",
+    "name": "Apakala AbdulAzeez",
+    "level": "Computer Science 300 Level",
+    "email": "abdulazeezapakala@gmail.com",
+    "photo": "2026-2027/apakala.jpeg",
+    "display_order": 2
+  },
+  {
+    "session": "26/27",
+    "title": "General Secretary",
+    "name": "Bayo-Yusuf Ayomikun",
+    "level": "Computer Science 400 Level",
+    "email": "aj.bayoyusuf@gmail.com",
+    "photo": "2026-2027/mikun.jpg",
+    "display_order": 3
+  },
+  {
+    "session": "26/27",
+    "title": "Software Director",
+    "name": "Dunu Benjamin",
+    "level": "Computer Science 400 Level",
+    "email": "dunuchisom1@gmail.com",
+    "photo": "2026-2027/benjamin.jpeg",
+    "display_order": 4
+  },
+  {
+    "session": "26/27",
+    "title": "Hardware Director",
+    "name": "Temiloluwa Samuel",
+    "level": "Computer Science 300 Level",
+    "email": "samilesanmi@gmail.com",
+    "photo": "2026-2027/temi.jpeg",
+    "display_order": 5
+  },
+  {
+    "session": "26/27",
+    "title": "Social Director",
+    "name": "Afolabi Folafoluwa",
+    "level": "Computer Science 400 Level",
+    "email": "afolabifolafoluwa188@gmail.com",
+    "photo": "2026-2027/fola.jpeg",
+    "display_order": 6
+  },
+  {
+    "session": "26/27",
+    "title": "Welfare Director",
+    "name": "Adebayo Blessing",
+    "level": "Computer Science 400 Level",
+    "email": "blessingadebayo147@gmail.com",
+    "photo": "2026-2027/blessing.png",
+    "display_order": 7
+  },
+  {
+    "session": "26/27",
+    "title": "Financial Secretary",
+    "name": "Daramola Oluwadamisi",
+    "level": "Computer Science 400 Level",
+    "email": "damisidaramola@gmail.com",
+    "photo": "2026-2027/damisi.jpeg",
+    "display_order": 8
+  },
+  {
+    "session": "26/27",
+    "title": "Academic Director",
+    "name": "Temitope-Andero Enoch",
+    "level": "Computer Science 400 Level",
+    "email": "enochtemitope16@gmail.com",
+    "photo": "",
+    "display_order": 9
+  },
+  {
+    "session": "26/27",
+    "title": "Public Relation Officer",
+    "name": "Samuel Ibrahim",
+    "level": "Computer Science 300 Level",
+    "email": "samueljbro@gmail.com",
+    "photo": "2026-2027/samuel.png",
+    "display_order": 10
+  },
+  {
+    "session": "26/27",
+    "title": "Sports Director",
+    "name": "Jimoh Ayomide",
+    "level": "Computer Science 300 Level",
+    "email": "Jimohayomide655@gmail.com",
+    "photo": "2026-2027/sodiq.jpeg",
+    "display_order": 11
+  },
+  {
+    "session": "25/26",
+    "title": "President",
+    "name": "Bada Najeebah Motunrayo",
+    "level": "Computer Science 400 Level",
+    "email": "najeebahbada07@gmail.com",
+    "photo": "2025-2026/Bada.jpg",
+    "display_order": 1
+  },
+
+
+
+  {
+    "session": "25/26",
+    "title": "Vice President",
+    "name": "Amalaha Jelfrey Chigozie",
+    "level": "Computer Science 300 Level",
+    "email": "jelfreyamalaha@gmail.com",
+    "photo": "2025-2026/jeff2.jpg",
+    "display_order": 2
+  },
+  {
+    "session": "25/26",
+    "title": "Chief Of Staff",
+    "name": "Ogunmade  Michael",
+    "level": "Computer Science 400 Level",
+    "email": "ogunmademichael30@gmail.com",
+    "photo": "2025-2026/michael.jpeg",
+    "display_order": 3
+  },
+  {
+    "session": "25/26",
+    "title": "Hardware Director",
+    "name": "Hassan Mukthar Feranmi",
+    "level": "Computer Science 300 Level",
+    "email": "feranmihassa97@gmail.com",
+    "photo": "2025-2026/hassan.jpg",
+    "display_order": 4
+  },
+  {
+    "session": "25/26",
+    "title": "Social Director",
+    "name": "Ifediba Chimdalu",
+    "level": "Computer Science 300 Level",
+    "email": "chimdaluifediba@gmail.com",
+    "photo": "2025-2026/ifediba.png",
+    "display_order": 5
+  },
+  {
+    "session": "25/26",
+    "title": "Software Director",
+    "name": "Abdulazeez Jamiu Oladipupo",
+    "level": "Computer Science 300 Level",
+    "email": "jamiuabdulazeez689@gmail.com",
+    "photo": "2025-2026/jamiu.png",
+    "display_order": 6
+  },
+  {
+    "session": "25/26",
+    "title": "Welfare Director",
+    "name": "Akinkunmi Ibitoye",
+    "level": "Computer Science 300 Level",
+    "email": "kunmiibitoye91@gmail.com",
+    "photo": "2025-2026/akinkunmi.png",
+    "display_order": 7
+  },
+  {
+    "session": "25/26",
+    "title": "General Secretary",
+    "name": "Mojoyinoluwa Sholotan",
+    "level": "Computer Science 400 Level",
+    "email": "developerssholotan@gmail.com",
+    "photo": "2025-2026/mj.png",
+    "display_order": 8
+  },
+  {
+    "session": "25/26",
+    "title": "Academic Director",
+    "name": "Julius Tony Chukwuemeka",
+    "level": "Computer Science 400 Level",
+    "email": "juliustony05@gmail.com",
+    "photo": "2025-2026/tony.png",
+    "display_order": 9
+  },
+  {
+    "session": "25/26",
+    "title": "Assistant General Secretary",
+    "name": "Udotchay Oluchi",
+    "level": "Computer Science 200 Level",
+    "email": "udutachyoluchi@gmail.com",
+    "photo": "2025-2026/oluhci.png",
+    "display_order": 10
+  },
+  {
+    "session": "25/26",
+    "title": "Public Relation Officer",
+    "name": "Ayinde Adedotun",
+    "level": "Computer Science 300 Level",
+    "email": "adedotunayinde07@gmail.com",
+    "photo": "2025-2026/dotun.png",
+    "display_order": 11
+  },
+  {
+    "session": "25/26",
+    "title": "Sports Director",
+    "name": "Iwuanyanwu Godsgift Ebube",
+    "level": "Computer Science 400 Level",
+    "email": "chidiebubeiwuanyanwu859@gmail.com",
+    "photo": "2025-2026/ebube.png",
+    "display_order": 12
+  }
+]

@@ -2,6 +2,7 @@ import { UserStar, Building2, Mail, CalendarRange } from "lucide-react";
 import { motion } from "framer-motion";
 import SpotlightCard from "./reactbits/SpotlightCard";
 import ExpandableCard from "./ExpandableCard";
+import { optimizeImage } from "../lib/cloudinary";
 
 interface ExecCardProps {
   name: string;
@@ -11,6 +12,15 @@ interface ExecCardProps {
   image: string;
   session:string;
 }
+
+const initials = (name: string) =>
+  name
+    .split(" ")
+    .filter((n) => n.length > 1)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
 
 export default function ExecCard({ name, position, level, email, image, session }: ExecCardProps) {
   return (
@@ -27,7 +37,19 @@ export default function ExecCard({ name, position, level, email, image, session 
       spotlightColor="rgba(0, 110, 58, 0.14)"
     >
       <div className="relative h-[260px]">
-        <img src={image} className="w-full h-full object-cover" alt={name} />
+        {image ? (
+          <img
+            src={optimizeImage(image, 600)}
+            className="w-full h-full object-cover"
+            alt={name}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-700 text-white text-5xl font-semibold tracking-tight">
+            {initials(name)}
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
         <div className="absolute bottom-4 left-4 text-white">

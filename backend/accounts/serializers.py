@@ -196,7 +196,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             "is_email_verified",
             "is_staff",
             "role",
-            "face_login_enabled",
         )
         read_only_fields = (
             "id",
@@ -206,7 +205,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             "is_staff",
             "matric_number",
             "role",
-            "face_login_enabled",
         )
 
 
@@ -434,7 +432,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "is_active",
             "is_email_verified",
             "date_joined",
-            "face_login_enabled",
         )
         read_only_fields = fields
 

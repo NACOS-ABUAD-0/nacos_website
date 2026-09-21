@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useApplyCollaboration } from '../lib/hooks/useCollaboration';
 import Navbar from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { optimizeImage } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
 import {
   Heart, MessageCircle, Users, X, Send, Loader2,
@@ -373,8 +374,10 @@ const handleApply = (e: React.FormEvent) => {
                                 }`}
                               >
                                 <img
-                                  src={image}
+                                  src={optimizeImage(image, 1200)}
                                   alt={`${project.title} – Image ${index + 1}`}
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
                                 />
                               </div>
