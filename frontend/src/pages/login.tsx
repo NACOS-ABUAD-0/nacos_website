@@ -4,8 +4,6 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AuthForm } from "../components/AuthForm";
 import { RegisterFlow } from "../components/RegisterFlow";
-import { FaceLogin } from "../components/FaceLogin";                 // ProfileFaceSetup removed — wasn't used here
-import type { FaceLoginResponse } from "../services/faceAuthService"; // ✅ correct path
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth();
@@ -13,26 +11,11 @@ export const LoginPage: React.FC = () => {
   // onto the signup panel instead of the sign-in form.
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
-  const [authMethod, setAuthMethod] = useState<"password" | "face">("password");
   const navigate = useNavigate();
 
   const handleLogin = async (data: any) => {
     await login(data.email, data.password);
     navigate("/dashboard");
-  };
-
-  // ── Face login success ─────────────────────────────────────────────────────
-  // 1. Store tokens under the EXACT keys AuthContext reads ("accessToken" /
-  //    "refreshToken" — camelCase, matching src/lib/api.ts).
-  // 2. Use window.location.href instead of navigate() so the page fully
-  //    reloads. That re-triggers AuthContext's initAuth() useEffect, which
-  //    calls getProfile() with the new token and sets isAuthenticated = true.
-  //    A client-side navigate() stays in the same JS session and initAuth()
-  //    never runs again, leaving the app in a logged-out state.
-  const handleFaceLoginSuccess = (data: FaceLoginResponse) => {
-    localStorage.setItem("accessToken", data.access);    // ✅ matches api.ts interceptor
-    localStorage.setItem("refreshToken", data.refresh);  // ✅ matches api.ts interceptor
-    window.location.href = "/dashboard";                  // ✅ hard reload → initAuth fires
   };
 
   return (
@@ -68,55 +51,20 @@ export const LoginPage: React.FC = () => {
 
               {isLogin ? (
                 <>
-                  {/* Auth method toggle */}
-                  <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-6">
-                    <button
-                      type="button"
-                      onClick={() => setAuthMethod("password")}
-                      className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                        authMethod === "password"
-                          ? "bg-green-600 text-white"
-                          : "bg-white text-gray-600 hover:bg-gray-50"
-                      }`}
+                  <AuthForm
+                    type="login"
+                    onSubmit={handleLogin}
+                    isLoading={isLoading}
+                    onNotRegistered={() => setIsLogin(false)}
+                  />
+                  <div className="mt-4 text-center">
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
                     >
-                      Password
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAuthMethod("face")}
-                      className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                        authMethod === "face"
-                          ? "bg-green-600 text-white"
-                          : "bg-white text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      👁 Face Login
-                    </button>
+                      Forgot password?
+                    </Link>
                   </div>
-
-                  {authMethod === "password" ? (
-                    <>
-                      <AuthForm
-                        type="login"
-                        onSubmit={handleLogin}
-                        isLoading={isLoading}
-                        onNotRegistered={() => setIsLogin(false)}
-                      />
-                      <div className="mt-4 text-center">
-                        <Link
-                          to="/forgot-password"
-                          className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
-                        >
-                          Forgot password?
-                        </Link>
-                      </div>
-                    </>
-                  ) : (
-                    <FaceLogin
-                      onSuccess={handleFaceLoginSuccess}
-                      onSwitchToPassword={() => setAuthMethod("password")}
-                    />
-                  )}
                 </>
               ) : (
                 <RegisterFlow onRegistered={() => setIsLogin(true)} />
