@@ -11,6 +11,10 @@
 #
 # Idempotent: an executive is skipped if one with the same session, title and
 # name already exists, so it never overwrites edits made in the admin panel.
+# The one exception is photo_link: the seed owns blank links and site-path links
+# (/images/executives/...), so a photo added or corrected in seed_data.json
+# reaches already-seeded rows. A photo uploaded through the admin panel is an
+# https Cloudinary URL and is never touched.
 
 import json
 from pathlib import Path
@@ -31,10 +35,11 @@ class Command(BaseCommand):
             raise CommandError(f'Seed file not found: {SEED_FILE}')
 
         entries = json.loads(SEED_FILE.read_text(encoding='utf-8'))
-        created = skipped = 0
+        created = skipped = filled = 0
 
         for entry in entries:
-            _, was_created = Executive.objects.get_or_create(
+            photo_link = f"{PHOTO_BASE}{entry['photo']}" if entry.get('photo') else ''
+            executive, was_created = Executive.objects.get_or_create(
                 session=entry['session'],
                 title=entry['title'],
                 name=entry['name'],
@@ -42,18 +47,25 @@ class Command(BaseCommand):
                     'level': entry['level'],
                     'email': entry['email'],
                     'display_order': entry['display_order'],
-                    'photo_link': f"{PHOTO_BASE}{entry['photo']}" if entry.get('photo') else '',
+                    'photo_link': photo_link,
                 },
             )
             label = f"{entry['session']} {entry['title']} — {entry['name']}"
             if was_created:
                 created += 1
                 self.stdout.write(self.style.SUCCESS(f'  +  {label}'))
+            elif executive.photo_link != photo_link and (
+                not executive.photo_link or executive.photo_link.startswith(PHOTO_BASE)
+            ):
+                executive.photo_link = photo_link
+                executive.save(update_fields=['photo_link', 'updated_at'])
+                filled += 1
+                self.stdout.write(self.style.SUCCESS(f'  ~  Updated photo: {label}'))
             else:
                 skipped += 1
                 self.stdout.write(f'  =  Already exists: {label}')
 
         self.stdout.write('')
         self.stdout.write(self.style.MIGRATE_HEADING(
-            f'Done — {created} created, {skipped} already existed.'
+            f'Done — {created} created, {filled} photos updated, {skipped} already existed.'
         ))
