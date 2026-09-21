@@ -34,7 +34,7 @@ const lecturers: Lecturer[] = [
   },
   {
     id: 3,
-    name: "Dr. Sayan Oluwafemi",
+    name: "Dr. Sanya Oluwafemi",
     position: "Lecturer",
     office: "D24 College of Science",
     image: "/images/lecturers/Dr Sayan Oluwafemi.jpg", // ⚠️ Convert to .jpg/.png for browser support
@@ -51,7 +51,7 @@ const lecturers: Lecturer[] = [
     name: "Mrs. Babalola Gbemisola",
     position: "Lecturer",
     office: "C24 College of Science",
-    image: "",
+    image: "/images/lecturers/babalola.jpeg",
   },
   {
     id: 6,
@@ -65,7 +65,7 @@ const lecturers: Lecturer[] = [
     name: "Dr. Obamiyi Stephen",
     position: "Lecturer",
     office: "D37 Aisle 4 College of Science",
-    image: "",
+    image: "/images/lecturers/stephen.jpeg",
   },
   {
     id: 8,

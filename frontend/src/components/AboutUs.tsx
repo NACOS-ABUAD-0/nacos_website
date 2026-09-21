@@ -35,7 +35,7 @@ export default function About() {
   }, []);
 
   const images = [
-      "/images/nacos-abuad-logo.PNG", "/images/Hod.jpg", "/images/executives/2025-2026/Bada.jpg",
+      "/images/nacos-abuad-logo.PNG", "/images/Hod.jpg", "/images/executives/2026-2027/jayden.jpeg",
       ];
 
   const logoSrc = images[logoIndex];
