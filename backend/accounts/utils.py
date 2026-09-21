@@ -7,6 +7,16 @@ from django.conf import settings
 from .models import User
 
 
+def email_is_configured() -> bool:
+    """True if outgoing email can actually be sent (Resend key or SMTP credentials)."""
+    if getattr(settings, "RESEND_API_KEY", ""):
+        return True
+    return bool(
+        getattr(settings, "EMAIL_HOST_USER", "")
+        and getattr(settings, "EMAIL_HOST_PASSWORD", "")
+    )
+
+
 def generate_verification_token(user):
     """Generate a verification token for the user"""
     return default_token_generator.make_token(user)
@@ -35,8 +45,8 @@ def _send_email(subject: str, message: str, html_message: str, recipient: str) -
 
 def send_verification_email(user, request=None):
     """Send email verification email to user"""
-    # If SMTP creds aren't configured (common on test deploys), skip sending to avoid timeouts.
-    if not getattr(settings, "EMAIL_HOST_USER", None) or not getattr(settings, "EMAIL_HOST_PASSWORD", None):
+    # If no email provider is configured (common on test deploys), skip sending.
+    if not email_is_configured():
         return False
 
     token = generate_verification_token(user)

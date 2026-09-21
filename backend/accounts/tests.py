@@ -563,3 +563,78 @@ class PushNotificationSignalTest(TestCase):
         DeviceToken.objects.create(user=self.user, token='ExponentPushToken[xyz]', platform='ios')
         # Should not raise even though the push call fails internally.
         Notification.objects.create(user=self.user, title='Hello', message='World')
+
+
+class EmailConfigurationTest(TestCase):
+    """Outgoing email goes through Resend when RESEND_API_KEY is set."""
+
+    NO_EMAIL = dict(RESEND_API_KEY='', EMAIL_HOST_USER='', EMAIL_HOST_PASSWORD='')
+    RESEND = dict(
+        RESEND_API_KEY='re_test_key',
+        EMAIL_BACKEND='anymail.backends.resend.EmailBackend',
+        ANYMAIL={'RESEND_API_KEY': 're_test_key', 'REQUESTS_TIMEOUT': (5, 10)},
+        DEFAULT_FROM_EMAIL='NACOS ABUAD <noreply@nacosabuad.org>',
+    )
+
+    def _resend_response(self):
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.status_code = 200
+        response.content = b'{"id": "msg_123"}'
+        response.json.return_value = {'id': 'msg_123'}
+        return response
+
+    def test_not_configured_without_resend_or_smtp(self):
+        from .utils import email_is_configured
+        with override_settings(**self.NO_EMAIL):
+            self.assertFalse(email_is_configured())
+
+    def test_configured_with_resend_key_alone(self):
+        from .utils import email_is_configured
+        with override_settings(**{**self.NO_EMAIL, 'RESEND_API_KEY': 're_test_key'}):
+            self.assertTrue(email_is_configured())
+
+    def test_configured_with_smtp_credentials_only(self):
+        from .utils import email_is_configured
+        with override_settings(**{**self.NO_EMAIL, 'EMAIL_HOST_USER': 'a@b.c', 'EMAIL_HOST_PASSWORD': 'pw'}):
+            self.assertTrue(email_is_configured())
+
+    def test_verification_email_is_sent_through_the_resend_api(self):
+        from .utils import send_verification_email
+        user = User.objects.create_user(
+            email='student@example.com', full_name='Ada Student', password='pass12345',
+        )
+        with override_settings(**self.RESEND), \
+                patch('requests.Session.request', return_value=self._resend_response()) as http:
+            sent = send_verification_email(user)
+
+        self.assertTrue(sent)
+        self.assertEqual(http.call_count, 1)
+        _, kwargs = http.call_args
+        self.assertEqual(kwargs['method'].upper(), 'POST')
+        self.assertEqual(kwargs['url'], 'https://api.resend.com/emails')
+        self.assertEqual(kwargs['headers']['Authorization'], 'Bearer re_test_key')
+        self.assertEqual(kwargs['timeout'], (5, 10))
+
+        payload = kwargs.get('json') or __import__('json').loads(kwargs['data'])
+        self.assertEqual(payload['from'], 'NACOS ABUAD <noreply@nacosabuad.org>')
+        self.assertEqual(payload['to'], ['student@example.com'])
+        self.assertEqual(payload['subject'], 'Verify your NACOS ABUAD account')
+        self.assertIn('/verify-email/', payload['html'])
+
+    def test_resend_api_failure_is_reported_not_raised(self):
+        # A rejected send (e.g. sender domain not verified) must not crash
+        # signup: send_verification_email reports False.
+        from unittest.mock import MagicMock
+        from .utils import send_verification_email
+        user = User.objects.create_user(
+            email='student2@example.com', full_name='Bola Student', password='pass12345',
+        )
+        rejected = MagicMock()
+        rejected.status_code = 403
+        rejected.content = b'{"message": "The nacosabuad.org domain is not verified."}'
+        rejected.text = rejected.content.decode()
+        rejected.json.return_value = {'message': 'The nacosabuad.org domain is not verified.'}
+        with override_settings(**self.RESEND), \
+                patch('requests.Session.request', return_value=rejected):
+            self.assertFalse(send_verification_email(user))

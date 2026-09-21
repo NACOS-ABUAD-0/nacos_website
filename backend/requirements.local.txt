@@ -8,6 +8,7 @@ click==8.3.3
 cloudinary==1.44.2
 colorama==0.4.6
 Django==5.2.4
+django-anymail==15.2
 django-cors-headers==4.7.0
 django-cloudinary-storage==0.3.0
 django-filter==25.1

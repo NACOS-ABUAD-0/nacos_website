@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'anymail',
 ]
 
 #  DRF
@@ -268,7 +269,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
 
 # Email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Production sends through Resend's HTTPS API: cloud hosts such as Render
+# restrict outbound SMTP, and a blocked SMTP port hangs requests. With no
+# RESEND_API_KEY it falls back to the Gmail SMTP settings below (local/dev).
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_BACKEND = (
+    "anymail.backends.resend.EmailBackend"
+    if RESEND_API_KEY
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+ANYMAIL = {
+    "RESEND_API_KEY": RESEND_API_KEY,
+    # (connect, read) seconds. Anymail's default is 30s, the same as gunicorn's
+    # worker timeout, so keep it well below that.
+    "REQUESTS_TIMEOUT": (5, 10),
+}
+
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
@@ -278,7 +294,13 @@ EMAIL_USE_TLS = False
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = 'nacosabuad1@gmail.com'
+# Resend only sends from a domain verified in the Resend dashboard, so a
+# @gmail.com sender can't be used with it.
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL") or (
+    "NACOS ABUAD <noreply@nacosabuad.org>"
+    if RESEND_API_KEY
+    else "nacosabuad1@gmail.com"
+)
 
 # Unhandled server errors (500s) get emailed here via Django's built-in
 # AdminEmailHandler — see LOGGING below. Comma-separated in the env var,
@@ -290,6 +312,9 @@ MANAGERS = ADMINS
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 print("=" * 50)
+print("EMAIL_BACKEND:", EMAIL_BACKEND)
+print("RESEND_API_KEY EXISTS:", bool(RESEND_API_KEY))
+print("DEFAULT_FROM_EMAIL:", DEFAULT_FROM_EMAIL)
 print("EMAIL_HOST:", EMAIL_HOST)
 print("EMAIL_PORT:", EMAIL_PORT)
 print("EMAIL_USE_TLS:", EMAIL_USE_TLS)

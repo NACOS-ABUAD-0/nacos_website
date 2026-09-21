@@ -42,7 +42,7 @@ from .serializers import (
     ChangePasswordSerializer,
     DeviceTokenSerializer,
 )
-from .utils import send_verification_email, verify_email_token
+from .utils import email_is_configured, send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
 from .student_service import verify_student_identity
 
@@ -108,10 +108,7 @@ class RegisterView(APIView):
             user = serializer.save()
 
             # Verification email is best-effort and must never delay signup.
-            email_configured = bool(
-                getattr(settings, "EMAIL_HOST_USER", "")
-                and getattr(settings, "EMAIL_HOST_PASSWORD", "")
-            )
+            email_configured = email_is_configured()
             if email_configured:
                 threading.Thread(
                     target=_send_verification_email_in_background,
