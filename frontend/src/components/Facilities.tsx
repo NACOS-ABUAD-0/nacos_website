@@ -1,12 +1,21 @@
 import FaciImage1 from "../assets/hardware lab.jpg";
 import FaciImage2 from "../assets/software lab.jpg"
 import { Building2 } from "lucide-react";
+import TrueFocus from "./reactbits/TrueFocus";
 
 export default function Facilities() {
   return (
     <section className="mt-36 px-5 lg:px-24 mb-16">
-      <h1 className="text-center font-bold text-xl md:text-[25px] leading-none tracking-normal text-[#006E3A] mb-5">
-        NACOS ABUAD
+      <h1 className="mb-5" aria-label="NACOS ABUAD">
+        <TrueFocus
+          sentence="NACOS ABUAD"
+          blurAmount={3}
+          borderColor="#006E3A"
+          animationDuration={0.6}
+          pauseBetweenAnimations={1.2}
+          className="gap-3"
+          wordClassName="font-bold text-xl md:text-[25px] leading-none tracking-normal text-[#006E3A] px-1"
+        />
       </h1>
       <h1 className="font-bold text-2xl md:text-3xl leading-none text-center mb-5">
         Our Facilities

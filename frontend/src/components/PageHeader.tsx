@@ -1,3 +1,5 @@
+import BlurText from "./reactbits/BlurText";
+
 interface PageHeaderProps {
   title: string;
   subtitle: string;
@@ -7,9 +9,14 @@ export default function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
     <section className="w-full flex justify-center">
       <div className="flex justify-center flex-col mt-10 max-w-[718px] items-center gap-5">
-        <h1 className="font-bold text-3xl md:text-4xl lg:text-[45px] leading-none tracking-normal text-[#006E3A]">
-          {title}
-        </h1>
+        <BlurText
+          as="h1"
+          text={title}
+          delay={90}
+          animateBy="words"
+          direction="top"
+          className="justify-center font-bold text-3xl md:text-4xl lg:text-[45px] leading-none tracking-normal text-[#006E3A]"
+        />
         <p className="font-normal text-xl lg:text-[25px] leading-none tracking-normal text-center text-[#00000080] mb-5">
           {subtitle}
         </p>

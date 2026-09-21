@@ -8,8 +8,12 @@ import {
   useTransform,
   useSpring,
   easeInOut,
-  cubicBezier
+  cubicBezier,
+  useReducedMotion,
+  AnimatePresence,
 } from "framer-motion";
+import Particles from "../reactbits/Particles";
+import SplitFlapText from "../reactbits/SplitFlapText";
 
 // ─── Define HeroProps type ────────────────────────────────────────────────────
 
@@ -34,6 +38,30 @@ const slideTextVariants = {
     transition: { duration: 0.8, ease: cubicBezier(0.22, 1, 0.36, 1), delay: d },
   }),
   exit: { opacity: 0, y: -20, filter: "blur(6px)", transition: { duration: 0.4 } },
+};
+
+// Directional "curtain" wipe: the incoming photo is revealed by a clip-path that
+// sweeps across the screen while the outgoing photo slides back a little
+// (parallax) and dims. `custom` is the direction: 1 = next, -1 = previous.
+const SLIDE_EASE = cubicBezier(0.77, 0, 0.175, 1);
+const slideVariants = {
+  enter: (dir: number) => ({
+    clipPath: dir > 0 ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)",
+    zIndex: 2,
+  }),
+  center: {
+    clipPath: "inset(0 0 0 0%)",
+    x: "0%",
+    opacity: 1,
+    zIndex: 2,
+    transition: { duration: 1.15, ease: SLIDE_EASE },
+  },
+  exit: (dir: number) => ({
+    x: dir > 0 ? "-14%" : "14%",
+    opacity: 0.5,
+    zIndex: 1,
+    transition: { duration: 1.15, ease: SLIDE_EASE },
+  }),
 };
 
 const statVariant = {
@@ -150,7 +178,17 @@ export const Hero: React.FC<HeroProps> = () => {
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [mounted, setMounted] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [isSmall, setIsSmall] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsSmall(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // Subtle mouse parallax on the content overlay
   const mouseX = useMotionValue(0);
@@ -164,15 +202,34 @@ export const Hero: React.FC<HeroProps> = () => {
     setMounted(true);
   }, []);
 
+  // Auto-advance. Keyed on currentIndex so any manual navigation restarts the timer.
   useEffect(() => {
-    const interval = setInterval(() => {
+    const timeout = setTimeout(() => {
+      setDirection(1);
       setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
     }, 5000);
-    return () => clearInterval(interval);
-  }, [images.length]);
+    return () => clearTimeout(timeout);
+  }, [currentIndex, images.length]);
 
-  const nextSlide = () => setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  // Only the current photo is mounted, so warm the next one in the browser
+  // cache to keep the wipe from revealing a half-loaded image.
+  useEffect(() => {
+    const next = new Image();
+    next.src = images[(currentIndex + 1) % images.length];
+  }, [currentIndex, images]);
+
+  const nextSlide = () => {
+    setDirection(1);
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+  const prevSlide = () => {
+    setDirection(-1);
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+  const goToSlide = (i: number) => {
+    setDirection(i >= currentIndex ? 1 : -1);
+    setCurrentIndex(i);
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -192,21 +249,26 @@ export const Hero: React.FC<HeroProps> = () => {
       onMouseLeave={handleMouseLeave}
     >
       {/* ── Background slides ─────────────────────────────────────────── */}
-      {images.map((img, index) => (
+      <AnimatePresence initial={false} custom={direction}>
         <motion.div
-          key={index}
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${img})` }}
-          animate={{
-            opacity: index === currentIndex ? 1 : 0,
-            scale: index === currentIndex ? 1.04 : 1,
-          }}
-          transition={{
-            opacity: { duration: 1.1, ease: easeInOut },
-            scale: { duration: 6, ease: "linear" },
-          }}
-        />
-      ))}
+          key={currentIndex}
+          className="absolute inset-0 overflow-hidden"
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+        >
+          {/* Slow Ken Burns zoom on the photo itself */}
+          <motion.div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${images[currentIndex]})` }}
+            initial={{ scale: 1 }}
+            animate={{ scale: 1.08 }}
+            transition={{ duration: 7, ease: "linear" }}
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* ── Dark overlay with radial vignette ────────────────────────── */}
       <div className="absolute inset-0 bg-black/55 z-10" />
@@ -218,6 +280,23 @@ export const Hero: React.FC<HeroProps> = () => {
         }}
       />
 
+      {/* ── Floating particles (decorative, behind the content) ──────── */}
+      {!reduceMotion && (
+        <div className="absolute inset-0 z-20 pointer-events-none" aria-hidden>
+          <Particles
+            particleCount={140}
+            particleSpread={10}
+            speed={0.08}
+            particleColors={["#ffffff", "#4ade80", "#006E3A"]}
+            alphaParticles
+            particleBaseSize={90}
+            sizeRandomness={1}
+            cameraDistance={22}
+            pixelRatio={1}
+          />
+        </div>
+      )}
+
       {/* ── Content overlay ───────────────────────────────────────────── */}
       <motion.div
         className="absolute inset-0 flex flex-col justify-center items-center px-4 sm:px-6 py-16 text-white z-30"
@@ -225,6 +304,31 @@ export const Hero: React.FC<HeroProps> = () => {
       >
         {/* Hero text */}
         <div className="text-center mb-10 md:mb-16 max-w-3xl">
+          {/* Rotating split-flap keyword board */}
+          <motion.div
+            className="flex justify-center mb-5 md:mb-7"
+            variants={slideTextVariants}
+            custom={0.05}
+            initial="hidden"
+            animate={mounted ? "visible" : "hidden"}
+            aria-label="NACOS ABUAD: computing, innovation, community, code"
+          >
+            <SplitFlapText
+              aria-hidden
+              words={["COMPUTING", "INNOVATION", "COMMUNITY", "CODE", "CREATIVITY"]}
+              charset="alpha"
+              padTo={10}
+              fontSize={isSmall ? 20 : 30}
+              gap={isSmall ? 4 : 6}
+              tileColor="#006E3A"
+              textColor="#ffffff"
+              tileRadius={6}
+              cycleDelay={2800}
+              flipsPerChar={6}
+              stagger={0.05}
+            />
+          </motion.div>
+
           <motion.h2
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 md:mb-6 leading-tight tracking-tight"
             variants={slideTextVariants}
@@ -300,7 +404,7 @@ export const Hero: React.FC<HeroProps> = () => {
       <SlideDots
         total={images.length}
         current={currentIndex}
-        onDotClick={setCurrentIndex}
+        onDotClick={goToSlide}
       />
 
       {/* ── Previous button ───────────────────────────────────────────── */}

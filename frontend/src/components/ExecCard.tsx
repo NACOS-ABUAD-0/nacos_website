@@ -1,20 +1,30 @@
-import { UserStar, Building2, Phone, CalendarRange } from "lucide-react";
+import { UserStar, Building2, Mail, CalendarRange } from "lucide-react";
 import { motion } from "framer-motion";
+import SpotlightCard from "./reactbits/SpotlightCard";
+import ExpandableCard from "./ExpandableCard";
 
 interface ExecCardProps {
   name: string;
   position: string;
   level: string;
-  bio: string;
+  email: string;
   image: string;
   session:string;
 }
 
-export default function ExecCard({ name, position, level, bio, image, session }: ExecCardProps) {
+export default function ExecCard({ name, position, level, email, image, session }: ExecCardProps) {
   return (
     <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -6 }}
-      className="rounded-2xl overflow-hidden bg-white border shadow-sm hover:shadow-xl transition"
+    >
+    <ExpandableCard label={name}>
+    <SpotlightCard
+      className="rounded-2xl bg-white border shadow-sm hover:shadow-xl transition"
+      spotlightColor="rgba(0, 110, 58, 0.14)"
     >
       <div className="relative h-[260px]">
         <img src={image} className="w-full h-full object-cover" alt={name} />
@@ -38,14 +48,16 @@ export default function ExecCard({ name, position, level, bio, image, session }:
         </div>
 
         <div className="flex items-center gap-2 font-medium">
-          <Phone className="w-4 h-4 text-[#006E3A]" />
-          {bio}
+          <Mail className="w-4 h-4 text-[#006E3A]" />
+          {email}
         </div>
         <div className="flex items-center gap-2 font-medium">
           <CalendarRange className="w-4 h-4 text-[#006E3A]" />
           {session}
         </div>
       </div>
+    </SpotlightCard>
+    </ExpandableCard>
     </motion.div>
   );
 }

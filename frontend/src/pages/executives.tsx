@@ -13,7 +13,7 @@ interface ExecutiveRecord {
   id: number;
   name: string;
   title: string;
-  job_description: string;
+  email: string;
   photo_url: string | null;
   display_order: number;
 }
@@ -23,7 +23,7 @@ type Executive = {
   name: string;
   position: string;
   level: string;
-  bio: string;
+  email: string;
   image: string;
   session: string;
 };
@@ -44,7 +44,7 @@ const fetchExecutives = async (): Promise<Executive[]> => {
       name: r.name,
       position: r.title,
       level: "",
-      bio: r.job_description,
+      email: r.email,
       image: r.photo_url ?? "",
       session: "",
     }));

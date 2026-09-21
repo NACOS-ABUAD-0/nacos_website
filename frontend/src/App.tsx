@@ -5,7 +5,9 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
+import { motion, MotionConfig } from "framer-motion";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -13,6 +15,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import RequireAdmin from "./components/RequireAdmin";
 import RequireSuperAdmin from "./components/RequireSuperAdmin";
+import ClickSpark from "./components/reactbits/ClickSpark";
+import ScrollProgress from "./components/ScrollProgress";
 
 // ── Page imports ───────────────────────────────────────────────────────────────
 import { LoginPage } from "./pages/login";
@@ -114,8 +118,21 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
+// Fades/slides each page in on navigation. Keyed by the first path segment so
+// moving between sibling routes (e.g. /projects/1 -> /projects/2) or changing
+// query strings doesn't re-run the entrance. Enter-only: no exit animation, so
+// route changes are never delayed.
 function AppRoutes() {
+  const { pathname } = useLocation();
+  const section = pathname.split("/")[1] ?? "";
+
   return (
+    <motion.div
+      key={section}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+    >
     <Routes>
       {/* ── Public ───────────────────────────────────────────────────── */}
       <Route path="/" element={<Homepage />} />
@@ -451,6 +468,7 @@ function AppRoutes() {
       {/* ── Catch-all ────────────────────────────────────────────────── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </motion.div>
   );
 }
 
@@ -458,18 +476,22 @@ function AppRoutes() {
 
 function App() {
   return (
+    <MotionConfig reducedMotion="user">
     <ThemeProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <Router>
             <div className="App">
+              <ScrollProgress />
               <AppRoutes />
               <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+              <ClickSpark sparkColor="#006E3A" sparkSize={9} sparkRadius={16} sparkCount={8} duration={450} />
             </div>
           </Router>
         </QueryClientProvider>
       </AuthProvider>
     </ThemeProvider>
+    </MotionConfig>
   );
 }
 

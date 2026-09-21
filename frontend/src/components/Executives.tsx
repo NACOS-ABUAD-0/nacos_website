@@ -13,7 +13,7 @@ type Executive = {
   name: string;
   position: string;
   level: string;
-  bio: string;
+  email: string;
   image: string;
   session: string;
 };
@@ -32,20 +32,53 @@ export default function Executives({ isHome }: ExecutivesProps) {
     }
   }, [location]);
 
-  const executives: Executive[] = [
-    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", bio: "najeebahbada07@gmail.com", image: "/images/Bada.jpg", session:"25/26" },
-    { id: 2, name: "Amalaha Jelfrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", bio: "jelfreyamalaha@gmail.com", image: "/images/jeff2.jpg", session:"25/26" },
-    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", bio: "oyekunlevictor73@gmail.com", image: "/images/victor.jpg", session:"25/26" },
-    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", bio: "feranmihassa97@gmail.com", image: "/images/hassan.jpg", session:"25/26" },
-    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", bio: "chimdaluifediba@gmail.com", image: "/images/ifediba.png", session:"25/26" },
-    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", bio: "jamiuabdulazeez689@gmail.com", image: "/images/jamiu.png", session:"25/26" },
-    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", bio: "kunmiibitoye91@gmail.com", image: "/images/akinkunmi.png", session:"25/26" },
-    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", bio: "developerssholotan@gmail.com", image: "/images/mj.png", session:"25/26" },
-    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", bio: "juliustony05@gmail.com", image: "/images/tony.png", session:"25/26" },
-    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", bio: "udutachyoluchi@gmail.com", image: "/images/oluhci.png", session:"25/26" },
-    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", bio: "adedotunayinde07@gmail.com", image: "/images/dotun.png", session:"25/26" },
-    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", bio: "chidiebubeiwuanyanwu859@gmail.com", image: "/images/ebube.png", session:"25/26" },
+  // CURRENT ADMINISTRATION — 2026/27 session.
+  // Populate this array with the incoming executives' names, roles, and
+  // photos (place photos in /public/images/executives/2026-2027/).
+  const executivesCurrent: Executive[] = [
+    { id: 1, name: "Ifediba Chimdalu", position: "President", level: "Computer Science 400 Level", email: "chimdaluifediba@gmail.com", image: "/images/executives/2026-2027/ifediba.png", session:"26/27" },
+    {id: 2, name : "Apakala AbdulAzeez", position : "Vice President", level : "Computer Science 300 Level", email : "abdulazeezapakala@gmail.com", image : "/images/executives/2026-2027/apakala.jpeg", session:"26/27"},
+    {id: 3, name : "Bayo-Yusuf Ayomikun", position : "General Secretary", level : "Computer Science 400 Level", email : "aj.bayoyusuf@gmail.com", image : "/images/executives/2026-2027/mikun.jpg", session:"26/27"},
+    {id: 4, name : "Dunu Benjamin", position : "Software Director", level : "Computer Science 400 Level", email : "dunuchisom1@gmail.com", image : "/images/executives/2026-2027/benjamin.jpeg", session:"26/27"},
+    {id: 5, name : "", position : "Chief Of Staff", level : "", email : "", image : "", session:"26/27"},
+    {id: 6, name : "Temiloluwa Samuel", position : "Hardware Director", level : "Computer Science 300 Level", email : "samilesanmi@gmail.com", image : "/images/executives/2026-2027/temi.jpeg", session:"26/27"},
+    {id: 7, name : "Afolabi Folafoluwa", position : "Social Director", level : "Computer Science 400 Level", email : "afolabifolafoluwa188@gmail.com", image : "/images/executives/2026-2027/fola.jpeg", session:"26/27"},
+    {id: 8 , name : "Adebayo Blessing", position : "Welfare Director", level : "Computer Science 400 Level", email : "blessingadebayo147@gmail.com", image : "", session:"26/27"},
+    {id:9, name : "Daramola Oluwadamisi", position : "Financial Secretary", level : "Computer Science 400 Level", email : "damisidaramola@gmail.com", image : "/images/executives/2026-2027/damisi.jpeg", session:"26/27"},
+    {id: 10, name : "Temitope-Andero Enoch", position : "Academic Director", level : "Computer Science 400 Level", email : "enochtemitope16@gmail.com", image : "", session:"26/27"},
+    {id: 11, name : "Samuel Ibrahim", position : "Public Relation Officer", level : "Computer Science 300 Level", email : "samueljbro@gmail.com", image : "/images/executives/2026-2027/samuel.png", session:"26/27"},
+    {id: 12, name : "Jimoh Ayomide", position : "Sports Director", level : "Computer Science 300 Level", email : "Jimohayomide655@gmail.com", image : "/images/executives/2026-2027/sodiq.jpeg", session:"26/27"},
+    
   ];
+
+  // PAST ADMINISTRATION — 2025/26 session (archived, read-only reference).
+  const executivesPast: Executive[] = [
+    { id: 1, name: "Bada Najeebah Motunrayo", position: "President", level: "Computer Science 400 Level", email: "najeebahbada07@gmail.com", image: "/images/executives/2025-2026/Bada.jpg", session:"25/26" },
+    { id: 2, name: "Amalaha Jelfrey Chigozie", position: "Vice President", level: "Computer Science 300 Level", email: "jelfreyamalaha@gmail.com", image: "/images/executives/2025-2026/jeff2.jpg", session:"25/26" },
+    { id: 3, name: "Oyekunle Olaoluwa Oluwanifemi", position: "Chief Of Staff", level: "Computer Science 400 Level", email: "oyekunlevictor73@gmail.com", image: "/images/executives/2025-2026/victor.jpg", session:"25/26" },
+    { id: 4, name: "Hassan Mukthar Feranmi", position: "Hardware Director", level: "Computer Science 300 Level", email: "feranmihassa97@gmail.com", image: "/images/executives/2025-2026/hassan.jpg", session:"25/26" },
+    { id: 5, name: "Ifediba Chimdalu", position: "Social Director", level: "Computer Science 300 Level", email: "chimdaluifediba@gmail.com", image: "/images/executives/2025-2026/ifediba.png", session:"25/26" },
+    { id: 6, name: "Abdulazeez Jamiu Oladipupo", position: "Software Director", level: "Computer Science 300 Level", email: "jamiuabdulazeez689@gmail.com", image: "/images/executives/2025-2026/jamiu.png", session:"25/26" },
+    { id: 8, name: "Akinkunmi Ibitoye", position: "Welfare Director", level: "Computer Science 300 Level", email: "kunmiibitoye91@gmail.com", image: "/images/executives/2025-2026/akinkunmi.png", session:"25/26" },
+    { id: 9, name: "Mojoyinoluwa Sholotan", position: "General Secretary", level: "Computer Science 400 Level", email: "developerssholotan@gmail.com", image: "/images/executives/2025-2026/mj.png", session:"25/26" },
+    { id: 10, name: "Julius Tony Chukwuemeka", position: "Academic Director", level: "Computer Science 400 Level", email: "juliustony05@gmail.com", image: "/images/executives/2025-2026/tony.png", session:"25/26" },
+    { id: 11, name: "Udotchay Oluchi", position: "Assistant General Secretary", level: "Computer Science 200 Level", email: "udutachyoluchi@gmail.com", image: "/images/executives/2025-2026/oluhci.png", session:"25/26" },
+    { id: 12, name: "Ayinde Adedotun", position: "Public Relation Officer", level: "Computer Science 300 Level", email: "adedotunayinde07@gmail.com", image: "/images/executives/2025-2026/dotun.png", session:"25/26" },
+    { id: 13, name: "Iwuanyanwu Godsgift Ebube", position: "Sports Director", level: "Computer Science 400 Level", email: "chidiebubeiwuanyanwu859@gmail.com", image: "/images/executives/2025-2026/ebube.png", session:"25/26" },
+  ];
+
+  // Which session is being viewed on the full executives page.
+  // Defaults to the current (26/27) session; falls back to the past
+  // session if the current one hasn't been populated yet.
+  const [activeSession, setActiveSession] = useState<"current" | "past">(
+    executivesCurrent.length > 0 ? "current" : "past"
+  );
+
+  const executives = activeSession === "current" ? executivesCurrent : executivesPast;
+
+  // Homepage carousel always prefers the current administration, falling
+  // back to the past session so the section isn't empty in the meantime.
+  const homeExecutives = executivesCurrent.length > 0 ? executivesCurrent : executivesPast;
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -56,7 +89,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, roleFilter, levelFilter]);
+  }, [search, roleFilter, levelFilter, activeSession]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -77,7 +110,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
 
       return matchesSearch && matchesRole && matchesLevel;
     });
-  }, [search, roleFilter, levelFilter]);
+  }, [search, roleFilter, levelFilter, executives]);
 
   const totalPages = Math.ceil(filteredExecutives.length / itemsPerPage);
 
@@ -101,9 +134,43 @@ export default function Executives({ isHome }: ExecutivesProps) {
         />
       )}
 
-      {/* SEARCH + FILTER */}
+      {/* SESSION TOGGLE */}
       {!isHome && (
-        <div className="max-w-6xl mx-auto px-4 mt-10 flex flex-col lg:flex-row gap-4">
+        <div className="max-w-6xl mx-auto px-4 mt-8 flex flex-col items-center gap-4">
+          <div className="inline-flex rounded-xl border p-1 bg-gray-50">
+            <button
+              onClick={() => setActiveSession("current")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                activeSession === "current"
+                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              2026/27 Administration (Current)
+            </button>
+            <button
+              onClick={() => setActiveSession("past")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                activeSession === "past"
+                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              2025/26 Administration (Past)
+            </button>
+          </div>
+
+          {activeSession === "past" && (
+            <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-center font-bold">
+              You are viewing the 2025/26 Past Administration — archived for reference only.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SEARCH + FILTER */}
+      {!isHome && executives.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 mt-6 flex flex-col lg:flex-row gap-4">
           <div className="flex items-center gap-2 border rounded-xl px-3 py-2 w-full">
             <Search className="w-4 h-4 text-gray-400" />
             <input
@@ -136,7 +203,13 @@ export default function Executives({ isHome }: ExecutivesProps) {
 
       {/* GRID or CAROUSEL */}
       {isHome ? (
-        <ExecutivesCarousel executives={filteredExecutives} />
+        <ExecutivesCarousel executives={homeExecutives} />
+      ) : executives.length === 0 ? (
+        <div className="max-w-2xl mx-auto text-center py-20 px-4">
+          <p className="text-gray-500 text-lg">
+            Executive profiles for the 2026/27 session are being finalized — check back soon!
+          </p>
+        </div>
       ) : (
         <>
           <motion.section

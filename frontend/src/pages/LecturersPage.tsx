@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import Navbar from "../components/Navbar";
+import ExpandableCard from "../components/ExpandableCard";
 import { Footer } from "../components/Footer";
 
 // ── Types ──────────────────────────────────────────────
@@ -40,7 +41,7 @@ const lecturers: Lecturer[] = [
   },
   {
     id: 4,
-    name: "Mr. Sayan Oluwafemi",
+    name: "Dr. Sayan Oluwafemi",
     position: "Lecturer",
     office: "D24 College of Science",
     image: "/images/lecturers/Mr Sayan Oluwafemi.jpg", // ⚠️ Convert to .jpg/.png for browser support
@@ -102,8 +103,9 @@ const LecturerCard = ({ lecturer }: { lecturer: Lecturer }) => {
   const gradient = getGradient(lecturer.id);
 
   return (
-    <motion.article
-      variants={itemVariants}
+    <motion.div variants={itemVariants}>
+    <ExpandableCard label={lecturer.name}>
+    <article
       className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-500 ease-out hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.08)] hover:border-gray-200/80 hover:-translate-y-1"
     >
       {/* Large Image Area */}
@@ -150,7 +152,9 @@ const LecturerCard = ({ lecturer }: { lecturer: Lecturer }) => {
           </p>
         </div>
       </div>
-    </motion.article>
+    </article>
+    </ExpandableCard>
+    </motion.div>
   );
 };
 

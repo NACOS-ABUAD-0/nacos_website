@@ -18,6 +18,7 @@ import {
   AnimatePresence,
   useInView,
   useMotionValue,
+  useReducedMotion,
   useSpring,
   useTransform,
   animate,
@@ -36,6 +37,8 @@ import type { ProjectItem } from "../lib/hooks/useHomepage";
 import { useSEO } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import Facilities from "../components/Facilities";
+import ScrollVelocity from "../components/reactbits/ScrollVelocity";
+import ExpandableCard from "../components/ExpandableCard";
 import Executives from "../components/Executives";
 import { Layout } from "../layouts/layout";
 import Gallery from "./gallery";
@@ -351,6 +354,7 @@ interface ApiEventItem {
 
 const Homepage: React.FC = () => {
   useSEO();
+  const reduceMotion = useReducedMotion();
   const { isAuthenticated, user } = useAuth();
   const showProfileBanner = isAuthenticated && !user?.profile_complete;
 
@@ -378,6 +382,22 @@ const Homepage: React.FC = () => {
           <AnimatedSection>
             <About />
           </AnimatedSection>
+
+          {/* ── Scroll-velocity marquee: drifts on its own, speeds up as you scroll ── */}
+          {!reduceMotion && (
+            <div className="bg-[#006E3A] py-5 md:py-6 select-none" aria-hidden>
+              <ScrollVelocity
+                texts={[
+                  "NACOS ABUAD • COMPUTING • INNOVATION •",
+                  "COMMUNITY • CODE • CREATE • CONNECT •",
+                ]}
+                velocity={40}
+                numCopies={6}
+                className="text-white/90"
+                scrollerClassName="text-2xl md:text-5xl leading-tight"
+              />
+            </div>
+          )}
 
           {/* ── Featured Projects ── */}
           <AnimatedSection>
@@ -1463,9 +1483,10 @@ const LecturerCard: React.FC<{ lecturer: Lecturer }> = ({ lecturer }) => {
   const gradient = getLecturerGradient(lecturer.id);
 
   return (
+    <ExpandableCard label={lecturer.name}>
     <TiltCard
       intensity={8}
-      className="group bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-default
+      className="group bg-white rounded-2xl border border-gray-100 overflow-hidden
                  hover:border-emerald-200/60 hover:shadow-lg hover:shadow-emerald-50/60
                  transition-all duration-400"
     >
@@ -1508,6 +1529,7 @@ const LecturerCard: React.FC<{ lecturer: Lecturer }> = ({ lecturer }) => {
         <p className="text-xs text-gray-400 font-mono">{lecturer.office}</p>
       </div>
     </TiltCard>
+    </ExpandableCard>
   );
 };
 
