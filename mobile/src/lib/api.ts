@@ -90,7 +90,7 @@ export const authAPI = {
     api.post('/auth/verify-student/', {
       email,
       full_name: fullName,
-      matric_number: matricNumber.toUpperCase(),
+      matric_number: matricNumber,
     }),
 
   register: (
@@ -104,7 +104,7 @@ export const authAPI = {
     api.post('/auth/register/', {
       email,
       full_name: fullName,
-      matric_number: matricNumber.toUpperCase(),
+      matric_number: matricNumber,
       password,
       password2,
       ...(verificationToken ? { verification_token: verificationToken } : {}),

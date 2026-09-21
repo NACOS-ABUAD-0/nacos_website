@@ -189,13 +189,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     dispatch({ type: "SET_LOADING", payload: true });
 
     try {
-      // ✅ Normalize matric number before sending
-      const normalizedMatricNumber = matricNumber.toUpperCase();
-
       const response = await authAPI.register(
         email,
         fullName,
-        normalizedMatricNumber,
+        matricNumber,
         password,
         password2,
         verificationToken

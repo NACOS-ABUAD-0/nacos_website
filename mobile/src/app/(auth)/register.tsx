@@ -106,7 +106,13 @@ export default function RegisterScreen() {
       setStep(3);
     } catch (err) {
       const data = unwrapApiError(err);
-      setError(data?.non_field_errors?.[0] ?? data?.detail ?? 'Identity verification failed. Please check your details.');
+      setError(
+        data?.matric_number?.[0] ??
+          data?.full_name?.[0] ??
+          data?.non_field_errors?.[0] ??
+          data?.detail ??
+          'Identity verification failed. Please check your details.',
+      );
     } finally {
       setIsLoading(false);
     }

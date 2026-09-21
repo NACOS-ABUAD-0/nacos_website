@@ -37,6 +37,23 @@ def _validate_and_normalize_matric(value: str) -> str:
     return normalized
 
 
+def _validate_matric_case(value: str) -> str:
+    """
+    Registration-time variant of _validate_and_normalize_matric: the format must
+    be valid AND typed in capital letters. A well-formed but wrongly-cased entry
+    (e.g. '23/sci01/002') is rejected with a message that shows the fix, rather
+    than being silently changed, so the student knows what the correct form is.
+    """
+    normalized = _validate_and_normalize_matric(value)
+    entered = value.strip()
+    if entered != normalized:
+        raise serializers.ValidationError(
+            f"Matric number must be typed in capital letters. "
+            f"Use '{normalized}' instead of '{entered}'."
+        )
+    return normalized
+
+
 # ─── RegisterSerializer ────────────────────────────────────────────────────────
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -64,7 +81,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             # matric_number is REQUIRED for all API sign-ups.
             # null/blank is only allowed at model level for management commands.
-            "matric_number": {"required": True, "allow_blank": False, "allow_null": False},
+            "matric_number": {
+                "required": True,
+                "allow_blank": False,
+                "allow_null": False,
+                # Drop the validators ModelSerializer copies from the model field
+                # (case-sensitive regex + uniqueness). They run before
+                # validate_matric_number and would pre-empt its case-specific
+                # message; that method performs both checks itself.
+                "validators": [],
+            },
         }
 
     # ── Field-level validations ────────────────────────────────────────────
@@ -79,11 +105,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_matric_number(self, value: str) -> str:
         """
-        1. Normalize (strip + uppercase).
-        2. Validate format.
-        3. Enforce uniqueness (case-insensitive via normalization).
+        1. Validate format and require capital letters.
+        2. Enforce uniqueness.
         """
-        normalized = _validate_and_normalize_matric(value)
+        normalized = _validate_matric_case(value)
 
         if User.objects.filter(matric_number=normalized).exists():
             raise serializers.ValidationError(
@@ -142,7 +167,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     # ── Create ─────────────────────────────────────────────────────────────
 
-def create(self, validated_data: dict) -> User:
+    def create(self, validated_data: dict) -> User:
         validated_data.pop("password2")
         password = validated_data.pop("password")
 
@@ -279,7 +304,7 @@ class VerifyStudentSerializer(serializers.Serializer):
         return " ".join(value.strip().split())
 
     def validate_matric_number(self, value: str) -> str:
-        return _validate_and_normalize_matric(value)
+        return _validate_matric_case(value)
 
     def validate(self, attrs: dict) -> dict:
         from .student_service import verify_student_identity

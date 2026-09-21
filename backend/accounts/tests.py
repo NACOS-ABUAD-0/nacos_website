@@ -3,6 +3,7 @@ import datetime
 from unittest.mock import patch
 
 from django.contrib.auth.tokens import default_token_generator
+from django.core import signing
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.core.cache import cache
@@ -22,15 +23,18 @@ class UserModelTest(TestCase):
             password='testpass123'
         )
         self.assertEqual(user.email, 'test@example.com')
-        self.assertEqual(user.matric_number, '23/sci03/004')
+        # The model normalizes to the canonical uppercase form on save.
+        self.assertEqual(user.matric_number, '23/SCI03/004')
 
     def test_create_user_without_matric(self):
+        # Matric is optional at the model level (management commands, admin
+        # tooling); it is the API that requires it.
         user = User.objects.create_user(
             email='test2@example.com',
             full_name='Test User 2',
             password='testpass123'
         )
-        self.assertTrue(user.matric_number.startswith('TEMP-'))
+        self.assertIsNone(user.matric_number)
 
 
 class AuthAPITest(APITestCase):
@@ -38,30 +42,87 @@ class AuthAPITest(APITestCase):
         self.user_data = {
             'email': 'test@example.com',
             'full_name': 'Test User',
-            'matric_number': '23/sci03/004',
+            'matric_number': '23/SCI03/004',
             'password': 'testpass123',
             'password2': 'testpass123'
         }
+        # register/verify-student are throttled per IP (5/hour); don't let
+        # attempts made by other tests count against this one.
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def _verification_token(self, data=None):
+        """The signed token the identity-verification step hands to registration."""
+        data = data or self.user_data
+        return signing.dumps(
+            {'email': data['email'], 'matric': data['matric_number']},
+            salt='student-verification',
+            compress=True,
+        )
+
+    def _register(self, **overrides):
+        data = {**self.user_data, **overrides}
+        data.setdefault('verification_token', self._verification_token(data))
+        return self.client.post(reverse('register'), data)
 
     def test_register_user(self):
-        url = reverse('register')
-        response = self.client.post(url, self.user_data)
+        response = self._register()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
+        user = User.objects.get(email='test@example.com')
+        self.assertEqual(user.matric_number, '23/SCI03/004')
+        self.assertTrue(user.check_password('testpass123'))  # hashed, not stored raw
 
     def test_register_user_without_matric(self):
         data = self.user_data.copy()
         data.pop('matric_number')
-        url = reverse('register')
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data['user']['matric_number'].startswith('TEMP-'))
+        response = self.client.post(reverse('register'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('matric_number', response.data)
+
+    def test_register_requires_verification_token(self):
+        response = self.client.post(reverse('register'), self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('verification_token', response.data)
+
+    def test_register_lowercase_matric_explains_the_fix(self):
+        response = self._register(matric_number='23/sci03/004')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        message = response.data['matric_number'][0]
+        self.assertIn('capital letters', message)
+        self.assertIn("'23/SCI03/004'", message)   # tells them what to type
+        self.assertIn("'23/sci03/004'", message)   # ...instead of what they typed
+        self.assertFalse(User.objects.filter(email='test@example.com').exists())
+
+    def test_register_lowercase_jamb_number_explains_the_fix(self):
+        response = self._register(matric_number='202330217286fa')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        message = response.data['matric_number'][0]
+        self.assertIn('capital letters', message)
+        self.assertIn("'202330217286FA'", message)
+
+    def test_register_malformed_matric_gets_format_error_not_case_error(self):
+        response = self._register(matric_number='not-a-matric')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        message = response.data['matric_number'][0]
+        self.assertIn('23/SCI01/002', message)
+        self.assertNotIn('capital letters', message)
+
+    def test_verify_student_lowercase_matric_explains_the_fix(self):
+        response = self.client.post(reverse('verify_student'), {
+            'email': 'test@example.com',
+            'full_name': 'Test User',
+            'matric_number': '23/sci03/004',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        message = response.data['matric_number'][0]
+        self.assertIn('capital letters', message)
+        self.assertIn("'23/SCI03/004'", message)
 
     def test_login_user(self):
         # First register
-        url = reverse('register')
-        self.client.post(url, self.user_data)
+        self.assertEqual(self._register().status_code, status.HTTP_201_CREATED)
 
         # Then login
         url = reverse('login')
@@ -166,8 +227,7 @@ class AuthAPITest(APITestCase):
 
     def test_profile_access(self):
         # Register and login
-        url = reverse('register')
-        response = self.client.post(url, self.user_data)
+        response = self._register()
         access_token = response.data['access']
 
         # Access profile

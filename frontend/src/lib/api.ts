@@ -238,8 +238,10 @@ export interface CollaborationRequestData {
 
 export const authAPI = {
   checkEmail: (email: string) =>
-    api.post("/auth/check-email/", { email }),
+    api.post("/auth/check-email/", { email }).catch(handleApiError),
 
+  // matric_number is sent exactly as typed: the server rejects wrongly-cased
+  // input with an explanatory message instead of it being silently uppercased.
   verifyStudent: (
     email: string,
     fullName: string,
@@ -248,8 +250,8 @@ export const authAPI = {
     api.post("/auth/verify-student/", {
       email,
       full_name: fullName,
-      matric_number: matricNumber.toUpperCase(), // ✅ normalize
-    }),
+      matric_number: matricNumber,
+    }).catch(handleApiError),
 
   register: (
     email: string,
@@ -262,7 +264,7 @@ export const authAPI = {
     api.post("/auth/register/", {
       email,
       full_name: fullName,
-      matric_number: matricNumber.toUpperCase(), // ✅ normalize
+      matric_number: matricNumber,
       password,
       password2,
       ...(verificationToken

@@ -180,7 +180,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
       const res = await authAPI.verifyStudent(
         state.email,
         state.fullName.trim(),
-        state.matricNumber.trim().toUpperCase(),
+        state.matricNumber.trim(),
       );
       setState((s) => ({
         ...s,
@@ -189,6 +189,17 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
       }));
       setStep(3);
     } catch (err: any) {
+      // Field-level problems (e.g. matric typed in lowercase) are shown under
+      // the offending field so the student sees exactly what to fix.
+      const fieldErrors: typeof errors = {};
+      if (err?.matric_number?.[0]) fieldErrors.matricNumber = err.matric_number[0];
+      if (err?.full_name?.[0])     fieldErrors.fullName     = err.full_name[0];
+
+      if (Object.keys(fieldErrors).length) {
+        setErrors(fieldErrors);
+        return;
+      }
+
       const msg =
         err?.non_field_errors?.[0] ??
         err?.detail ??
