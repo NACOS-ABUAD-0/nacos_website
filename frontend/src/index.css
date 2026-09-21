@@ -9,8 +9,16 @@
    scroll area (e.g. overflow-x-auto tables/carousels) — those manage
    their own scroll context independently of the page level. */
 html, body {
-  overflow-x: hidden;
   max-width: 100%;
+}
+html {
+  overflow-x: hidden;
+}
+/* `clip` (not `hidden`) on body: `hidden` turns body into a scroll container,
+   which silently breaks `position: sticky` for everything inside it — the
+   navbar never stuck to the top. `clip` still cuts off stray overflow. */
+body {
+  overflow-x: clip;
 }
 
 @keyframes slide {

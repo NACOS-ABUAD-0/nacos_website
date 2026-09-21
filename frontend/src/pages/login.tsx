@@ -1,6 +1,6 @@
 // frontend/src/pages/login.tsx
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AuthForm } from "../components/AuthForm";
 import { RegisterFlow } from "../components/RegisterFlow";
@@ -9,7 +9,10 @@ import type { FaceLoginResponse } from "../services/faceAuthService"; // ✅ cor
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  // `/login?mode=signup` (the navbar's "Join NACOS" button) opens straight
+  // onto the signup panel instead of the sign-in form.
+  const [searchParams] = useSearchParams();
+  const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
   const [authMethod, setAuthMethod] = useState<"password" | "face">("password");
   const navigate = useNavigate();
 
