@@ -1,5 +1,7 @@
 # backend/accounts/tests.py
 import datetime
+import threading
+import time
 from unittest.mock import patch
 
 from django.contrib.auth.tokens import default_token_generator
@@ -73,6 +75,31 @@ class AuthAPITest(APITestCase):
         user = User.objects.get(email='test@example.com')
         self.assertEqual(user.matric_number, '23/SCI03/004')
         self.assertTrue(user.check_password('testpass123'))  # hashed, not stored raw
+
+    @override_settings(EMAIL_HOST_USER='mailer@example.com', EMAIL_HOST_PASSWORD='secret')
+    def test_register_does_not_wait_for_a_hanging_verification_email(self):
+        # A blocked SMTP connection used to stall this request past gunicorn's
+        # worker timeout (502, surfacing in the browser as a CORS error).
+        sending = threading.Event()
+        release = threading.Event()
+
+        def hanging_send(user, request=None):
+            sending.set()
+            release.wait(5)   # simulate an SMTP connection that never answers
+            return False
+
+        try:
+            with patch('accounts.views.send_verification_email', side_effect=hanging_send):
+                started = time.monotonic()
+                response = self._register()
+                elapsed = time.monotonic() - started
+
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                self.assertLess(elapsed, 3, 'register blocked on the email send')
+                self.assertTrue(sending.wait(2), 'verification email was never attempted')
+                self.assertTrue(User.objects.filter(email='test@example.com').exists())
+        finally:
+            release.set()
 
     def test_register_user_without_matric(self):
         data = self.user_data.copy()

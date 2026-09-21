@@ -1,6 +1,7 @@
 # backend/accounts/views.py
 
 import logging
+import threading
 from django.conf import settings
 from django.db.models import Q
 from rest_framework import status, permissions, generics, viewsets
@@ -50,6 +51,24 @@ logger = logging.getLogger(__name__)
 
 # Helpers
 
+def _send_verification_email_in_background(user: User) -> None:
+    """
+    Send the verification email on a daemon thread.
+
+    SMTP can hang (blocked port, slow relay). Done inline, that stalls the
+    register request past gunicorn's worker timeout: the worker is killed, the
+    proxy answers 502 with no CORS headers, and the browser reports a CORS
+    error even though the account was already created. Failures are logged;
+    the user can request a new link via resend-verification.
+    """
+    try:
+        send_verification_email(user)
+    except Exception:
+        logger.warning(
+            "Failed to send verification email to %s", user.email, exc_info=True
+        )
+
+
 def _sync_admin_status(user: User) -> bool:
     """
     Re-checks the sealed whitelist on every login and syncs the user's
@@ -88,15 +107,17 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
 
-            # Attempt to send verification email (non-fatal)
-            email_sent = False
-            try:
-                email_sent = send_verification_email(user, request)
-            except Exception:
-                logger.warning(
-                    "Failed to send verification email to %s", user.email,
-                    exc_info=True
-                )
+            # Verification email is best-effort and must never delay signup.
+            email_configured = bool(
+                getattr(settings, "EMAIL_HOST_USER", "")
+                and getattr(settings, "EMAIL_HOST_PASSWORD", "")
+            )
+            if email_configured:
+                threading.Thread(
+                    target=_send_verification_email_in_background,
+                    args=(user,),
+                    daemon=True,
+                ).start()
 
             refresh = RefreshToken.for_user(user)
             return Response(
@@ -106,7 +127,7 @@ class RegisterView(APIView):
                     "user": ProfileSerializer(user).data,
                     "message": (
                         "Registration successful! Please check your email to verify your account."
-                        if email_sent
+                        if email_configured
                         else "Registration successful! (Email verification is not configured on this server.)"
                     ),
                 },
