@@ -194,7 +194,7 @@ export default function Executives({ isHome }: ExecutivesProps) {
           </button>
         </div>
       ) : isHome ? (
-        <ExecutivesCarousel executives={homeExecutives} />
+        <ExecutivesCarousel executives={homeExecutives.slice(0, 4)} />
       ) : executives.length === 0 ? (
         <div className="max-w-2xl mx-auto text-center py-20 px-4">
           <p className="text-gray-500 text-lg">

@@ -42,7 +42,6 @@ import ScrollVelocity from "../components/reactbits/ScrollVelocity";
 import ExpandableCard from "../components/ExpandableCard";
 import Executives from "../components/Executives";
 import { Layout } from "../layouts/layout";
-import Gallery from "./gallery";
 import api from "../lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -384,6 +383,7 @@ interface ApiEventItem {
   description?: string;
 }
 
+
 // ═════════════════════════════════════════════════════════════════════════════
 // HOMEPAGE ROOT
 // ═════════════════════════════════════════════════════════════════════════════
@@ -540,9 +540,6 @@ const Homepage: React.FC = () => {
             >
               <ResourcesCTA />
             </Section>
-          </AnimatedSection>
-          <AnimatedSection>
-            <Gallery isHome={true} />
           </AnimatedSection>
           <AnimatedSection>
             <Testimonials />
@@ -1479,7 +1476,7 @@ const LecturersSection: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {LECTURERS.map((lecturer, i) => (
+          {LECTURERS.slice(0, 4).map((lecturer, i) => (
             <motion.div
               key={lecturer.id}
               variants={scaleIn}
