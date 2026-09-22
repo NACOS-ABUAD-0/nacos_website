@@ -12,7 +12,8 @@ import type {
   DeleteUserPayload,
   UserListParams,
 } from '../../services/adminUserService'
-import { fetchUsers, deleteUser, banUser, unbanUser } from '../../services/adminUserService'
+import { fetchUsers, deleteUser, banUser, unbanUser, assignUserRole } from '../../services/adminUserService'
+import type { UserRole } from '../roles'
 
 // ─── Return Type ───────────────────────────────────────────────────────────────
 
@@ -21,9 +22,11 @@ interface UseAdminUsersReturn {
   loading: boolean
   deleting: boolean
   banning: boolean
+  assigningRole: boolean
   error: string | null
   deleteError: string | null
   banError: string | null
+  assignRoleError: string | null
   pagination: {
     count: number
     totalPages: number
@@ -36,15 +39,18 @@ interface UseAdminUsersReturn {
   levelFilter: string
   roleFilter: string
   statusFilter: 'all' | 'active' | 'banned'
+  approvalFilter: 'all' | 'pending'
   setSearchQuery: (q: string) => void
   setLevelFilter: (level: string) => void
   setRoleFilter: (role: string) => void
   setStatusFilter: (status: 'all' | 'active' | 'banned') => void
+  setApprovalFilter: (status: 'all' | 'pending') => void
   goToPage: (page: number) => void
   refreshUsers: () => Promise<void>
   handleDeleteUser: (userId: number, payload: DeleteUserPayload) => Promise<boolean>
   handleBanUser: (userId: number) => Promise<boolean>
   handleUnbanUser: (userId: number) => Promise<boolean>
+  handleAssignRole: (userId: number, role: UserRole) => Promise<UserRecord | null>
   clearErrors: () => void
 }
 
@@ -55,9 +61,11 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
   const [loading, setLoading] = useState<boolean>(false)
   const [deleting, setDeleting] = useState<boolean>(false)
   const [banning, setBanning] = useState<boolean>(false)
+  const [assigningRole, setAssigningRole] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [banError, setBanError] = useState<string | null>(null)
+  const [assignRoleError, setAssignRoleError] = useState<string | null>(null)
 
   const [currentPage, setCurrentPage] = useState<number>(1)
   const pageSize = 10
@@ -74,6 +82,9 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
   // Defaults to 'all' so existing consumers (e.g. UserManagement.tsx) keep
   // seeing every user regardless of ban status unless they opt into a filter.
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'banned'>('all')
+  // Drives the "Pending Staff" approval queue — staff signups awaiting an
+  // Admin/Super Admin to assign them a role.
+  const [approvalFilter, setApprovalFilter] = useState<'all' | 'pending'>('all')
 
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -93,6 +104,7 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
         ...(levelFilter && { level: levelFilter }),
         ...(roleFilter && { role: roleFilter }),
         ...(statusFilter !== 'all' && { is_active: statusFilter === 'active' ? 'true' : 'false' }),
+        ...(approvalFilter === 'pending' && { is_approved: 'false' as const }),
       }
 
       const data: PaginatedUserResponse = await fetchUsers(params)
@@ -109,14 +121,14 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     } finally {
       setLoading(false)
     }
-  }, [pageSize, debouncedSearch, levelFilter, roleFilter, statusFilter])
+  }, [pageSize, debouncedSearch, levelFilter, roleFilter, statusFilter, approvalFilter])
 
   // ── Reset to page 1 whenever filters/search change ───────────────────────────
 
   useEffect(() => {
     setCurrentPage(1)
     loadUsers(1)
-  }, [debouncedSearch, levelFilter, roleFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, levelFilter, roleFilter, statusFilter, approvalFilter]) // eslint-disable-line react-hooks/exhaustive-deps
   // loadUsers is intentionally omitted: we only want this to fire when the
   // filter values themselves change, not every time loadUsers is recreated.
 
@@ -222,6 +234,40 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     [runBanAction],
   )
 
+  // ── handleAssignRole ──────────────────────────────────────────────────────
+
+  const handleAssignRole = useCallback(async (
+    userId: number,
+    role: UserRole,
+  ): Promise<UserRecord | null> => {
+    setAssigningRole(true)
+    setAssignRoleError(null)
+
+    try {
+      const updated = await assignUserRole(userId, role)
+      await loadUsers(currentPage)
+      return updated
+    } catch (err) {
+      let message = 'Failed to assign role. Please try again.'
+
+      if (err instanceof Error) {
+        message = err.message
+      }
+
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        if (axiosErr.response?.data?.error) {
+          message = axiosErr.response.data.error
+        }
+      }
+
+      setAssignRoleError(message)
+      return null
+    } finally {
+      setAssigningRole(false)
+    }
+  }, [currentPage, loadUsers])
+
   // ── goToPage ─────────────────────────────────────────────────────────────────
 
   const goToPage = useCallback((page: number) => {
@@ -236,6 +282,7 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     setError(null)
     setDeleteError(null)
     setBanError(null)
+    setAssignRoleError(null)
   }, [])
 
   // ── Return ────────────────────────────────────────────────────────────────────
@@ -245,9 +292,11 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     loading,
     deleting,
     banning,
+    assigningRole,
     error,
     deleteError,
     banError,
+    assignRoleError,
     pagination: {
       count,
       totalPages,
@@ -260,15 +309,18 @@ export const useAdminUsers = (): UseAdminUsersReturn => {
     levelFilter,
     roleFilter,
     statusFilter,
+    approvalFilter,
     setSearchQuery: handleSearchChange,
     setLevelFilter,
     setRoleFilter,
     setStatusFilter,
+    setApprovalFilter,
     goToPage,
     refreshUsers: () => loadUsers(currentPage),
     handleDeleteUser,
     handleBanUser,
     handleUnbanUser,
+    handleAssignRole,
     clearErrors,
   }
 }

@@ -8,8 +8,10 @@ import { authAPI } from "../lib/api";
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
+type AccountType = "student" | "staff";
 
 interface StepState {
+  accountType: AccountType;
   email: string;
   surname: string;
   otherNames: string;
@@ -106,10 +108,43 @@ const SelectField: React.FC<{
   </div>
 );
 
+// ─── Account Type Toggle ─────────────────────────────────────────────────────────
+
+const AccountTypeToggle: React.FC<{
+  value: AccountType;
+  onChange: (v: AccountType) => void;
+  disabled?: boolean;
+}> = ({ value, onChange, disabled }) => (
+  <div className="mb-5">
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">I am a</label>
+    <div className="grid grid-cols-2 gap-2">
+      {(["student", "staff"] as AccountType[]).map((type) => (
+        <button
+          key={type}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(type)}
+          className={`py-2.5 rounded-lg text-sm font-semibold border transition-colors duration-200
+            ${value === type
+              ? "bg-green-600 border-green-600 text-white"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"}
+            ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+        >
+          {type === "student" ? "Student" : "Staff"}
+        </button>
+      ))}
+    </div>
+    {value === "staff" && (
+      <p className="mt-2 text-xs text-gray-500">
+        No matric number needed. An admin will review and approve your account after signup.
+      </p>
+    )}
+  </div>
+);
+
 // ─── Step Indicator ─────────────────────────────────────────────────────────────
 
-const StepIndicator: React.FC<{ current: Step }> = ({ current }) => {
-  const steps = ["Email", "Identity", "Password"];
+const StepIndicator: React.FC<{ current: Step; steps: string[] }> = ({ current, steps }) => {
   return (
     <div className="flex items-center justify-center mb-6 gap-2">
       {steps.map((label, i) => {
@@ -154,6 +189,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [state, setState] = useState<StepState>({
+    accountType: "student",
     email: "",
     surname: "",
     otherNames: "",
@@ -165,11 +201,19 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
     studentInfo: null,
   });
 
+  const isStaff = state.accountType === "staff";
+  const steps = isStaff ? ["Email", "Details", "Password"] : ["Email", "Identity", "Password"];
+
   const [errors, setErrors] = useState<Partial<Record<keyof StepState, string>>>({});
 
   const set = (field: keyof StepState) => (value: string) => {
     setState((s) => ({ ...s, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined }));
+  };
+
+  const setAccountType = (accountType: AccountType) => {
+    setState((s) => ({ ...s, accountType }));
+    setErrors({});
   };
 
   // ── Step 1 — Email ──────────────────────────────────────────────────────────
@@ -209,9 +253,17 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
     const newErrors: typeof errors = {};
     if (!state.surname.trim())      newErrors.surname      = "Surname is required.";
     if (!state.otherNames.trim())   newErrors.otherNames   = "Other names are required.";
-    if (!state.level)               newErrors.level        = "Select your level.";
-    if (!state.matricNumber.trim()) newErrors.matricNumber = "Matric number is required.";
+    if (!isStaff) {
+      if (!state.level)               newErrors.level        = "Select your level.";
+      if (!state.matricNumber.trim()) newErrors.matricNumber = "Matric number is required.";
+    }
     if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
+
+    // Staff never go through matric/roster verification — straight to password.
+    if (isStaff) {
+      setStep(3);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -267,13 +319,21 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
         email: state.email,
         surname: state.surname.trim(),
         otherNames: state.otherNames.trim(),
-        level: state.level,
-        matricNumber: state.matricNumber.trim(),
         password: state.password,
         password2: state.password2,
-        verificationToken: state.verificationToken,
+        accountType: state.accountType,
+        // Staff signups omit these entirely — no matric/level/roster check.
+        ...(isStaff ? {} : {
+          level: state.level,
+          matricNumber: state.matricNumber.trim(),
+          verificationToken: state.verificationToken,
+        }),
       });
-      toast.success("Welcome to NACOS ABUAD!");
+      toast.success(
+        isStaff
+          ? "Account created! An admin will review and approve it shortly."
+          : "Welcome to NACOS ABUAD!"
+      );
       onRegistered();
     } catch (err: any) {
       // AuthContext already shows toasts for field errors; show a fallback here
@@ -297,13 +357,16 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
         Join the NACOS ABUAD innovation community
       </p>
 
-      <StepIndicator current={step} />
+      <StepIndicator current={step} steps={steps} />
 
       {/* ── STEP 1: Email ──────────────────────────────────────────────────── */}
       {step === 1 && (
         <div>
+          <AccountTypeToggle value={state.accountType} onChange={setAccountType} disabled={isLoading} />
           <p className="text-sm text-gray-600 mb-4">
-            Enter your university email to get started.
+            {isStaff
+              ? "Enter your email to get started."
+              : "Enter your university email to get started."}
           </p>
           <Field
             label="University Email"
@@ -330,7 +393,9 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
       {step === 2 && (
         <div>
           <p className="text-sm text-gray-600 mb-4">
-            Confirm your identity using your official student records.
+            {isStaff
+              ? "Tell us your name."
+              : "Confirm your identity using your official student records."}
           </p>
           <Field
             label="Email (confirmed)"
@@ -343,7 +408,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
             value={state.surname}
             onChange={set("surname")}
             error={errors.surname}
-            placeholder="Your family name, as on your student record"
+            placeholder={isStaff ? "Your family name" : "Your family name, as on your student record"}
             autoComplete="family-name"
             disabled={isLoading}
           />
@@ -356,24 +421,28 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
             autoComplete="given-name"
             disabled={isLoading}
           />
-          <SelectField
-            label="Level"
-            value={state.level}
-            onChange={set("level")}
-            error={errors.level}
-            placeholder="Select your current level"
-            options={LEVELS.map((l) => ({ value: l, label: `${l} Level` }))}
-            disabled={isLoading}
-          />
-          <Field
-            label="Matric Number"
-            value={state.matricNumber}
-            onChange={set("matricNumber")}
-            error={errors.matricNumber}
-            placeholder="e.g. 23/SCI01/002"
-            autoComplete="off"
-            disabled={isLoading}
-          />
+          {!isStaff && (
+            <>
+              <SelectField
+                label="Level"
+                value={state.level}
+                onChange={set("level")}
+                error={errors.level}
+                placeholder="Select your current level"
+                options={LEVELS.map((l) => ({ value: l, label: `${l} Level` }))}
+                disabled={isLoading}
+              />
+              <Field
+                label="Matric Number"
+                value={state.matricNumber}
+                onChange={set("matricNumber")}
+                error={errors.matricNumber}
+                placeholder="e.g. 23/SCI01/002"
+                autoComplete="off"
+                disabled={isLoading}
+              />
+            </>
+          )}
           <div className="flex gap-3 mt-2">
             <button
               onClick={() => setStep(1)}
@@ -389,7 +458,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
               className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400
                 text-white font-semibold py-2.5 rounded-lg transition-colors duration-200"
             >
-              {isLoading ? "Verifying…" : "Verify →"}
+              {isLoading ? (isStaff ? "Continuing…" : "Verifying…") : (isStaff ? "Continue →" : "Verify →")}
             </button>
           </div>
         </div>

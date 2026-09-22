@@ -21,8 +21,7 @@ from .views import (
     PasswordResetRequestView,
     PasswordResetConfirmView,
     # Admin
-    AdminRoleAssignmentView,
-    AdminListView,
+    AssignUserRoleView,
     AdminUserListView,
     AdminUserDeleteView,  # NEW
     AdminUserDetailView,
@@ -66,17 +65,13 @@ urlpatterns = [
     # General
     path("users/count/", UserCountView.as_view(), name="user-count"),
 
-    # Admin — Role Management
-    path("admin/roles/assign/", AdminRoleAssignmentView.as_view(), name="admin-role-assign"),
-    path("admin/roles/revoke/", AdminRoleAssignmentView.as_view(), name="admin-role-revoke"),
-    path("admin/roles/", AdminListView.as_view(), name="admin-list"),
-
     # Admin — User Management (NEW)
     path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
     path("admin/users/<int:pk>/", AdminUserDetailView.as_view(), name="admin-user-detail"),
     path("admin/users/<int:pk>/delete/", AdminUserDeleteView.as_view(), name="admin-user-delete"),
     path("admin/users/<int:pk>/ban/", AdminUserBanView.as_view(), name="admin-user-ban"),
     path("admin/users/<int:pk>/unban/", AdminUserUnbanView.as_view(), name="admin-user-unban"),
+    path("admin/users/<int:pk>/role/", AssignUserRoleView.as_view(), name="admin-user-assign-role"),
 
     # Push notifications (mobile)
     path("notifications/register-device/", RegisterDeviceView.as_view(), name="register-device"),

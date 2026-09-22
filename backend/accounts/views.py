@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404
 
 from . import models
 from .models import User, StudentProfile, Notification, DeviceToken
-from .permissions import IsAdmin, IsSuperAdmin
+from .permissions import IsAdmin, CanAssignRoles
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -31,8 +31,7 @@ from .serializers import (
     UserSerializer,
     StudentProfileSerializer,
     NotificationSerializer,
-    AdminRoleAssignSerializer,
-    AdminRoleRevokeSerializer,
+    AssignUserRoleSerializer,
     CheckEmailSerializer,
     VerifyStudentSerializer,
     PasswordResetRequestSerializer,
@@ -372,162 +371,92 @@ class RegisterDeviceView(APIView):
 
 # Admin Views
 
-class AdminRoleAssignmentView(APIView):
+class AssignUserRoleView(APIView):
     """
-    POST   /admin/roles/assign/  — Promote a user to admin.
-    DELETE /admin/roles/revoke/  — Revoke admin from a user.
+    PATCH /api/admin/users/<id>/role/
 
-    Both operations require the caller to be the super admin — regular
-    admins cannot promote or revoke other admins themselves.
-    Promotion requires name + matric to be supplied and verified against
-    the target user's stored record. Max 3 admins enforced at all times.
+    Assigns a role to a user directly from their profile in User Management —
+    replaces the old separate Manage Admins tab. Available roles: the fixed
+    executive titles, Student, Technician, Lecturer, Admin. Super Admin is not
+    assignable here (manual/DB-only, by design).
+
+    Only Admin/Super Admin may call this (Lecturers, despite full admin-tier
+    permissions, and Executives cannot promote/reassign anyone).
+
+    A regular Admin is capped at MAX_ADMINS for the combined Admin + Lecturer
+    count (both carry full admin-tier permissions) — Super Admin is exempt.
+
+    If the target was a pending staff signup (account_type=staff,
+    is_approved=False), assigning any role here also approves them.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+    permission_classes = [permissions.IsAuthenticated, CanAssignRoles]
 
-    # Assign (POST)
-    def post(self, request):
-        serializer = AdminRoleAssignSerializer(data=request.data)
+    def patch(self, request, pk=None):
+        serializer = AssignUserRoleSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        matric_number: str = serializer.validated_data["matric_number"]
-        full_name: str = serializer.validated_data["full_name"]
+        new_role: str = serializer.validated_data["role"]
 
+        # select_for_update() requires an active transaction, so the fetch
+        # itself has to happen inside the atomic block (it can't precede it).
         with transaction.atomic():
-            # Enforce max-admin ceiling
-            # select_for_update() locks the rows so concurrent promotions
-            # can't race past the limit.
-            current_admin_count = (
-                User.objects
-                .filter(role=User.Role.ADMIN)
-                .select_for_update()
-                .count()
-            )
-            if current_admin_count >= MAX_ADMINS:
-                return Response(
-                    {
-                        "error": (
-                            f"Maximum admin limit ({MAX_ADMINS}) reached. "
-                            "Revoke an existing admin before promoting a new one."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # ── Look up the target user ────────────────────────────────────
             try:
-                target_user = User.objects.select_for_update().get(
-                    matric_number=matric_number
-                )
+                target_user = User.objects.select_for_update().get(pk=pk)
             except User.DoesNotExist:
-                return Response(
-                    {"error": "No user found with the provided matric number."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # ── Verify name matches stored record ──────────────────────────
-            # This prevents an attacker who knows someone's matric from
-            # impersonating them by guessing an existing account.
-            from .admin_whitelist import normalize_name
-            if normalize_name(target_user.full_name) != normalize_name(full_name):
+            if target_user.id == request.user.id:
                 return Response(
-                    {"error": "The provided name does not match our records for this matric number."},
+                    {"error": "You cannot change your own role."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Idempotency
-            if target_user.role == User.Role.ADMIN:
+            if target_user.role == User.Role.SUPER_ADMIN:
                 return Response(
-                    {"message": f"{target_user.full_name} is already an admin."},
-                    status=status.HTTP_200_OK,
+                    {"error": "The super admin's role cannot be changed here."},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
-            #Promote
-            target_user.role = User.Role.ADMIN
-            target_user.save(update_fields=["role", "is_staff"])
+            if (
+                not request.user.is_super_admin
+                and new_role in User.ADMIN_TIER_ROLES
+                and target_user.role not in User.ADMIN_TIER_ROLES
+            ):
+                # select_for_update() locks the rows so concurrent promotions
+                # can't race past the limit. Only counted when a regular
+                # Admin is the actor — Super Admin bypasses this entirely.
+                current_count = (
+                    User.objects
+                    .filter(role__in=User.ADMIN_TIER_ROLES)
+                    .select_for_update()
+                    .count()
+                )
+                if current_count >= MAX_ADMINS:
+                    return Response(
+                        {
+                            "error": (
+                                f"Maximum admin/lecturer limit ({MAX_ADMINS}) reached. "
+                                "Reassign an existing admin or lecturer before promoting a new one."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            target_user.role = new_role
+            update_fields = ["role", "is_staff"]
+            if target_user.account_type == User.AccountType.STAFF and not target_user.is_approved:
+                target_user.is_approved = True
+                update_fields.append("is_approved")
+            target_user.save(update_fields=update_fields)
 
         logger.info(
-            "Admin '%s' promoted user '%s' (matric: %s) to admin.",
-            request.user.email, target_user.email, matric_number,
+            "'%s' assigned role '%s' to user '%s' (id: %s).",
+            request.user.email, new_role, target_user.email, target_user.id,
         )
 
-        return Response(
-            {
-                "message": f"{target_user.full_name} has been promoted to admin.",
-                "user": UserSerializer(target_user).data,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    # ── Revoke (DELETE) ────────────────────────────────────────────────────
-    def delete(self, request):
-        serializer = AdminRoleRevokeSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        matric_number: str = serializer.validated_data["matric_number"]
-
-        # ── Prevent self-demotion ──────────────────────────────────────────
-        if request.user.matric_number == matric_number:
-            return Response(
-                {"error": "You cannot revoke your own admin privileges."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            target_user = User.objects.get(matric_number=matric_number)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "No user found with the provided matric number."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if target_user.role != User.Role.ADMIN:
-            return Response(
-                {"error": "This user is not currently an admin."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        target_user.role = User.Role.USER
-        target_user.save(update_fields=["role", "is_staff"])
-
-        logger.info(
-            "Admin '%s' revoked admin role from '%s' (matric: %s).",
-            request.user.email, target_user.email, matric_number,
-        )
-
-        return Response(
-            {"message": f"Admin privileges successfully revoked from {target_user.full_name}."},
-            status=status.HTTP_200_OK,
-        )
-
-
-class AdminListView(APIView):
-    """
-    GET /admin/roles/
-    Returns the list of current admins (and the super admin) and the
-    remaining regular-admin slots. Only accessible by the super admin.
-    """
-
-    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
-
-    def get(self, request):
-        # MAX_ADMINS caps only the regular ADMIN tier — the super admin is a
-        # separate, singular, manually-assigned role outside that ceiling.
-        admins = User.objects.filter(role=User.Role.ADMIN)
-        all_privileged = User.objects.filter(
-            role__in=[User.Role.ADMIN, User.Role.SUPER_ADMIN]
-        )
-        return Response(
-            {
-                "admins": UserSerializer(all_privileged, many=True).data,
-                "count": admins.count(),
-                "max": MAX_ADMINS,
-                "slots_remaining": MAX_ADMINS - admins.count(),
-            }
-        )
-
+        return Response(AdminUserSerializer(target_user).data, status=status.HTTP_200_OK)
 
 
 class CheckEmailView(APIView):
@@ -721,12 +650,21 @@ class AdminUserListView(APIView):
             queryset = queryset.filter(student_profile__level__iexact=level_filter)
 
         role_filter = request.query_params.get("role", "").strip().lower()
-        if role_filter in ["user", "admin", "super_admin"]:
+        if role_filter in User.Role.values:
             queryset = queryset.filter(role=role_filter)
 
         is_active_filter = request.query_params.get("is_active", "").strip().lower()
         if is_active_filter in ["true", "false"]:
             queryset = queryset.filter(is_active=(is_active_filter == "true"))
+
+        # Powers the "Pending Staff" approval queue in User Management.
+        is_approved_filter = request.query_params.get("is_approved", "").strip().lower()
+        if is_approved_filter in ["true", "false"]:
+            queryset = queryset.filter(is_approved=(is_approved_filter == "true"))
+
+        account_type_filter = request.query_params.get("account_type", "").strip().lower()
+        if account_type_filter in User.AccountType.values:
+            queryset = queryset.filter(account_type=account_type_filter)
 
         # ── Pagination ─────────────────────────────────────────────────────
         page_size = min(int(request.query_params.get("page_size", 10)), 100)

@@ -45,6 +45,46 @@ class IsSuperAdmin(BasePermission):
         )
 
 
+class CanAssignRoles(BasePermission):
+    """
+    Grants access only to Admin/Super Admin. Gates the role-assignment
+    endpoint — Lecturers (despite having full admin-tier permissions) and
+    Executives may not promote or reassign anyone.
+
+    Usage:
+        permission_classes = [permissions.IsAuthenticated, CanAssignRoles]
+    """
+
+    message = "Only an admin or super admin can assign roles."
+
+    def has_permission(self, request, view) -> bool:
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.can_assign_roles
+        )
+
+
+class IsAdminOrExecutive(BasePermission):
+    """
+    Grants access to admin-tier users (Admin/Super Admin/Lecturer) AND
+    Executives. Used for committee-application endpoints, which Executives
+    can access and approve despite not being full admins.
+
+    Usage:
+        permission_classes = [permissions.IsAuthenticated, IsAdminOrExecutive]
+    """
+
+    message = "You do not have permission to perform this action."
+
+    def has_permission(self, request, view) -> bool:
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_admin or request.user.is_executive)
+        )
+
+
 class IsAdminOrReadOnly(BasePermission):
     """
     Allows read access to any authenticated user,

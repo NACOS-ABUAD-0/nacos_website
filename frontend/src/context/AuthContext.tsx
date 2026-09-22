@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { authAPI, type RegisterPayload } from "../lib/api";
+import { isStaffAreaRole, type UserRole, type AccountType } from "../lib/roles";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type UserRole = "user" | "admin" | "super_admin";
+export type { UserRole };
 
 interface User {
   id: number;
@@ -16,6 +17,8 @@ interface User {
   profile_complete?: boolean;
   is_staff?: boolean;
   role: UserRole;
+  account_type?: AccountType;
+  is_approved?: boolean;
 }
 
 interface AuthState {
@@ -306,7 +309,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // ── Derived values ─────────────────────────────────────────────────────────
 
   const isAdmin =
-    state.user?.role === "admin" ||
+    isStaffAreaRole(state.user?.role) ||
     state.user?.is_staff === true;
 
   return (

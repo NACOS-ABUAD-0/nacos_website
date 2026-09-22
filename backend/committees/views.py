@@ -13,7 +13,7 @@ from .serializers import (
     AdminCommitteeApplicationSerializer,
 )
 from accounts.models import Notification
-from accounts.permissions import IsAdmin
+from accounts.permissions import IsAdminOrExecutive
 
 
 class CommitteeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -48,7 +48,7 @@ class AdminCommitteeApplicationViewSet(viewsets.ModelViewSet):
         .order_by('-created_at')
     )
     serializer_class = AdminCommitteeApplicationSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrExecutive]
 
     @action(detail=True, methods=['patch'], url_path='approve')
     def approve(self, request, pk=None):

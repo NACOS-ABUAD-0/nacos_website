@@ -86,7 +86,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     )
     verification_token = serializers.CharField(
         write_only=True,
-        required=False,      # enforced conditionally in validate()
+        required=False,      # enforced conditionally in validate() — students only
         allow_blank=True,
         help_text="Signed token from the student-identity verification step.",
     )
@@ -107,26 +107,35 @@ class RegisterSerializer(serializers.ModelSerializer):
             "blank": "Other names are required.",
         },
     )
+    # Required for students only; enforced conditionally in validate(). Not
+    # allow_blank: an explicitly-submitted blank/invalid value should still
+    # surface the choice-list message below, not the generic "required" one.
     level = serializers.ChoiceField(
         choices=LEVEL_CHOICES,
         write_only=True,
+        required=False,
         error_messages={
-            "required": "Select your level.",
             "invalid_choice": "Select your level: 100, 200, 300 or 400.",
+        },
+    )
+    account_type = serializers.ChoiceField(
+        choices=User.AccountType.choices,
+        default=User.AccountType.STUDENT,
+        error_messages={
+            "invalid_choice": "Select either Student or Staff.",
         },
     )
 
     class Meta:
         model = User
         fields = ("email", "surname", "other_names", "level", "matric_number",
-                  "password", "password2", "verification_token")
+                  "password", "password2", "verification_token", "account_type")
         extra_kwargs = {
-            # matric_number is REQUIRED for all API sign-ups.
-            # null/blank is only allowed at model level for management commands.
+            # Required for students only; enforced conditionally in validate().
             "matric_number": {
-                "required": True,
-                "allow_blank": False,
-                "allow_null": False,
+                "required": False,
+                "allow_blank": True,
+                "allow_null": True,
                 # Drop the validators ModelSerializer copies from the model field
                 # (case-sensitive regex + uniqueness). They run before
                 # validate_matric_number and would pre-empt its case-specific
@@ -149,7 +158,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         """
         1. Validate format and require capital letters.
         2. Enforce uniqueness.
+
+        A blank value is passed through untouched here — validate() rejects
+        it for students and discards it for staff, since this field-level
+        hook has no access to account_type.
         """
+        if not value:
+            return value
+
         normalized = _validate_matric_case(value)
 
         if User.objects.filter(matric_number=normalized).exists():
@@ -166,36 +182,61 @@ class RegisterSerializer(serializers.ModelSerializer):
         from django.core import signing
         from .admin_whitelist import normalize_matric
 
-        if getattr(settings, "REQUIRE_STUDENT_VERIFICATION", True):
-            token = attrs.pop("verification_token", None)
-            if not token:
-                raise serializers.ValidationError(
-                    {"verification_token": "Identity verification is required before registration."}
-                )
-            try:
-                payload = signing.loads(
-                    token, salt="student-verification", max_age=900
-                )
-            except signing.SignatureExpired:
-                raise serializers.ValidationError(
-                    {"verification_token": "Verification session has expired. Please restart."}
-                )
-            except signing.BadSignature:
-                raise serializers.ValidationError(
-                    {"verification_token": "Invalid verification token. Please restart."}
-                )
+        is_staff_signup = attrs.get("account_type") == User.AccountType.STAFF
 
-            # Bind token to the exact email + matric submitted
-            if payload.get("email") != attrs["email"]:
-                raise serializers.ValidationError(
-                    {"verification_token": "Token does not match the submitted email."}
-                )
-            if payload.get("matric") != normalize_matric(attrs.get("matric_number", "")):
-                raise serializers.ValidationError(
-                    {"verification_token": "Token does not match the submitted matric number."}
-                )
+        if is_staff_signup:
+            # Staff never go through matric/level/roster verification.
+            attrs.pop("verification_token", None)
+            attrs.pop("level", None)
+            attrs["matric_number"] = None
         else:
-            attrs.pop("verification_token", None)   # dev mode: ignore token
+            if not attrs.get("level"):
+                # DRF's HTML-form field parsing (multipart/urlencoded) collapses
+                # an explicitly-blank value on a required=False, non-allow_blank
+                # ChoiceField down to "absent" before it ever reaches the field's
+                # own validator — so an explicitly-submitted '' looks identical
+                # to the key being omitted entirely by the time it gets here.
+                # Recover the distinction from the raw payload so a blank
+                # submission still gets the choice-list message, not the
+                # generic "omitted" one.
+                if self.initial_data.get("level") == "":
+                    raise serializers.ValidationError(
+                        {"level": "Select your level: 100, 200, 300 or 400."}
+                    )
+                raise serializers.ValidationError({"level": "Select your level."})
+            if not attrs.get("matric_number"):
+                raise serializers.ValidationError({"matric_number": "Matric number is required."})
+
+            if getattr(settings, "REQUIRE_STUDENT_VERIFICATION", True):
+                token = attrs.pop("verification_token", None)
+                if not token:
+                    raise serializers.ValidationError(
+                        {"verification_token": "Identity verification is required before registration."}
+                    )
+                try:
+                    payload = signing.loads(
+                        token, salt="student-verification", max_age=900
+                    )
+                except signing.SignatureExpired:
+                    raise serializers.ValidationError(
+                        {"verification_token": "Verification session has expired. Please restart."}
+                    )
+                except signing.BadSignature:
+                    raise serializers.ValidationError(
+                        {"verification_token": "Invalid verification token. Please restart."}
+                    )
+
+                # Bind token to the exact email + matric submitted
+                if payload.get("email") != attrs["email"]:
+                    raise serializers.ValidationError(
+                        {"verification_token": "Token does not match the submitted email."}
+                    )
+                if payload.get("matric") != normalize_matric(attrs.get("matric_number", "")):
+                    raise serializers.ValidationError(
+                        {"verification_token": "Token does not match the submitted matric number."}
+                    )
+            else:
+                attrs.pop("verification_token", None)   # dev mode: ignore token
 
         if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError(
@@ -212,14 +253,24 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict) -> User:
         validated_data.pop("password2")
         password = validated_data.pop("password")
-        level = validated_data.pop("level")
+        level = validated_data.pop("level", None)
+        account_type = validated_data.pop("account_type")
+
+        is_staff_signup = account_type == User.AccountType.STAFF
+        validated_data["account_type"] = account_type
+        if is_staff_signup:
+            # Pending until an Admin/Super Admin assigns them a role.
+            validated_data["is_approved"] = False
+        else:
+            validated_data["role"] = User.Role.STUDENT
 
         # matric_number is already normalized by validate_matric_number
         with transaction.atomic():
             user: User = User.objects.create_user(password=password, **validated_data)
-            # The profile carries the level the student chose. Department etc.
-            # are filled in from the roster the first time the profile is opened.
-            StudentProfile.objects.create(user=user, level=level)
+            if not is_staff_signup:
+                # The profile carries the level the student chose. Department
+                # etc. are filled in from the roster the first time it's opened.
+                StudentProfile.objects.create(user=user, level=level)
 
         return user
 
@@ -291,35 +342,25 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-# ─── AdminRoleAssignmentSerializer ────────────────────────────────────────────
+# ─── AssignUserRoleSerializer ──────────────────────────────────────────────────
 
-class AdminRoleAssignSerializer(serializers.Serializer):
+# Super Admin and the legacy 'user' role are excluded from the assignable
+# set — Super Admin stays a manual/DB-only assignment, and 'user' is not a
+# meaningful UI target (Student/Technician/etc. replace it).
+_ROLE_ASSIGNMENT_EXCLUDED = {User.Role.SUPER_ADMIN, User.Role.USER}
+_ASSIGNABLE_ROLE_CHOICES = [
+    (value, label) for value, label in User.Role.choices
+    if value not in _ROLE_ASSIGNMENT_EXCLUDED
+]
+
+
+class AssignUserRoleSerializer(serializers.Serializer):
     """
-    Validates input for promoting a user to admin.
-    Both full_name AND matric_number are required and verified
-    against the target user's stored data.
-    """
-
-    matric_number = serializers.CharField(max_length=20)
-    full_name = serializers.CharField(max_length=255)
-
-    def validate_matric_number(self, value: str) -> str:
-        return _validate_and_normalize_matric(value)
-
-    def validate_full_name(self, value: str) -> str:
-        return " ".join(value.strip().split())
-
-
-class AdminRoleRevokeSerializer(serializers.Serializer):
-    """
-    Validates input for revoking admin from a user.
-    Only matric_number is required for revocation.
+    Validates the role an Admin/Super Admin assigns to a user from their
+    profile in User Management.
     """
 
-    matric_number = serializers.CharField(max_length=20)
-
-    def validate_matric_number(self, value: str) -> str:
-        return _validate_and_normalize_matric(value)
+    role = serializers.ChoiceField(choices=_ASSIGNABLE_ROLE_CHOICES)
 
 
 class CheckEmailSerializer(serializers.Serializer):
@@ -506,6 +547,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "level",
             "department",
             "role",
+            "account_type",
+            "is_approved",
             "is_staff",
             "is_active",
             "is_email_verified",

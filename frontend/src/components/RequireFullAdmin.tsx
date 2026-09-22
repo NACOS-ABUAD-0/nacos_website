@@ -1,4 +1,4 @@
-// frontend/src/components/RequireAdmin.tsx
+// frontend/src/components/RequireFullAdmin.tsx
 //
 // ─── IMPORTANT ────────────────────────────────────────────────────────────────
 // This component is a UX layer only. It prevents unauthorized users from
@@ -6,22 +6,25 @@
 // Every admin API endpoint enforces its own permission checks server-side.
 // Never rely solely on this component for security.
 // ──────────────────────────────────────────────────────────────────────────────
+//
+// Stricter sibling of RequireAdmin: only full admin-tier roles (Admin, Super
+// Admin, Lecturer) pass. Executives have staff-area access (RequireAdmin)
+// but not this — they're redirected to the limited admin home instead of the
+// public site, since they DO belong in the admin area, just not this page.
 
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { isStaffAreaRole } from "../lib/roles";
+import { isFullAdminTier, isStaffAreaRole } from "../lib/roles";
 
-interface RequireAdminProps {
+interface RequireFullAdminProps {
   children: React.ReactNode;
 }
 
-const RequireAdmin: React.FC<RequireAdminProps> = ({ children }) => {
+const RequireFullAdmin: React.FC<RequireFullAdminProps> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
-  // ── While session is being restored (page refresh), show a neutral spinner.
-  // This prevents a flash-redirect to "/" before auth state is initialized.
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -30,26 +33,22 @@ const RequireAdmin: React.FC<RequireAdminProps> = ({ children }) => {
     );
   }
 
-  // ── Not logged in at all → redirect to login, preserve intended destination.
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // ── Logged in but has no admin-area access at all → silently redirect to
-  // homepage. We do NOT show a "403 Forbidden" page to avoid leaking that an
-  // admin panel exists. The user simply ends up on the public homepage.
-  //
-  // This is the "staff area" gate: Admin, Super Admin, Lecturer (full
-  // admin-tier) AND Executives (restricted to committee applications) all
-  // pass here. Routes that Executives must NOT reach use RequireFullAdmin
-  // instead — see that component.
-  const canEnterStaffArea = isStaffAreaRole(user?.role) || user?.is_staff === true;
-  if (!canEnterStaffArea) {
+  const isFullAdmin = isFullAdminTier(user?.role) || user?.is_staff === true;
+  if (!isFullAdmin) {
+    // Executives (and anyone else with plain staff-area access) belong in
+    // the admin area, just not here — send them to their limited home
+    // instead of leaking nothing/redirecting to the public site.
+    if (isStaffAreaRole(user?.role)) {
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
-  // ── Authorized → render children.
   return <>{children}</>;
 };
 
-export default RequireAdmin;
+export default RequireFullAdmin;

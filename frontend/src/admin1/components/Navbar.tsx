@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/nacos_logo.png'
 import profileImg from '../../assets/profile.png'
 import { useAuth } from '../../context/AuthContext'
+import { ROLE_LABELS, isExecutiveTier } from '../../lib/roles'
 
 // Split into "primary" (always visible on desktop) and "more" (tucked into
 // an overflow dropdown) — keeps the bar a single line at any width instead
@@ -27,13 +28,18 @@ const MORE_NAV_LINKS = [
   { label: 'Resources',              to: '/admin/resources' },
 ]
 
-const NAV_LINKS = [...PRIMARY_NAV_LINKS, ...MORE_NAV_LINKS]
+// Executives are restricted to Committee Applications (plus Home/Settings,
+// handled separately) — they don't have full admin-tier permissions.
+const EXECUTIVE_PRIMARY_NAV_LINKS = [
+  { label: 'Home', to: '/admin' },
+]
+const EXECUTIVE_MORE_NAV_LINKS = [
+  { label: 'Committee Applications', to: '/admin/committee-applications' },
+]
 
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super Admin',
-  admin: 'Admin',
-  user: 'User',
-}
+// The super admin's avatar is the NACOS ABUAD logo. Everyone else gets the
+// shared default (there are no per-user profile pictures yet).
+const SUPER_ADMIN_AVATAR = '/images/nacos-abuad-logo.PNG'
 
 const Navbar: React.FC = () => {
   const [dropdownOpen, setDropdownOpen]   = useState<boolean>(false)
@@ -45,13 +51,18 @@ const Navbar: React.FC = () => {
   const location     = useLocation()
   const { user, logout } = useAuth()
 
-  const moreLinks = user?.role === 'super_admin'
-    ? [...MORE_NAV_LINKS, { label: 'Manage Admins', to: '/admin/manage-admins' }]
-    : MORE_NAV_LINKS
+  const avatarSrc = user?.role === 'super_admin' ? SUPER_ADMIN_AVATAR : profileImg
+
+  // Executives only see Home + Committee Applications (+ Settings, handled
+  // in the profile dropdown) — everyone else with staff-area access sees
+  // the full admin nav.
+  const isExecutive = isExecutiveTier(user?.role)
+  const primaryLinks = isExecutive ? EXECUTIVE_PRIMARY_NAV_LINKS : PRIMARY_NAV_LINKS
+  const moreLinks = isExecutive ? EXECUTIVE_MORE_NAV_LINKS : MORE_NAV_LINKS
 
   // Full flat list — used by the mobile drawer, which already scrolls and
   // has no overflow concern regardless of item count.
-  const navLinks = [...PRIMARY_NAV_LINKS, ...moreLinks]
+  const navLinks = [...primaryLinks, ...moreLinks]
 
   const handleLogout = (): void => {
     logout()
@@ -92,7 +103,7 @@ const Navbar: React.FC = () => {
 
         {/* Desktop Nav Links */}
         <ul className="hidden md:flex items-center gap-5 lg:gap-7">
-          {PRIMARY_NAV_LINKS.map(({ label, to }) => (
+          {primaryLinks.map(({ label, to }) => (
             <li key={label}>
               <NavLink
                 to={to}
@@ -168,7 +179,7 @@ const Navbar: React.FC = () => {
               onClick={() => setDropdownOpen((prev) => !prev)}
               className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 hover:border-[#1a7a3f] transition-colors duration-200 focus:outline-none"
             >
-              <img src={profileImg} alt="Profile" className="w-full h-full object-cover" />
+              <img src={avatarSrc} alt="Profile" className="w-full h-full object-cover" />
             </button>
 
             {dropdownOpen && (
@@ -177,7 +188,7 @@ const Navbar: React.FC = () => {
                 <div className="flex flex-col items-center pt-6 pb-4 px-4 border-b border-gray-100">
                   <div className="relative">
                     <img
-                      src={profileImg}
+                      src={avatarSrc}
                       alt={user?.full_name ?? 'Profile'}
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
                     />
@@ -188,7 +199,7 @@ const Navbar: React.FC = () => {
                     </span>
                   </div>
                   <p className="mt-3 font-semibold text-gray-900 text-[15px]">{user?.full_name ?? 'Admin'}</p>
-                  <p className="text-xs text-gray-400">{ROLE_LABELS[user?.role ?? 'admin'] ?? 'Admin'}</p>
+                  <p className="text-xs text-gray-400">{ROLE_LABELS[user?.role ?? 'admin'] ?? user?.role ?? 'Admin'}</p>
                   <span className="mt-2 flex items-center gap-1.5 bg-green-100 text-green-600 text-xs font-medium px-3 py-1 rounded-full">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     Online

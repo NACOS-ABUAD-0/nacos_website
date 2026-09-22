@@ -35,7 +35,10 @@ ADMIN_WHITELIST: list[AdminEntry] = [
     },
 ]
 # ─── MAX ADMIN LIMIT (enforced at the view layer as well) ─────────────────────
-MAX_ADMINS: int = 4
+# Caps the combined Admin + Lecturer count when a *regular* Admin is the one
+# promoting (both roles carry full admin-tier permissions — see
+# User.ADMIN_TIER_ROLES). The Super Admin is exempt from this cap entirely.
+MAX_ADMINS: int = 5
 
 
 # ─── Utility Functions ─────────────────────────────────────────────────────────

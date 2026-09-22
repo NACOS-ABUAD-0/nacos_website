@@ -14,7 +14,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import RequireAdmin from "./components/RequireAdmin";
-import RequireSuperAdmin from "./components/RequireSuperAdmin";
+import RequireFullAdmin from "./components/RequireFullAdmin";
 import ClickSpark from "./components/reactbits/ClickSpark";
 import ScrollProgress from "./components/ScrollProgress";
 
@@ -38,6 +38,7 @@ import Gallery from "./pages/gallery";
 import ContactPage from "./pages/contact";
 import { ForgotPasswordPage } from "./pages/forgot-password";
 import { ResetPasswordPage }  from "./pages/reset-password";
+import { PendingApprovalPage } from "./pages/pending-approval";
 import { CollaborationHubPage } from './pages/CollaborationHubPage';
 import { MyCollaborationsPage } from "./pages/MyCollaborationsPage";
 import { CollaborationRequestsPage } from "./pages/CollaborationRequestsPage";
@@ -63,7 +64,6 @@ import AdminStudentProfile from "./admin1/pages/StudentProfile";
 import AdminMetrics from "./admin1/pages/Metrics";
 import AdminGallery from "./admin1/pages/Gallery";
 import AdminExecutives from "./admin1/pages/Executives";
-import ManageAdmins from "./admin1/pages/ManageAdmins";
 import AdminInquiries from "./admin1/pages/Inquiries";
 import UserManagement from "./admin1/pages/UserManagement";
 // ── Admin committee applications ───────────────────────────────────────────────
@@ -87,7 +87,8 @@ const queryClient = new QueryClient({
 // ─── RequireAuth ───────────────────────────────────────────────────────────────
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -97,7 +98,19 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Staff accounts can log in immediately but see a limited "pending
+  // approval" view of the site until an Admin/Super Admin assigns them a
+  // role. Every RequireAuth-wrapped route falls through to that page.
+  const isPendingStaff = user?.account_type === "staff" && user?.is_approved === false;
+  if (isPendingStaff && location.pathname !== "/pending-approval") {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 // ─── PublicRoute ───────────────────────────────────────────────────────────────
@@ -281,6 +294,16 @@ function AppRoutes() {
       />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+      {/* ── Pending staff approval ──────────────────────────────────────── */}
+      <Route
+        path="/pending-approval"
+        element={
+          <RequireAuth>
+            <PendingApprovalPage />
+          </RequireAuth>
+        }
+      />
+
       {/* ── Protected ────────────────────────────────────────────────── */}
       <Route
         path="/dashboard"
@@ -332,44 +355,48 @@ function AppRoutes() {
           </RequireAdmin>
         }
       />
+      {/* ── The routes below use RequireFullAdmin: Admin/Super Admin/Lecturer
+          only. Executives get staff-area access (RequireAdmin, above) but
+          are redirected away from these — they're limited to Home,
+          Committee Applications, and Settings. ─────────────────────────── */}
       <Route
         path="/admin/approvals"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminApproval />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/approvals/:id"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminStudentProfile />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/events"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminEvents />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/events/:id/checkin"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminEventCheckIn />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/class-attendance"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminClassAttendance />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
@@ -383,52 +410,44 @@ function AppRoutes() {
       <Route
         path="/admin/metrics"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminMetrics />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/gallery"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminGallery />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/executives"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminExecutives />
-          </RequireAdmin>
-        }
-      />
-      <Route
-        path="/admin/manage-admins"
-        element={
-          <RequireSuperAdmin>
-            <ManageAdmins />
-          </RequireSuperAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/inquiries"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminInquiries />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       <Route
         path="/admin/users"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <UserManagement />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
-      {/* ── Admin Committee Applications ──────────────────────────────── */}
+      {/* ── Admin Committee Applications — Executives can reach this one ── */}
       <Route
         path="/admin/committee-applications"
         element={
@@ -441,27 +460,27 @@ function AppRoutes() {
       <Route
         path="/admin/complaints"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminComplaints />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       {/* ── NEW: Admin Resources ────────────────────────────────────────── */}
       <Route
         path="/admin/resources"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminResources />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
       {/* ── NEW: Admin Featured Projects ──────────────────────────────── */}
       <Route
         path="/admin/featured-projects"
         element={
-          <RequireAdmin>
+          <RequireFullAdmin>
             <AdminFeaturedProjects />
-          </RequireAdmin>
+          </RequireFullAdmin>
         }
       />
 

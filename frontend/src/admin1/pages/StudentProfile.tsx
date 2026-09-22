@@ -1,6 +1,6 @@
 // src/admin1/pages/StudentProfile.tsx
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -9,6 +9,8 @@ import { Footer } from '../../components/Footer'
 import { fetchUser } from '../../services/adminUserService'
 import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
 import { useProjects } from '../../lib/hooks/useProjects'
+import { useAuth } from '../../context/AuthContext'
+import { ROLE_OPTION_GROUPS, ROLE_LABELS, canAssignRoles, roleBadgeClass, type UserRole } from '../../lib/roles'
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex items-start gap-4 mb-4">
@@ -20,7 +22,8 @@ const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
 export default function StudentProfile(): React.ReactElement {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { handleBanUser, handleUnbanUser } = useAdminUsers()
+  const { user: viewer } = useAuth()
+  const { handleBanUser, handleUnbanUser, handleAssignRole, assigningRole } = useAdminUsers()
 
   const { data: student, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-user', id],
@@ -29,6 +32,33 @@ export default function StudentProfile(): React.ReactElement {
   })
 
   const { data: projects = [], isLoading: projectsLoading } = useProjects({ owner: id })
+
+  const [selectedRole, setSelectedRole] = useState<UserRole | ''>('')
+  useEffect(() => {
+    setSelectedRole(student?.role ?? '')
+  }, [student?.role])
+
+  const isPendingStaff = student?.account_type === 'staff' && student?.is_approved === false
+  const viewerCanAssign =
+    canAssignRoles(viewer?.role) &&
+    !!student &&
+    student.role !== 'super_admin' &&
+    student.id !== viewer?.id
+
+  const handleSaveRole = async (): Promise<void> => {
+    if (!student || !selectedRole || selectedRole === student.role) return
+    const updated = await handleAssignRole(student.id, selectedRole)
+    if (updated) {
+      toast.success(
+        isPendingStaff
+          ? `${student.full_name} approved as ${ROLE_LABELS[selectedRole]}.`
+          : `${student.full_name}'s role updated to ${ROLE_LABELS[selectedRole]}.`
+      )
+      refetch()
+    } else {
+      toast.error('Failed to update role.')
+    }
+  }
 
   const handleBan = async (): Promise<void> => {
     if (!student) return
@@ -77,6 +107,20 @@ export default function StudentProfile(): React.ReactElement {
           {student.full_name}
         </button>
 
+        {isPendingStaff && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 mb-6 flex items-center gap-3">
+            <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Pending Staff Approval</p>
+              <p className="text-xs text-amber-700">
+                This staff account can log in but has no role yet. Assign a role below to approve it.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl p-6 md:p-8 mb-8">
           <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-5 sm:gap-8">
             <div className="flex items-center justify-center shrink-0">
@@ -92,6 +136,12 @@ export default function StudentProfile(): React.ReactElement {
                 <InfoRow label="Name" value={student.full_name} />
                 <InfoRow label="Email" value={student.email} />
                 <InfoRow label="Matric Number" value={student.matric_number || '—'} />
+                <div className="flex items-start gap-4 mb-4">
+                  <span className="text-[13px] text-gray-400 w-28 shrink-0">Role</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${roleBadgeClass(student.role)}`}>
+                    {ROLE_LABELS[student.role] ?? student.role}
+                  </span>
+                </div>
               </div>
               <div>
                 <InfoRow label="Level" value={student.level || '—'} />
@@ -118,6 +168,39 @@ export default function StudentProfile(): React.ReactElement {
             </div>
           </div>
         </div>
+
+        {viewerCanAssign && (
+          <div className="bg-white rounded-2xl p-6 md:p-8 mb-8">
+            <h2 className="text-[15px] font-semibold text-gray-900 mb-1">Assign Role</h2>
+            <p className="text-[13px] text-gray-500 mb-4">
+              {isPendingStaff
+                ? 'Choose a role to approve this staff account and grant access.'
+                : `Change ${student.full_name}'s role. This takes effect immediately.`}
+            </p>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:border-[#1a7a3f]"
+              >
+                {ROLE_OPTION_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.roles.map((role) => (
+                      <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <button
+                onClick={handleSaveRole}
+                disabled={assigningRole || !selectedRole || selectedRole === student.role}
+                className="bg-[#1a7a3f] hover:bg-[#155f32] disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                {assigningRole ? 'Saving…' : isPendingStaff ? 'Approve' : 'Save Role'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <h2 className="text-[18px] font-semibold text-gray-900 mb-4">Projects Submitted</h2>
         {projectsLoading ? (

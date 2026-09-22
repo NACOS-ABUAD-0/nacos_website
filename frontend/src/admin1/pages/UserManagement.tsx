@@ -19,32 +19,19 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal'
 import UserTableSkeleton from '../components/UserTableSkeleton'
 import Toast from '../components/Toast'
 import type { UserRecord } from '../../services/adminUserService'
+import { ROLE_LABELS, ROLE_OPTION_GROUPS, roleBadgeClass, isFullAdminTier } from '../../lib/roles'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-type RoleBadgeVariant = 'super_admin' | 'admin' | 'user'
 type StatusBadgeVariant = 'active' | 'inactive' | 'verified' | 'unverified'
 
 // ─── Sub-Components ────────────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<RoleBadgeVariant, string> = {
-  super_admin: 'Super Admin',
-  admin: 'Admin',
-  user: 'User',
-}
-
-const RoleBadge: React.FC<{ role: RoleBadgeVariant }> = ({ role }) => {
-  const styles: Record<RoleBadgeVariant, string> = {
-    super_admin: 'bg-amber-100 text-amber-700 border-amber-200',
-    admin: 'bg-purple-100 text-purple-700 border-purple-200',
-    user: 'bg-gray-100 text-gray-600 border-gray-200',
-  }
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${styles[role]}`}>
-      {ROLE_LABELS[role]}
-    </span>
-  )
-}
+const RoleBadge: React.FC<{ role: string }> = ({ role }) => (
+  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${roleBadgeClass(role)}`}>
+    {ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role}
+  </span>
+)
 
 const StatusBadge: React.FC<{ isActive: boolean; isVerified: boolean }> = ({
   isActive,
@@ -159,9 +146,11 @@ const UserManagement: React.FC = () => {
     searchQuery,
     levelFilter,
     roleFilter,
+    approvalFilter,
     setSearchQuery,
     setLevelFilter,
     setRoleFilter,
+    setApprovalFilter,
     goToPage,
     handleDeleteUser,
     clearErrors,
@@ -222,8 +211,8 @@ const UserManagement: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Total Users', value: pagination.count, color: 'bg-blue-50 text-blue-700' },
-            { label: 'Admins', value: users.filter(u => u.role === 'admin' || u.role === 'super_admin').length, color: 'bg-purple-50 text-purple-700' },
-            { label: 'Verified', value: users.filter(u => u.is_email_verified).length, color: 'bg-green-50 text-green-700' },
+            { label: 'Admins/Lecturers', value: users.filter(u => isFullAdminTier(u.role)).length, color: 'bg-purple-50 text-purple-700' },
+            { label: 'Pending Staff', value: users.filter(u => u.account_type === 'staff' && !u.is_approved).length, color: 'bg-amber-50 text-amber-700' },
             { label: 'This Page', value: users.length, color: 'bg-gray-50 text-gray-700' },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
@@ -233,6 +222,26 @@ const UserManagement: React.FC = () => {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Pending Staff quick filter */}
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-5 w-fit">
+          <button
+            onClick={() => setApprovalFilter('all')}
+            className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 ${
+              approvalFilter === 'all' ? 'bg-[#1a7a3f] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            All Users
+          </button>
+          <button
+            onClick={() => setApprovalFilter('pending')}
+            className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 ${
+              approvalFilter === 'pending' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Pending Staff
+          </button>
         </div>
 
         {/* Controls */}
@@ -279,8 +288,14 @@ const UserManagement: React.FC = () => {
                 className="appearance-none pl-3 pr-8 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white focus:outline-none focus:border-[#1a7a3f] cursor-pointer"
               >
                 <option value="">All Roles</option>
-                <option value="user">Users Only</option>
-                <option value="admin">Admins Only</option>
+                <option value="super_admin">Super Admin</option>
+                {ROLE_OPTION_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.roles.map((role) => (
+                      <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
               <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -361,7 +376,7 @@ const UserManagement: React.FC = () => {
                           <p className="text-[13px] text-gray-600">{user.level || '—'}</p>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <RoleBadge role={user.role as RoleBadgeVariant} />
+                          <RoleBadge role={user.role} />
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <StatusBadge isActive={user.is_active} isVerified={user.is_email_verified} />

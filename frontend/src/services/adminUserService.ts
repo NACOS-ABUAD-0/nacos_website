@@ -1,6 +1,7 @@
 // src/services/adminUserService.ts
 
 import { api } from '../lib/api'
+import type { UserRole, AccountType } from '../lib/roles'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -11,6 +12,8 @@ export interface UserListParams {
   level?: string
   role?: string
   is_active?: 'true' | 'false'
+  is_approved?: 'true' | 'false'
+  account_type?: AccountType
 }
 
 export interface UserRecord {
@@ -20,7 +23,9 @@ export interface UserRecord {
   matric_number: string
   level: string
   department: string
-  role: 'user' | 'admin' | 'super_admin'
+  role: UserRole
+  account_type: AccountType
+  is_approved: boolean
   is_staff: boolean
   is_active: boolean
   is_email_verified: boolean
@@ -84,5 +89,15 @@ export async function banUser(userId: number): Promise<UserRecord> {
  */
 export async function unbanUser(userId: number): Promise<UserRecord> {
   const response = await api.patch<UserRecord>(`/admin/users/${userId}/unban/`)
+  return response.data
+}
+
+/**
+ * Assigns a role to a user from their profile. Only Admin/Super Admin may
+ * call this (enforced server-side). If the target was a pending staff
+ * signup, this also approves them. Requires admin authentication.
+ */
+export async function assignUserRole(userId: number, role: UserRole): Promise<UserRecord> {
+  const response = await api.patch<UserRecord>(`/admin/users/${userId}/role/`, { role })
   return response.data
 }

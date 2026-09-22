@@ -236,15 +236,17 @@ export interface CollaborationRequestData {
 
 // ─── AUTH ────────────
 
-/** What a student fills in to create an account. */
+/** What a student or staff member fills in to create an account. */
 export interface RegisterPayload {
   email: string;
   surname: string;
   otherNames: string;
-  level: string; // "100" | "200" | "300" | "400"
-  matricNumber: string;
   password: string;
   password2: string;
+  accountType?: "student" | "staff"; // defaults to "student" server-side
+  // Student-only fields — omitted entirely for a staff signup.
+  level?: string; // "100" | "200" | "300" | "400"
+  matricNumber?: string;
   verificationToken?: string;
 }
 
@@ -272,10 +274,12 @@ export const authAPI = {
       email: p.email,
       surname: p.surname,
       other_names: p.otherNames,
-      level: p.level,
-      matric_number: p.matricNumber,
       password: p.password,
       password2: p.password2,
+      account_type: p.accountType ?? "student",
+      // Staff signups skip matric/level/roster verification entirely.
+      ...(p.level ? { level: p.level } : {}),
+      ...(p.matricNumber ? { matric_number: p.matricNumber } : {}),
       ...(p.verificationToken
         ? { verification_token: p.verificationToken }
         : {}),

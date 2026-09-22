@@ -14,6 +14,7 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from .models import User
+from .admin_whitelist import MAX_ADMINS
 
 
 class UserModelTest(TestCase):
@@ -488,55 +489,80 @@ class SuperAdminTierTest(APITestCase):
         self.assertTrue(self.admin.is_admin)
         self.assertFalse(self.admin.is_super_admin)
 
-    def test_regular_admin_cannot_promote_users(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(reverse('admin-role-assign'), {
-            'matric_number': self.student.matric_number,
-            'full_name': self.student.full_name,
-        })
+    def _assign_role_url(self, target):
+        return reverse('admin-user-assign-role', kwargs={'pk': target.pk})
+
+    def test_executive_cannot_assign_roles(self):
+        executive = User.objects.create_user(
+            email='exec@example.com', full_name='Exec One', password='pass12345',
+            role='software_director',
+        )
+        self.client.force_authenticate(user=executive)
+        response = self.client.patch(self._assign_role_url(self.student), {'role': 'admin'})
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_regular_admin_cannot_revoke_admins(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.delete(reverse('admin-role-revoke'), {
-            'matric_number': self.student.matric_number,
-        })
+    def test_lecturer_cannot_assign_roles(self):
+        lecturer = User.objects.create_user(
+            email='lecturer@example.com', full_name='Lecturer One', password='pass12345',
+            role='lecturer',
+        )
+        self.client.force_authenticate(user=lecturer)
+        response = self.client.patch(self._assign_role_url(self.student), {'role': 'admin'})
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_regular_admin_cannot_view_admin_list(self):
+    def test_regular_admin_can_assign_roles(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get(reverse('admin-list'))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_super_admin_can_promote_and_revoke(self):
-        self.client.force_authenticate(user=self.super_admin)
-
-        promote = self.client.post(reverse('admin-role-assign'), {
-            'matric_number': self.student.matric_number,
-            'full_name': self.student.full_name,
-        })
-        self.assertEqual(promote.status_code, status.HTTP_200_OK)
+        response = self.client.patch(self._assign_role_url(self.student), {'role': 'admin'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.student.refresh_from_db()
         self.assertEqual(self.student.role, 'admin')
         self.assertTrue(self.student.is_staff)
 
-        revoke = self.client.delete(reverse('admin-role-revoke'), {
-            'matric_number': self.student.matric_number,
-        })
-        self.assertEqual(revoke.status_code, status.HTTP_200_OK)
-        self.student.refresh_from_db()
-        self.assertEqual(self.student.role, 'user')
-        self.assertFalse(self.student.is_staff)
+    def test_regular_admin_capped_at_max_admins_for_admin_tier(self):
+        self.client.force_authenticate(user=self.admin)
+        # self.admin already counts as 1 of the MAX_ADMINS admin-tier slots.
+        for i in range(MAX_ADMINS - 1):
+            candidate = User.objects.create_user(
+                email=f'cand{i}@example.com', full_name=f'Candidate {i}', password='pass12345',
+                matric_number=f'23/SCI01/{200 + i}',
+            )
+            response = self.client.patch(self._assign_role_url(candidate), {'role': 'admin'})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_super_admin_list_includes_both_tiers(self):
+        response = self.client.patch(self._assign_role_url(self.student), {'role': 'lecturer'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_super_admin_bypasses_admin_cap(self):
         self.client.force_authenticate(user=self.super_admin)
-        response = self.client.get(reverse('admin-list'))
+        for i in range(MAX_ADMINS + 2):
+            candidate = User.objects.create_user(
+                email=f'sacand{i}@example.com', full_name=f'SA Candidate {i}', password='pass12345',
+                matric_number=f'23/SCI01/{300 + i}',
+            )
+            response = self.client.patch(self._assign_role_url(candidate), {'role': 'admin'})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_cannot_change_own_role(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(self._assign_role_url(self.admin), {'role': 'student'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_change_super_admin_role(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(self._assign_role_url(self.super_admin), {'role': 'admin'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_assigning_role_approves_pending_staff(self):
+        staff = User.objects.create_user(
+            email='staff@example.com', full_name='Staff One', password='pass12345',
+            account_type='staff', is_approved=False,
+        )
+        self.client.force_authenticate(user=self.super_admin)
+        response = self.client.patch(self._assign_role_url(staff), {'role': 'technician'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        emails = {a['email'] for a in response.data['admins']}
-        self.assertIn('super@example.com', emails)
-        self.assertIn('admin@example.com', emails)
-        # MAX_ADMINS count/slots only reflect the regular ADMIN tier.
-        self.assertEqual(response.data['count'], 1)
+        staff.refresh_from_db()
+        self.assertEqual(staff.role, 'technician')
+        self.assertTrue(staff.is_approved)
 
 
 @override_settings(
