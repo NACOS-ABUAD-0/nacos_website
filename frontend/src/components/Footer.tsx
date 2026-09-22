@@ -77,8 +77,8 @@ export const Footer: React.FC = () => {
             <h3 className="font-semibold text-white mb-4 text-lg">Connect</h3>
             <ul className="space-y-3">
               <li>
-                <a
-                  href="mailto:nacosabuad1@gmail.com"
+                <Link
+                  to="/contact"
                   className="text-white hover:text-green-300 transition-colors duration-200 inline-flex items-center gap-2 group"
                 >
                   <svg
@@ -95,7 +95,7 @@ export const Footer: React.FC = () => {
                     />
                   </svg>
                   <span>Contact Us</span>
-                </a>
+                </Link>
               </li>
               <li>
                 <Link

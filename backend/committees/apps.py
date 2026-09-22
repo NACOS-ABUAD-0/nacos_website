@@ -31,29 +31,11 @@ class CommitteesConfig(AppConfig):
                 ),
             },
             {
-                "name": "NACOS Electoral Committee",
-                "description": (
-                    "Conducts free, fair, and credible elections for NACOS ABUAD and "
-                    "presents the winning candidates. Does not form part of the "
-                    "Executive Council and does not attend Executive meetings. "
-                    "Releases results immediately after counting."
-                ),
-            },
-            {
                 "name": "NACOS Social Committee",
                 "description": (
                     "Chaired by the Social Director. Organizes the Association's "
                     "social activities — including NACOS WEEK — with the approval "
                     "of the Executive Council, to whom it is answerable."
-                ),
-            },
-            {
-                "name": "NACOS Disciplinary Committee",
-                "description": (
-                    "Chaired by the Chief of Staff. Handles disciplinary matters, "
-                    "investigates conduct issues, and submits reports and "
-                    "recommendations — including suspension or expulsion — to the "
-                    "Executive Council, to whom it is answerable."
                 ),
             },
             {

@@ -219,7 +219,7 @@ export default function ContactPage() {
                   </div>
 
                   {isSponsorship && (
-                    <div className="grid sm:grid-cols-2 gap-4 p-4 bg-green-50 rounded-xl border">
+                    <div className="grid sm:grid-cols-2 gap-4 p-4 bg-green-50 rounded-xl border border-green-100">
                       <select
                         value={form.budget_range}
                         onChange={e => set('budget_range', e.target.value)}
