@@ -83,31 +83,39 @@ export function unwrapApiError(error: unknown): any {
 
 // ─── AUTH ───────────────────────────────────────────────────────────────────
 
+/** What a student fills in to create an account. */
+export interface RegisterPayload {
+  email: string;
+  surname: string;
+  otherNames: string;
+  level: string; // '100' | '200' | '300' | '400'
+  matricNumber: string;
+  password: string;
+  password2: string;
+  verificationToken?: string;
+}
+
 export const authAPI = {
   checkEmail: (email: string) => api.post('/auth/check-email/', { email }),
 
-  verifyStudent: (email: string, fullName: string, matricNumber: string) =>
+  verifyStudent: (email: string, surname: string, otherNames: string, matricNumber: string) =>
     api.post('/auth/verify-student/', {
       email,
-      full_name: fullName,
+      surname,
+      other_names: otherNames,
       matric_number: matricNumber,
     }),
 
-  register: (
-    email: string,
-    fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string,
-    verificationToken?: string,
-  ) =>
+  register: (p: RegisterPayload) =>
     api.post('/auth/register/', {
-      email,
-      full_name: fullName,
-      matric_number: matricNumber,
-      password,
-      password2,
-      ...(verificationToken ? { verification_token: verificationToken } : {}),
+      email: p.email,
+      surname: p.surname,
+      other_names: p.otherNames,
+      level: p.level,
+      matric_number: p.matricNumber,
+      password: p.password,
+      password2: p.password2,
+      ...(p.verificationToken ? { verification_token: p.verificationToken } : {}),
     }),
 
   login: (email: string, password: string) => api.post('/auth/login/', { email, password }),

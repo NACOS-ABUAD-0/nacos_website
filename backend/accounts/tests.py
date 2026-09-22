@@ -43,7 +43,9 @@ class AuthAPITest(APITestCase):
     def setUp(self):
         self.user_data = {
             'email': 'test@example.com',
-            'full_name': 'Test User',
+            'surname': 'Okafor',
+            'other_names': 'Chidi Emeka',
+            'level': '300',
             'matric_number': '23/SCI03/004',
             'password': 'testpass123',
             'password2': 'testpass123'
@@ -101,6 +103,78 @@ class AuthAPITest(APITestCase):
         finally:
             release.set()
 
+    def test_register_composes_full_name_from_surname_and_other_names(self):
+        response = self._register(surname='  Okafor ', other_names='Chidi   Emeka')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['user']['full_name'], 'Okafor Chidi Emeka')
+        self.assertEqual(User.objects.get(email='test@example.com').full_name, 'Okafor Chidi Emeka')
+
+    def test_register_stores_the_level_the_student_chose(self):
+        self.assertEqual(self._register(level='200').status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email='test@example.com')
+        self.assertEqual(user.student_profile.level, '200')
+
+    def test_register_requires_surname_other_names_and_level(self):
+        expected = {
+            'surname': 'Surname is required.',
+            'other_names': 'Other names are required.',
+            'level': 'Select your level.',
+        }
+        for field, message in expected.items():
+            data = {**self.user_data}
+            data.pop(field)
+            data['verification_token'] = self._verification_token(data)
+            response = self.client.post(reverse('register'), data)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, field)
+            self.assertEqual(response.data[field][0], message)
+        self.assertFalse(User.objects.filter(email='test@example.com').exists())
+
+    def test_register_rejects_an_unknown_level(self):
+        for bad in ('500', '30', ''):
+            response = self._register(level=bad)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, repr(bad))
+            self.assertIn('100, 200, 300 or 400', response.data['level'][0])
+        self.assertFalse(User.objects.filter(email='test@example.com').exists())
+
+    def test_opening_the_profile_keeps_the_chosen_level_not_the_rosters(self):
+        # The roster is last session's list, so its level must never overwrite
+        # what the student told us at signup.
+        from .student_service import StudentRecord
+        access = self._register(level='300').data['access']
+        stale_roster = StudentRecord(
+            full_name='Okafor Chidi Emeka', matric_number='23/SCI03/004',
+            department='Computer Science', level='200.0',
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        with patch('accounts.views.verify_student_identity', return_value=stale_roster):
+            response = self.client.get(reverse('student-profile'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['level'], '300')
+        self.assertEqual(response.data['department'], 'Computer Science')  # still synced
+
+    def test_verify_student_matches_the_roster_on_surname_and_other_names(self):
+        from .student_service import StudentRecord
+        record = StudentRecord('Okafor Chidi Emeka', '23/SCI03/004', 'Computer Science', '200.0')
+        with patch('accounts.student_service.verify_student_identity', return_value=record) as verify:
+            response = self.client.post(reverse('verify_student'), {
+                'email': 'test@example.com',
+                'surname': 'Okafor',
+                'other_names': 'Chidi Emeka',
+                'matric_number': '23/SCI03/004',
+            })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        verify.assert_called_once_with('Okafor Chidi Emeka', '23/SCI03/004')
+        self.assertTrue(response.data['verification_token'])
+        # The roster's level is last session's, so it is not echoed back.
+        self.assertNotIn('level', response.data['student'])
+
+    def test_verify_student_requires_both_name_parts(self):
+        response = self.client.post(reverse('verify_student'), {
+            'email': 'test@example.com', 'surname': 'Okafor', 'matric_number': '23/SCI03/004',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['other_names'][0], 'Other names are required.')
+
     def test_register_user_without_matric(self):
         data = self.user_data.copy()
         data.pop('matric_number')
@@ -139,7 +213,8 @@ class AuthAPITest(APITestCase):
     def test_verify_student_lowercase_matric_explains_the_fix(self):
         response = self.client.post(reverse('verify_student'), {
             'email': 'test@example.com',
-            'full_name': 'Test User',
+            'surname': 'Okafor',
+            'other_names': 'Chidi Emeka',
             'matric_number': '23/sci03/004',
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -638,3 +713,93 @@ class EmailConfigurationTest(TestCase):
         with override_settings(**self.RESEND), \
                 patch('requests.Session.request', return_value=rejected):
             self.assertFalse(send_verification_email(user))
+
+
+class SeedSuperAdminTest(APITestCase):
+    """`manage.py seed_super_admin` creates a super admin from env vars."""
+
+    ENV = {
+        'SUPER_ADMIN_EMAIL': 'Owner@Example.com',
+        'SUPER_ADMIN_PASSWORD': 'SuperSecret!234',
+        'SUPER_ADMIN_NAME': 'Site Owner',
+    }
+
+    def _seed(self, env=None, *args):
+        import os
+        from io import StringIO
+        from django.core.management import call_command
+        out, err = StringIO(), StringIO()
+        clean = {k: v for k, v in os.environ.items() if not k.startswith('SUPER_ADMIN_')}
+        with patch.dict(os.environ, {**clean, **(self.ENV if env is None else env)}, clear=True):
+            call_command('seed_super_admin', *args, stdout=out, stderr=err)
+        return out.getvalue(), err.getvalue()
+
+    def test_creates_a_super_admin_who_can_use_the_admin_area(self):
+        self._seed()
+        user = User.objects.get(email='owner@example.com')
+        self.assertEqual(user.role, User.Role.SUPER_ADMIN)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_email_verified)
+        self.assertEqual(user.full_name, 'Site Owner')
+        self.assertTrue(user.check_password('SuperSecret!234'))
+
+    def test_skips_quietly_when_not_configured(self):
+        out, _ = self._seed(env={})
+        self.assertIn('skipping', out.lower())
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_is_idempotent_and_never_clobbers_a_changed_password(self):
+        self._seed()
+        user = User.objects.get(email='owner@example.com')
+        user.set_password('ChangedLater!987')
+        user.save()
+
+        out, _ = self._seed()   # e.g. the next deploy
+        self.assertEqual(User.objects.filter(email='owner@example.com').count(), 1)
+        self.assertIn('nothing to do', out)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('ChangedLater!987'))
+
+    def test_reset_password_flag_sets_the_password(self):
+        self._seed()
+        user = User.objects.get(email='owner@example.com')
+        user.set_password('ChangedLater!987')
+        user.save()
+
+        self._seed(None, '--reset-password')
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('SuperSecret!234'))
+
+    def test_promotes_an_existing_account_without_touching_its_password(self):
+        existing = User.objects.create_user(
+            email='owner@example.com', full_name='Existing Student', password='OriginalPass!123',
+        )
+        self._seed()
+        existing.refresh_from_db()
+        self.assertEqual(existing.role, User.Role.SUPER_ADMIN)
+        self.assertTrue(existing.is_superuser)
+        self.assertTrue(existing.is_staff)
+        self.assertTrue(existing.check_password('OriginalPass!123'))
+        self.assertEqual(existing.full_name, 'Existing Student')
+
+    def test_weak_password_is_reported_and_skipped_without_failing(self):
+        _, err = self._seed(env={**self.ENV, 'SUPER_ADMIN_PASSWORD': '123'})
+        self.assertIn('not acceptable', err)
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_seeded_super_admin_can_delete_a_student_record(self):
+        self._seed()
+        super_admin = User.objects.get(email='owner@example.com')
+        student = User.objects.create_user(
+            email='student@example.com', full_name='Okafor Chidi Emeka',
+            matric_number='23/SCI03/004', password='pass12345',
+        )
+        self.client.force_authenticate(user=super_admin)
+        response = self.client.delete(
+            reverse('admin-user-delete', kwargs={'pk': student.pk}),
+            {'matric_number': '23/SCI03/004', 'full_name': 'Okafor Chidi Emeka'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(pk=student.pk).exists())

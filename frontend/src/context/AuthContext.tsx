@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { authAPI } from "../lib/api";
+import { authAPI, type RegisterPayload } from "../lib/api";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,14 +27,7 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    email: string,
-    fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string,
-    verificationToken?: string,
-  ) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
   verifyEmail: (uid: string, token: string) => Promise<void>;
@@ -178,25 +171,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // ── register ───────────────────────────────────────────────────────────────
 
-  const register = async (
-    email: string,
-    fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string,
-    verificationToken?: string,
-  ): Promise<void> => {
+  const register = async (payload: RegisterPayload): Promise<void> => {
     dispatch({ type: "SET_LOADING", payload: true });
 
     try {
-      const response = await authAPI.register(
-        email,
-        fullName,
-        matricNumber,
-        password,
-        password2,
-        verificationToken
-      );
+      const response = await authAPI.register(payload);
 
       localStorage.setItem("accessToken", response.data.access);
       localStorage.setItem("refreshToken", response.data.refresh);

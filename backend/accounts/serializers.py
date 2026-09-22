@@ -4,6 +4,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core import signing
+from django.db import transaction
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
@@ -54,6 +55,22 @@ def _validate_matric_case(value: str) -> str:
     return normalized
 
 
+# ─── Name and level (entered by the student at signup) ─────────────────────────
+
+# The student states their own level. The roster spreadsheet's level column is
+# last session's, so it's no longer trusted or copied into profiles.
+LEVEL_CHOICES = ("100", "200", "300", "400")
+
+
+def _collapse_spaces(value: str) -> str:
+    return " ".join(value.split())
+
+
+def compose_full_name(surname: str, other_names: str) -> str:
+    """Surname first, then other names: 'Bada' + 'Najeebah Motunrayo'."""
+    return f"{_collapse_spaces(surname)} {_collapse_spaces(other_names)}"
+
+
 # ─── RegisterSerializer ────────────────────────────────────────────────────────
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -73,10 +90,35 @@ class RegisterSerializer(serializers.ModelSerializer):
         allow_blank=True,
         help_text="Signed token from the student-identity verification step.",
     )
+    # The name arrives in two parts; validate() composes them into User.full_name.
+    surname = serializers.CharField(
+        write_only=True,
+        max_length=100,
+        error_messages={
+            "required": "Surname is required.",
+            "blank": "Surname is required.",
+        },
+    )
+    other_names = serializers.CharField(
+        write_only=True,
+        max_length=150,
+        error_messages={
+            "required": "Other names are required.",
+            "blank": "Other names are required.",
+        },
+    )
+    level = serializers.ChoiceField(
+        choices=LEVEL_CHOICES,
+        write_only=True,
+        error_messages={
+            "required": "Select your level.",
+            "invalid_choice": "Select your level: 100, 200, 300 or 400.",
+        },
+    )
 
     class Meta:
         model = User
-        fields = ("email", "full_name", "matric_number",
+        fields = ("email", "surname", "other_names", "level", "matric_number",
                   "password", "password2", "verification_token")
         extra_kwargs = {
             # matric_number is REQUIRED for all API sign-ups.
@@ -116,10 +158,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
 
         return normalized  # serializer.validated_data will contain the normalized form
-
-    def validate_full_name(self, value: str) -> str:
-        # Collapse internal whitespace and strip edges
-        return " ".join(value.strip().split())
 
     # ── Object-level validation ────────────────────────────────────────────
 
@@ -163,6 +201,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"password": "Password fields didn't match."}
             )
+
+        attrs["full_name"] = compose_full_name(
+            attrs.pop("surname"), attrs.pop("other_names")
+        )
         return attrs
 
     # ── Create ─────────────────────────────────────────────────────────────
@@ -170,9 +212,14 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict) -> User:
         validated_data.pop("password2")
         password = validated_data.pop("password")
+        level = validated_data.pop("level")
 
-        # Create the user (matric_number is already normalized by validate_matric_number)
-        user: User = User.objects.create_user(password=password, **validated_data)
+        # matric_number is already normalized by validate_matric_number
+        with transaction.atomic():
+            user: User = User.objects.create_user(password=password, **validated_data)
+            # The profile carries the level the student chose. Department etc.
+            # are filled in from the roster the first time the profile is opened.
+            StudentProfile.objects.create(user=user, level=level)
 
         return user
 
@@ -290,18 +337,23 @@ class CheckEmailSerializer(serializers.Serializer):
 
 class VerifyStudentSerializer(serializers.Serializer):
     """
-    Step 2 — check that (email, full_name, matric_number) matches the Excel roster.
-    On success, issues a short-lived signed token the registration endpoint requires.
+    Step 2 — check that (email, surname + other names, matric_number) matches the
+    Excel roster. On success, issues a short-lived signed token the registration
+    endpoint requires.
     """
-    email        = serializers.EmailField()
-    full_name    = serializers.CharField(max_length=255)
+    email         = serializers.EmailField()
+    surname       = serializers.CharField(
+        max_length=100,
+        error_messages={"required": "Surname is required.", "blank": "Surname is required."},
+    )
+    other_names   = serializers.CharField(
+        max_length=150,
+        error_messages={"required": "Other names are required.", "blank": "Other names are required."},
+    )
     matric_number = serializers.CharField(max_length=20)
 
     def validate_email(self, value: str) -> str:
         return value.strip().lower()
-
-    def validate_full_name(self, value: str) -> str:
-        return " ".join(value.strip().split())
 
     def validate_matric_number(self, value: str) -> str:
         return _validate_matric_case(value)
@@ -309,7 +361,8 @@ class VerifyStudentSerializer(serializers.Serializer):
     def validate(self, attrs: dict) -> dict:
         from .student_service import verify_student_identity
 
-        record = verify_student_identity(attrs["full_name"], attrs["matric_number"])
+        full_name = compose_full_name(attrs["surname"], attrs["other_names"])
+        record = verify_student_identity(full_name, attrs["matric_number"])
         if record is None:
             raise serializers.ValidationError(
                 "We could not find a student matching the provided name "

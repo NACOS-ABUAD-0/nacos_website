@@ -11,13 +11,17 @@ type Step = 1 | 2 | 3;
 
 interface StepState {
   email: string;
-  fullName: string;
+  surname: string;
+  otherNames: string;
+  level: string;
   matricNumber: string;
   password: string;
   password2: string;
   verificationToken: string;
-  studentInfo: { full_name: string; department: string; level: string } | null;
+  studentInfo: { full_name: string; department: string } | null;
 }
+
+const LEVELS = ["100", "200", "300", "400"];
 
 interface Props {
   onRegistered: () => void;
@@ -72,6 +76,36 @@ const Field: React.FC<{
   </div>
 );
 
+const SelectField: React.FC<{
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+  error?: string;
+  disabled?: boolean;
+}> = ({ label, value, onChange, options, placeholder, error, disabled }) => (
+  <div className="mb-4">
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors
+        focus:ring-2 focus:ring-green-500 focus:border-transparent
+        ${error ? "border-red-400 bg-red-50" : "border-gray-300"}
+        ${disabled ? "bg-gray-100 cursor-not-allowed" : "bg-white"}
+        ${value ? "text-gray-900" : "text-gray-400"}`}
+    >
+      <option value="" disabled>{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value} className="text-gray-900">{o.label}</option>
+      ))}
+    </select>
+    {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+  </div>
+);
+
 // ─── Step Indicator ─────────────────────────────────────────────────────────────
 
 const StepIndicator: React.FC<{ current: Step }> = ({ current }) => {
@@ -121,7 +155,9 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
 
   const [state, setState] = useState<StepState>({
     email: "",
-    fullName: "",
+    surname: "",
+    otherNames: "",
+    level: "",
     matricNumber: "",
     password: "",
     password2: "",
@@ -171,7 +207,9 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
 
   const handleIdentitySubmit = async () => {
     const newErrors: typeof errors = {};
-    if (!state.fullName.trim())    newErrors.fullName    = "Full name is required.";
+    if (!state.surname.trim())      newErrors.surname      = "Surname is required.";
+    if (!state.otherNames.trim())   newErrors.otherNames   = "Other names are required.";
+    if (!state.level)               newErrors.level        = "Select your level.";
     if (!state.matricNumber.trim()) newErrors.matricNumber = "Matric number is required.";
     if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
@@ -179,7 +217,8 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
     try {
       const res = await authAPI.verifyStudent(
         state.email,
-        state.fullName.trim(),
+        state.surname.trim(),
+        state.otherNames.trim(),
         state.matricNumber.trim(),
       );
       setState((s) => ({
@@ -193,7 +232,8 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
       // the offending field so the student sees exactly what to fix.
       const fieldErrors: typeof errors = {};
       if (err?.matric_number?.[0]) fieldErrors.matricNumber = err.matric_number[0];
-      if (err?.full_name?.[0])     fieldErrors.fullName     = err.full_name[0];
+      if (err?.surname?.[0])       fieldErrors.surname      = err.surname[0];
+      if (err?.other_names?.[0])   fieldErrors.otherNames   = err.other_names[0];
 
       if (Object.keys(fieldErrors).length) {
         setErrors(fieldErrors);
@@ -205,7 +245,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
         err?.detail ??
         "Identity verification failed. Please check your details.";
       toast.error(msg);
-      setErrors({ fullName: " ", matricNumber: " " }); // highlight fields
+      setErrors({ surname: " ", otherNames: " ", matricNumber: " " }); // highlight fields
     } finally {
       setIsLoading(false);
     }
@@ -223,14 +263,16 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
 
     setIsLoading(true);
     try {
-      await register(
-        state.email,
-        state.fullName,
-        state.matricNumber,
-        state.password,
-        state.password2,
-        state.verificationToken,
-      );
+      await register({
+        email: state.email,
+        surname: state.surname.trim(),
+        otherNames: state.otherNames.trim(),
+        level: state.level,
+        matricNumber: state.matricNumber.trim(),
+        password: state.password,
+        password2: state.password2,
+        verificationToken: state.verificationToken,
+      });
       toast.success("Welcome to NACOS ABUAD!");
       onRegistered();
     } catch (err: any) {
@@ -297,12 +339,30 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
             disabled
           />
           <Field
-            label="Full Name"
-            value={state.fullName}
-            onChange={set("fullName")}
-            error={errors.fullName}
-            placeholder="As it appears on your student record"
-            autoComplete="name"
+            label="Surname"
+            value={state.surname}
+            onChange={set("surname")}
+            error={errors.surname}
+            placeholder="Your family name, as on your student record"
+            autoComplete="family-name"
+            disabled={isLoading}
+          />
+          <Field
+            label="Other Names"
+            value={state.otherNames}
+            onChange={set("otherNames")}
+            error={errors.otherNames}
+            placeholder="First and middle names"
+            autoComplete="given-name"
+            disabled={isLoading}
+          />
+          <SelectField
+            label="Level"
+            value={state.level}
+            onChange={set("level")}
+            error={errors.level}
+            placeholder="Select your current level"
+            options={LEVELS.map((l) => ({ value: l, label: `${l} Level` }))}
             disabled={isLoading}
           />
           <Field
@@ -344,7 +404,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
               <p className="font-semibold text-green-800">✓ Identity Verified</p>
               <p className="text-green-700">{state.studentInfo.full_name}</p>
               <p className="text-green-600 text-xs">
-                {state.studentInfo.department} · Level {state.studentInfo.level}
+                {state.studentInfo.department} · {state.level} Level
               </p>
             </div>
           )}

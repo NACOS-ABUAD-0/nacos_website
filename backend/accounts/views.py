@@ -300,7 +300,8 @@ class StudentProfileView(APIView):
                 record = verify_student_identity(user.full_name, user.matric_number)
                 if record:
                     profile.department = record.department
-                    profile.level = record.level
+                    # profile.level is deliberately NOT copied from the roster:
+                    # it's last session's. The student enters it at signup.
                     profile.excel_full_name = record.full_name
                     profile.excel_matric_number = record.matric_number
                     profile.last_synced_at = timezone.now()
@@ -552,7 +553,7 @@ class CheckEmailView(APIView):
 class VerifyStudentIdentityView(APIView):
     """
     POST /auth/verify-student/
-    Matches (email, full_name, matric_number) against the Excel roster.
+    Matches (email, surname + other names, matric_number) against the Excel roster.
     On success returns a signed verification_token consumed by /auth/register/.
     Gate 2 of the registration pipeline.
     """
@@ -571,11 +572,11 @@ class VerifyStudentIdentityView(APIView):
                 {
                     "detail": "Identity verified successfully.",
                     "verification_token": token,
-                    # Return verified details so the frontend can confirm to the user
+                    # Return verified details so the frontend can confirm to the user.
+                    # No level: the roster's is last session's; the student enters it.
                     "student": {
                         "full_name":   record.full_name,
                         "department":  record.department,
-                        "level":       record.level,
                     },
                 },
                 status=status.HTTP_200_OK,

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 
-import { authAPI, unwrapApiError } from '@/lib/api';
+import { authAPI, unwrapApiError, type RegisterPayload } from '@/lib/api';
 import { clearTokens, getRefreshToken, loadTokens, setTokens } from '@/lib/tokenStorage';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -26,14 +26,7 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    email: string,
-    fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string,
-    verificationToken?: string,
-  ) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -97,23 +90,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (
-    email: string,
-    fullName: string,
-    matricNumber: string,
-    password: string,
-    password2: string,
-    verificationToken?: string,
-  ): Promise<void> => {
+  const register = async (payload: RegisterPayload): Promise<void> => {
     try {
-      const { data } = await authAPI.register(
-        email,
-        fullName,
-        matricNumber,
-        password,
-        password2,
-        verificationToken,
-      );
+      const { data } = await authAPI.register(payload);
       await setTokens(data.access, data.refresh);
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user: data.user } });
     } catch (err) {

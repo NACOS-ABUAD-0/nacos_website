@@ -1,6 +1,6 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FormField } from '@/components/form-field';
@@ -11,6 +11,8 @@ import { authAPI, unwrapApiError } from '@/lib/api';
 type Step = 1 | 2 | 3;
 
 const STEP_LABELS = ['Email', 'Identity', 'Password'];
+
+const LEVELS = ['100', '200', '300', '400'];
 
 function StepIndicator({ current }: { current: Step }) {
   return (
@@ -61,14 +63,14 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [email, setEmail] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [otherNames, setOtherNames] = useState('');
+  const [level, setLevel] = useState('');
   const [matricNumber, setMatricNumber] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
-  const [studentInfo, setStudentInfo] = useState<{ full_name: string; department: string; level: string } | null>(
-    null,
-  );
+  const [studentInfo, setStudentInfo] = useState<{ full_name: string; department: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleEmailSubmit = async () => {
@@ -93,14 +95,27 @@ export default function RegisterScreen() {
   };
 
   const handleIdentitySubmit = async () => {
-    if (!fullName.trim() || !matricNumber.trim()) {
-      setError('Full name and matric number are required.');
+    if (!surname.trim() || !otherNames.trim()) {
+      setError('Surname and other names are required.');
+      return;
+    }
+    if (!level) {
+      setError('Select your level.');
+      return;
+    }
+    if (!matricNumber.trim()) {
+      setError('Matric number is required.');
       return;
     }
     setError(null);
     setIsLoading(true);
     try {
-      const { data } = await authAPI.verifyStudent(email, fullName.trim(), matricNumber.trim());
+      const { data } = await authAPI.verifyStudent(
+        email,
+        surname.trim(),
+        otherNames.trim(),
+        matricNumber.trim(),
+      );
       setVerificationToken(data.verification_token);
       setStudentInfo(data.student);
       setStep(3);
@@ -108,7 +123,8 @@ export default function RegisterScreen() {
       const data = unwrapApiError(err);
       setError(
         data?.matric_number?.[0] ??
-          data?.full_name?.[0] ??
+          data?.surname?.[0] ??
+          data?.other_names?.[0] ??
           data?.non_field_errors?.[0] ??
           data?.detail ??
           'Identity verification failed. Please check your details.',
@@ -130,7 +146,16 @@ export default function RegisterScreen() {
     setError(null);
     setIsLoading(true);
     try {
-      await register(email, fullName, matricNumber, password, password2, verificationToken);
+      await register({
+        email,
+        surname: surname.trim(),
+        otherNames: otherNames.trim(),
+        level,
+        matricNumber: matricNumber.trim(),
+        password,
+        password2,
+        verificationToken,
+      });
       router.replace('/(tabs)');
     } catch (err: any) {
       setError(err?.detail ?? 'Registration failed. Please try again.');
@@ -172,13 +197,43 @@ export default function RegisterScreen() {
               <Text className="mb-4 text-sm text-gray-600">Confirm your identity using your official student records.</Text>
               <FormField label="Email (confirmed)" value={email} editable={false} />
               <FormField
-                label="Full Name"
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="As it appears on your student record"
-                autoComplete="name"
+                label="Surname"
+                value={surname}
+                onChangeText={setSurname}
+                placeholder="Your family name, as on your student record"
+                autoComplete="family-name"
                 editable={!isLoading}
               />
+              <FormField
+                label="Other Names"
+                value={otherNames}
+                onChangeText={setOtherNames}
+                placeholder="First and middle names"
+                autoComplete="given-name"
+                editable={!isLoading}
+              />
+              <View className="mb-4">
+                <Text className="mb-1 text-sm font-medium text-gray-700">Level</Text>
+                <View className="flex-row gap-2">
+                  {LEVELS.map((l) => {
+                    const selected = level === l;
+                    return (
+                      <Pressable
+                        key={l}
+                        onPress={() => setLevel(l)}
+                        disabled={isLoading}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        className={`flex-1 items-center rounded-lg border py-3 ${
+                          selected ? 'border-primary bg-primary' : 'border-gray-300 bg-white'
+                        }`}
+                      >
+                        <Text className={selected ? 'font-semibold text-white' : 'text-gray-700'}>{l}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
               <FormField
                 label="Matric Number"
                 value={matricNumber}
@@ -206,7 +261,7 @@ export default function RegisterScreen() {
                   <Text className="font-semibold text-green-800">✓ Identity Verified</Text>
                   <Text className="text-green-700">{studentInfo.full_name}</Text>
                   <Text className="text-xs text-green-600">
-                    {studentInfo.department} · Level {studentInfo.level}
+                    {studentInfo.department} · {level} Level
                   </Text>
                 </View>
               )}
