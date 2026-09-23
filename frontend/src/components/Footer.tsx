@@ -142,7 +142,6 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
         </div>
-
         {/* Bottom section with copyright and social links */}
         <div className="pt-8 border-t border-white">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
