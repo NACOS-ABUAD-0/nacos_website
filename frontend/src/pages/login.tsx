@@ -98,6 +98,12 @@ export const LoginPage: React.FC = () => {
               </>
             )}
           </p>
+          <Link
+            to="/"
+            className="mt-3 inline-block text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
+          >
+            ← Go back home
+          </Link>
         </div>
       </div>
     </div>
