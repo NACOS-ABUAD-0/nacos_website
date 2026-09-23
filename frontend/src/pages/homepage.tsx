@@ -283,7 +283,7 @@ type Lecturer = {
 const LECTURERS: Lecturer[] = [
   {
     id: 1,
-    name: "Professor Bunmi Abiola",
+    name: "Prof. Oluwatoyin Abiola",
     position: "Head of Department",
     office: "D54 College of Science",
     image: "/images/lecturers/Hod.jpg",

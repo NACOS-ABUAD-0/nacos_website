@@ -3,6 +3,11 @@
 @tailwind utilities;
 @import "tailwindcss";
 
+/* Tailwind v4's `dark:` variant follows the OS color scheme by default.
+   Tie it to the `.dark` class ThemeContext toggles instead, so pages stay
+   light unless the user switches to dark mode on the site. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Defensive safety net against mystery horizontal overflow on mobile (an
    element slightly wider than the viewport lets the whole page pan left/
    right). Doesn't affect any component's own intentional horizontal
