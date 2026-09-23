@@ -11,7 +11,9 @@ interface User {
   id: number;
   email: string;
   full_name: string;
-  matric_number: string;
+  matric_number: string | null;
+  // True while the Super Admin has matric editing open for this user/level.
+  can_edit_matric?: boolean;
   date_joined: string;
   is_email_verified: boolean;
   profile_complete?: boolean;
@@ -33,6 +35,7 @@ interface AuthContextType extends AuthState {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  updateMatric: (matricNumber: string) => Promise<void>;
   verifyEmail: (uid: string, token: string) => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
   isAdmin: boolean;
@@ -217,6 +220,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     toast("Logged out.", { icon: "👋" });
   };
 
+  // ── updateMatric ───────────────────────────────────────────────────────────
+
+  // Only succeeds while the Super Admin has matric editing open. Errors are
+  // re-thrown so the profile page can show them under the field.
+  const updateMatric = async (matricNumber: string): Promise<void> => {
+    const response = await authAPI.updateMatric(matricNumber);
+    dispatch({ type: "UPDATE_USER", payload: response.data });
+    toast.success("Matric number saved!");
+  };
+
   // ── updateProfile ──────────────────────────────────────────────────────────
 
   const updateProfile = async (
@@ -320,6 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         register,
         logout,
         updateProfile,
+        updateMatric,
         verifyEmail,
         resendVerificationEmail,
         isAdmin,

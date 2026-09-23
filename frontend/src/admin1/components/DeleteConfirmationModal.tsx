@@ -46,12 +46,14 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
     }
   }, [isOpen])
 
-  const canSubmit = matricInput.trim().length > 0 && nameInput.trim().length > 0
+  // Users without a matric yet (e.g. 100 level) are confirmed by name alone.
+  const needsMatric = !!targetUser?.matric_number
+  const canSubmit = (!needsMatric || matricInput.trim().length > 0) && nameInput.trim().length > 0
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit || !targetUser) return
-    onConfirm(matricInput.trim(), nameInput.trim())
+    onConfirm(needsMatric ? matricInput.trim() : '', nameInput.trim())
   }, [canSubmit, targetUser, matricInput, nameInput, onConfirm])
 
   const handleClose = useCallback(() => {
@@ -92,7 +94,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374H14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
           <p className="text-sm text-amber-800 leading-relaxed">
-            To confirm deletion, you must enter the target user's exact matric number and full name.
+            To confirm deletion, you must enter the target user's exact {needsMatric ? 'matric number and ' : ''}full name.
             This action is <span className="font-bold">irreversible</span>.
           </p>
         </div>
@@ -109,6 +111,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {needsMatric && (
           <div>
             <label htmlFor="confirm-matric" className="block text-sm font-medium text-gray-700 mb-1.5">
               Target User's Matric Number <span className="text-red-500">*</span>
@@ -128,6 +131,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
               <p className="mt-1 text-xs text-red-600">Matric number is required</p>
             )}
           </div>
+          )}
 
           <div>
             <label htmlFor="confirm-name" className="block text-sm font-medium text-gray-700 mb-1.5">

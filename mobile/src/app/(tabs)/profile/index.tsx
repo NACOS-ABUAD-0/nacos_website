@@ -30,7 +30,7 @@ export default function ProfileScreen() {
         <Text className="text-2xl font-bold text-gray-900">{user?.full_name}</Text>
         <Text className="mt-1 text-sm text-gray-500">{user?.email}</Text>
         <View className="mt-4 gap-1">
-          <Text className="text-sm text-gray-600">Matric Number: {user?.matric_number}</Text>
+          <Text className="text-sm text-gray-600">Matric Number: {user?.matric_number || 'Not added yet'}</Text>
           <Text className="text-sm text-gray-600">
             Email verified: {user?.is_email_verified ? 'Yes' : 'No'}
           </Text>

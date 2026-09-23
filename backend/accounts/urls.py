@@ -9,6 +9,7 @@ from .views import (
     LogoutView,
     ProfileView,
     ChangePasswordView,
+    UpdateMatricView,
     CSRFTokenView,
     VerifyEmailView,
     ResendVerificationEmailView,
@@ -27,6 +28,8 @@ from .views import (
     AdminUserDetailView,
     AdminUserBanView,
     AdminUserUnbanView,
+    AdminUserMatricEditView,
+    AdminMatricEditLevelsView,
     # Student Profile & Notifications
     StudentProfileView,
     NotificationViewSet,
@@ -39,6 +42,7 @@ urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("auth/me/", ProfileView.as_view(), name="profile"),
+    path("auth/me/matric/", UpdateMatricView.as_view(), name="update_matric"),
     path("auth/change-password/", ChangePasswordView.as_view(), name="change_password"),
     path("auth/csrf/", CSRFTokenView.as_view(), name="csrf_token"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
@@ -72,6 +76,8 @@ urlpatterns = [
     path("admin/users/<int:pk>/ban/", AdminUserBanView.as_view(), name="admin-user-ban"),
     path("admin/users/<int:pk>/unban/", AdminUserUnbanView.as_view(), name="admin-user-unban"),
     path("admin/users/<int:pk>/role/", AssignUserRoleView.as_view(), name="admin-user-assign-role"),
+    path("admin/users/<int:pk>/matric-edit/", AdminUserMatricEditView.as_view(), name="admin-user-matric-edit"),
+    path("admin/matric-edit-levels/", AdminMatricEditLevelsView.as_view(), name="admin-matric-edit-levels"),
 
     # Push notifications (mobile)
     path("notifications/register-device/", RegisterDeviceView.as_view(), name="register-device"),

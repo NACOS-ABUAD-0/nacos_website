@@ -89,7 +89,7 @@ export interface RegisterPayload {
   surname: string;
   otherNames: string;
   level: string; // '100' | '200' | '300' | '400'
-  matricNumber: string;
+  matricNumber?: string; // optional for 100 level
   password: string;
   password2: string;
   verificationToken?: string;
@@ -112,7 +112,7 @@ export const authAPI = {
       surname: p.surname,
       other_names: p.otherNames,
       level: p.level,
-      matric_number: p.matricNumber,
+      ...(p.matricNumber ? { matric_number: p.matricNumber } : {}),
       password: p.password,
       password2: p.password2,
       ...(p.verificationToken ? { verification_token: p.verificationToken } : {}),

@@ -13,7 +13,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from .models import User
+from .models import User, StudentProfile, MatricEditLevel
 from .admin_whitelist import MAX_ADMINS
 
 
@@ -829,3 +829,112 @@ class SeedSuperAdminTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(pk=student.pk).exists())
+
+
+class MatricEditingTest(APITestCase):
+    """100 level signup without matric + Super Admin matric-edit toggles."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.super_admin = User.objects.create_user(
+            email='super@example.com', full_name='Super Admin', password='pass12345',
+            role='super_admin',
+        )
+        self.admin = User.objects.create_user(
+            email='admin@example.com', full_name='Regular Admin', password='pass12345',
+            role='admin',
+        )
+        self.fresher = User.objects.create_user(
+            email='fresher@example.com', full_name='Fresh Student', password='pass12345',
+            role='student',
+        )
+        StudentProfile.objects.create(user=self.fresher, level='100')
+        self.senior = User.objects.create_user(
+            email='senior@example.com', full_name='Senior Student', password='pass12345',
+            role='student', matric_number='22/SCI01/010',
+        )
+        StudentProfile.objects.create(user=self.senior, level='300')
+
+    def _signup(self, **overrides):
+        data = {
+            'email': 'new@example.com', 'surname': 'Ade', 'other_names': 'Bola',
+            'password': 'testpass123', 'password2': 'testpass123',
+            **overrides,
+        }
+        return self.client.post(reverse('register'), data)
+
+    def test_100_level_can_register_without_matric_or_token(self):
+        response = self._signup(level='100')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        user = User.objects.get(email='new@example.com')
+        self.assertIsNone(user.matric_number)
+        self.assertEqual(user.student_profile.level, '100')
+
+    def test_other_levels_still_require_matric(self):
+        response = self._signup(level='200')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('matric_number', response.data)
+
+    def _set_matric(self, user, value):
+        user.refresh_from_db()  # real requests load the user fresh
+        self.client.force_authenticate(user)
+        return self.client.patch(reverse('update_matric'), {'matric_number': value})
+
+    def test_student_cannot_edit_matric_by_default(self):
+        response = self._set_matric(self.senior, '22/SCI01/011')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_per_user_toggle(self):
+        self.client.force_authenticate(self.super_admin)
+        url = reverse('admin-user-matric-edit', kwargs={'pk': self.senior.pk})
+        self.assertEqual(self.client.patch(url, {'allowed': True}).status_code, 200)
+
+        response = self._set_matric(self.senior, '22/SCI01/011')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.senior.refresh_from_db()
+        self.assertEqual(self.senior.matric_number, '22/SCI01/011')
+
+        self.client.force_authenticate(self.super_admin)
+        self.client.patch(url, {'allowed': False})
+        self.assertEqual(self._set_matric(self.senior, '22/SCI01/012').status_code, 403)
+
+    def test_level_toggle_opens_and_closes_whole_level(self):
+        self.client.force_authenticate(self.super_admin)
+        url = reverse('admin-matric-edit-levels')
+        response = self.client.patch(url, {'level': '100', 'open': True})
+        self.assertEqual(response.data['open_levels'], ['100'])
+
+        self.assertEqual(self._set_matric(self.fresher, '26/SCI01/001').status_code, 200)
+        # Other levels aren't affected.
+        self.assertEqual(self._set_matric(self.senior, '22/SCI01/013').status_code, 403)
+
+        self.client.force_authenticate(self.super_admin)
+        response = self.client.patch(url, {'level': '100', 'open': False})
+        self.assertEqual(response.data['open_levels'], [])
+        self.assertEqual(self._set_matric(self.fresher, '26/SCI01/002').status_code, 403)
+
+    def test_matric_must_be_unique_and_capitalised(self):
+        self.fresher.matric_edit_allowed = True
+        self.fresher.save()
+        self.assertEqual(self._set_matric(self.fresher, '22/SCI01/010').status_code, 400)
+        self.assertEqual(self._set_matric(self.fresher, '26/sci01/001').status_code, 400)
+
+    def test_only_super_admin_can_toggle(self):
+        self.client.force_authenticate(self.admin)
+        url = reverse('admin-user-matric-edit', kwargs={'pk': self.senior.pk})
+        self.assertEqual(self.client.patch(url, {'allowed': True}).status_code, 403)
+        response = self.client.patch(reverse('admin-matric-edit-levels'), {'level': '100', 'open': True})
+        self.assertEqual(response.status_code, 403)
+
+    def test_profile_exposes_can_edit_matric(self):
+        self.client.force_authenticate(self.fresher)
+        self.assertFalse(self.client.get(reverse('profile')).data['can_edit_matric'])
+        MatricEditLevel.objects.create(level='100')
+        self.assertTrue(self.client.get(reverse('profile')).data['can_edit_matric'])
+
+    def test_admin_can_delete_user_without_matric(self):
+        self.client.force_authenticate(self.admin)
+        url = reverse('admin-user-delete', kwargs={'pk': self.fresher.pk})
+        response = self.client.delete(url, {'matric_number': '', 'full_name': 'Fresh Student'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)

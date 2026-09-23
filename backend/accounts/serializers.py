@@ -61,6 +61,11 @@ def _validate_matric_case(value: str) -> str:
 # last session's, so it's no longer trusted or copied into profiles.
 LEVEL_CHOICES = ("100", "200", "300", "400")
 
+# 100 level students haven't been issued matric numbers yet, so it's optional
+# for them at signup. They add it later once the Super Admin opens matric
+# editing (see User.can_edit_matric / MatricEditLevel).
+MATRIC_OPTIONAL_LEVELS = frozenset({"100"})
+
 
 def _collapse_spaces(value: str) -> str:
     return " ".join(value.split())
@@ -205,9 +210,12 @@ class RegisterSerializer(serializers.ModelSerializer):
                     )
                 raise serializers.ValidationError({"level": "Select your level."})
             if not attrs.get("matric_number"):
-                raise serializers.ValidationError({"matric_number": "Matric number is required."})
-
-            if getattr(settings, "REQUIRE_STUDENT_VERIFICATION", True):
+                if attrs["level"] not in MATRIC_OPTIONAL_LEVELS:
+                    raise serializers.ValidationError({"matric_number": "Matric number is required."})
+                # No matric yet → nothing to verify against the roster.
+                attrs["matric_number"] = None
+                attrs.pop("verification_token", None)
+            elif getattr(settings, "REQUIRE_STUDENT_VERIFICATION", True):
                 token = attrs.pop("verification_token", None)
                 if not token:
                     raise serializers.ValidationError(
@@ -308,6 +316,10 @@ class LoginSerializer(serializers.Serializer):
 # ─── ProfileSerializer ─────────────────────────────────────────────────────────
 
 class ProfileSerializer(serializers.ModelSerializer):
+    # Lets the profile page show an editable matric field while the Super
+    # Admin has matric editing open for this user or their level.
+    can_edit_matric = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = User
         fields = (
@@ -315,6 +327,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "email",
             "full_name",
             "matric_number",
+            "can_edit_matric",
             "date_joined",
             "is_email_verified",
             "is_staff",
@@ -361,6 +374,34 @@ class AssignUserRoleSerializer(serializers.Serializer):
     """
 
     role = serializers.ChoiceField(choices=_ASSIGNABLE_ROLE_CHOICES)
+
+
+class UpdateMatricSerializer(serializers.Serializer):
+    """A student setting/changing their own matric number (when allowed)."""
+    matric_number = serializers.CharField(max_length=20)
+
+    def validate_matric_number(self, value: str) -> str:
+        normalized = _validate_matric_case(value)
+        user = self.context["request"].user
+        if User.objects.filter(matric_number=normalized).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError(
+                "A user with this matric number already exists."
+            )
+        return normalized
+
+
+class MatricEditToggleSerializer(serializers.Serializer):
+    """Super Admin switching matric editing on/off for one user."""
+    allowed = serializers.BooleanField()
+
+
+class MatricEditLevelToggleSerializer(serializers.Serializer):
+    """Super Admin switching matric editing on/off for a whole level."""
+    level = serializers.ChoiceField(
+        choices=LEVEL_CHOICES,
+        error_messages={"invalid_choice": "Select a level: 100, 200, 300 or 400."},
+    )
+    open = serializers.BooleanField()
 
 
 class CheckEmailSerializer(serializers.Serializer):
@@ -552,6 +593,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_active",
             "is_email_verified",
+            "matric_edit_allowed",
             "date_joined",
         )
         read_only_fields = fields
@@ -586,6 +628,8 @@ class AdminUserDeleteSerializer(serializers.Serializer):
     matric_number = serializers.CharField(
         max_length=20,
         required=True,
+        # Blank only matches users with no matric yet (e.g. 100 level).
+        allow_blank=True,
         help_text="Exact matric number of the user to delete."
     )
     full_name = serializers.CharField(

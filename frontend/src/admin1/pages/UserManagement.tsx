@@ -10,7 +10,7 @@
  * - Responsive design with loading states
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
@@ -18,7 +18,8 @@ import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal'
 import UserTableSkeleton from '../components/UserTableSkeleton'
 import Toast from '../components/Toast'
-import type { UserRecord } from '../../services/adminUserService'
+import { fetchMatricEditLevels, setLevelMatricEdit, type UserRecord } from '../../services/adminUserService'
+import { useAuth } from '../../context/AuthContext'
 import { ROLE_LABELS, ROLE_OPTION_GROUPS, roleBadgeClass, isFullAdminTier } from '../../lib/roles'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -132,10 +133,84 @@ const Pagination: React.FC<PaginationProps> = ({
   )
 }
 
+// ─── Level-wide Matric Editing (Super Admin) ───────────────────────────────
+
+const MATRIC_EDIT_LEVELS = ['100', '200', '300', '400']
+
+/**
+ * Opens/closes matric-number editing for every student at a level at once —
+ * e.g. all 100 level students after the matric ceremony. Per-student access
+ * is toggled from the student's profile instead.
+ */
+const LevelMatricEditPanel: React.FC<{ onToast: (t: { message: string; type: 'success' | 'error' }) => void }> = ({ onToast }) => {
+  const [openLevels, setOpenLevels] = useState<string[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [busyLevel, setBusyLevel] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchMatricEditLevels()
+      .then(setOpenLevels)
+      .catch(() => onToast({ message: 'Failed to load matric editing status.', type: 'error' }))
+      .finally(() => setLoaded(true))
+  }, [onToast])
+
+  const toggle = async (level: string): Promise<void> => {
+    const open = !openLevels.includes(level)
+    setBusyLevel(level)
+    try {
+      setOpenLevels(await setLevelMatricEdit(level, open))
+      onToast({
+        message: open
+          ? `Matric editing opened for all ${level} level students.`
+          : `Matric editing closed for ${level} level.`,
+        type: 'success',
+      })
+    } catch {
+      onToast({ message: 'Failed to update matric editing.', type: 'error' })
+    } finally {
+      setBusyLevel(null)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Matric Number Editing by Level</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Open a level to let all its students enter or change their matric number. Close it once they're done.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {MATRIC_EDIT_LEVELS.map((level) => {
+            const isOpen = openLevels.includes(level)
+            return (
+              <button
+                key={level}
+                onClick={() => toggle(level)}
+                disabled={!loaded || busyLevel !== null}
+                aria-pressed={isOpen}
+                className={`px-3 py-2 rounded-lg text-[13px] font-semibold border transition-colors disabled:opacity-50 ${
+                  isOpen
+                    ? 'bg-[#1a7a3f] border-[#1a7a3f] text-white'
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {busyLevel === level ? 'Saving…' : `${level} Level: ${isOpen ? 'Open' : 'Closed'}`}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page Component ───────────────────────────────────────────────────
 
 const UserManagement: React.FC = () => {
   const navigate = useNavigate()
+  const { user: viewer } = useAuth()
   const {
     users,
     loading,
@@ -223,6 +298,8 @@ const UserManagement: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {viewer?.role === 'super_admin' && <LevelMatricEditPanel onToast={setToast} />}
 
         {/* Pending Staff quick filter */}
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-5 w-fit">

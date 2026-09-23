@@ -306,6 +306,10 @@ export const authAPI = {
   updateProfile: (data: unknown) =>
     api.patch("/auth/me/", data).catch(handleApiError),
 
+  // Sent exactly as typed — the server rejects lowercase with a hint.
+  updateMatric: (matricNumber: string) =>
+    api.patch("/auth/me/matric/", { matric_number: matricNumber }).catch(handleApiError),
+
   refreshToken: (refreshToken: string) =>
     api.post("/auth/token/refresh/", {
       refresh: refreshToken,

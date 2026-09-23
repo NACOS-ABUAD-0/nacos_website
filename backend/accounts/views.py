@@ -22,8 +22,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from . import models
-from .models import User, StudentProfile, Notification, DeviceToken
-from .permissions import IsAdmin, CanAssignRoles
+from .models import User, StudentProfile, Notification, DeviceToken, MatricEditLevel
+from .permissions import IsAdmin, IsSuperAdmin, CanAssignRoles
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -40,6 +40,9 @@ from .serializers import (
     AdminUserDeleteSerializer,
     ChangePasswordSerializer,
     DeviceTokenSerializer,
+    UpdateMatricSerializer,
+    MatricEditToggleSerializer,
+    MatricEditLevelToggleSerializer,
 )
 from .utils import email_is_configured, send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
@@ -187,6 +190,37 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class UpdateMatricView(APIView):
+    """
+    PATCH /api/auth/me/matric/
+    Lets a student set or change their own matric number, but only while the
+    Super Admin has matric editing open for them or their level. Access is not
+    revoked on save — the Super Admin switches it off when done.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        if not user.can_edit_matric:
+            return Response(
+                {"detail": "Matric number editing is not open for your account. See the Super Admin."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = UpdateMatricSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        old = user.matric_number
+        user.matric_number = serializer.validated_data["matric_number"]
+        user.save(update_fields=["matric_number"])
+        # Force the student profile to re-sync department from the roster
+        # against the new number next time it's opened.
+        StudentProfile.objects.filter(user=user).update(last_synced_at=None)
+
+        logger.info("User '%s' changed matric number from '%s' to '%s'.", user.email, old, user.matric_number)
+        return Response(ProfileSerializer(user).data)
 
 
 class ChangePasswordView(APIView):
@@ -852,3 +886,59 @@ class AdminUserUnbanView(APIView):
 
         logger.info("Admin '%s' unbanned user '%s'.", request.user.email, target_user.email)
         return Response(AdminUserSerializer(target_user).data)
+
+
+class AdminUserMatricEditView(APIView):
+    """
+    PATCH /api/admin/users/<id>/matric-edit/   {"allowed": true|false}
+    Super Admin switches matric editing on/off for a single user.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def patch(self, request, pk=None):
+        serializer = MatricEditToggleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            target_user = User.objects.select_related("student_profile").get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        target_user.matric_edit_allowed = serializer.validated_data["allowed"]
+        target_user.save(update_fields=["matric_edit_allowed"])
+
+        logger.info(
+            "Super admin '%s' set matric editing %s for '%s'.",
+            request.user.email, "ON" if target_user.matric_edit_allowed else "OFF", target_user.email,
+        )
+        return Response(AdminUserSerializer(target_user).data)
+
+
+class AdminMatricEditLevelsView(APIView):
+    """
+    GET   /api/admin/matric-edit-levels/   → {"open_levels": ["100", ...]}
+    PATCH /api/admin/matric-edit-levels/   {"level": "100", "open": true|false}
+    Super Admin opens/closes matric editing for every student at a level.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def _payload(self):
+        return {"open_levels": list(MatricEditLevel.objects.values_list("level", flat=True))}
+
+    def get(self, request):
+        return Response(self._payload())
+
+    def patch(self, request):
+        serializer = MatricEditLevelToggleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        level = serializer.validated_data["level"]
+
+        if serializer.validated_data["open"]:
+            MatricEditLevel.objects.get_or_create(level=level, defaults={"opened_by": request.user})
+        else:
+            MatricEditLevel.objects.filter(level=level).delete()
+
+        logger.info(
+            "Super admin '%s' %s matric editing for %s level.",
+            request.user.email, "opened" if serializer.validated_data["open"] else "closed", level,
+        )
+        return Response(self._payload())

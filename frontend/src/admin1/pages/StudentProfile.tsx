@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
-import { fetchUser } from '../../services/adminUserService'
+import { fetchUser, setUserMatricEdit } from '../../services/adminUserService'
 import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
 import { useProjects } from '../../lib/hooks/useProjects'
 import { useAuth } from '../../context/AuthContext'
@@ -37,6 +37,28 @@ export default function StudentProfile(): React.ReactElement {
   useEffect(() => {
     setSelectedRole(student?.role ?? '')
   }, [student?.role])
+
+  const [togglingMatric, setTogglingMatric] = useState(false)
+  const viewerIsSuperAdmin = viewer?.role === 'super_admin'
+
+  const handleToggleMatricEdit = async (): Promise<void> => {
+    if (!student) return
+    const next = !student.matric_edit_allowed
+    setTogglingMatric(true)
+    try {
+      await setUserMatricEdit(student.id, next)
+      toast.success(
+        next
+          ? `${student.full_name} can now enter/change their matric number.`
+          : `Matric editing turned off for ${student.full_name}.`
+      )
+      refetch()
+    } catch {
+      toast.error('Failed to update matric editing.')
+    } finally {
+      setTogglingMatric(false)
+    }
+  }
 
   const isPendingStaff = student?.account_type === 'staff' && student?.is_approved === false
   const viewerCanAssign =
@@ -168,6 +190,38 @@ export default function StudentProfile(): React.ReactElement {
             </div>
           </div>
         </div>
+
+        {viewerIsSuperAdmin && student.account_type === 'student' && (
+          <div className="bg-white rounded-2xl p-6 md:p-8 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-[15px] font-semibold text-gray-900 mb-1">Matric Number Editing</h2>
+                <p className="text-[13px] text-gray-500">
+                  {student.matric_edit_allowed
+                    ? `${student.full_name} can currently set or change their matric number from their profile. Turn this off once they're done.`
+                    : `Turn on to let ${student.full_name} set or change their matric number from their profile.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={student.matric_edit_allowed}
+                aria-label="Allow matric number editing"
+                onClick={handleToggleMatricEdit}
+                disabled={togglingMatric}
+                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  student.matric_edit_allowed ? 'bg-[#1a7a3f]' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    student.matric_edit_allowed ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
 
         {viewerCanAssign && (
           <div className="bg-white rounded-2xl p-6 md:p-8 mb-8">

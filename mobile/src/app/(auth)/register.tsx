@@ -103,8 +103,16 @@ export default function RegisterScreen() {
       setError('Select your level.');
       return;
     }
+    // 100 level students haven't been issued matric numbers yet.
     if (!matricNumber.trim()) {
-      setError('Matric number is required.');
+      if (level !== '100') {
+        setError('Matric number is required.');
+        return;
+      }
+      setError(null);
+      setVerificationToken('');
+      setStudentInfo(null);
+      setStep(3);
       return;
     }
     setError(null);
@@ -151,10 +159,10 @@ export default function RegisterScreen() {
         surname: surname.trim(),
         otherNames: otherNames.trim(),
         level,
-        matricNumber: matricNumber.trim(),
+        matricNumber: matricNumber.trim() || undefined,
         password,
         password2,
-        verificationToken,
+        verificationToken: verificationToken || undefined,
       });
       router.replace('/(tabs)');
     } catch (err: any) {
@@ -177,9 +185,10 @@ export default function RegisterScreen() {
 
           {step === 1 && (
             <View>
-              <Text className="mb-4 text-sm text-gray-600">Enter your university email to get started.</Text>
+              <Text className="mb-4 text-sm text-gray-600">Enter your email to get started.</Text>
               <FormField
-                label="University Email"
+                label="Email"
+                placeholder="you@gmail.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -235,13 +244,18 @@ export default function RegisterScreen() {
                 </View>
               </View>
               <FormField
-                label="Matric Number"
+                label={level === '100' ? 'Matric Number (optional)' : 'Matric Number'}
                 value={matricNumber}
                 onChangeText={setMatricNumber}
                 placeholder="e.g. 23/SCI01/002"
                 autoCapitalize="characters"
                 editable={!isLoading}
               />
+              {level === '100' ? (
+                <Text className="-mt-2 mb-4 text-xs text-gray-500">
+                  No matric number yet? Leave this blank and add it from your profile once numbers are issued.
+                </Text>
+              ) : null}
               {error ? <Text className="mb-3 text-sm text-red-500">{error}</Text> : null}
               <View className="flex-row gap-3">
                 <View className="flex-1">

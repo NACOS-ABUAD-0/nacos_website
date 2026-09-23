@@ -8,13 +8,16 @@ import { Footer } from "../components/Footer";
 import { Mail } from "lucide-react";
 
 export const ProfilePage: React.FC = () => {
-  const { user, updateProfile, resendVerificationEmail, isLoading } = useAuth();
+  const { user, updateProfile, updateMatric, resendVerificationEmail, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     full_name: "",
     matric_number: "",
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // renamed to avoid conflict
+  const [matricInput, setMatricInput] = useState("");
+  const [matricError, setMatricError] = useState("");
+  const [isSavingMatric, setIsSavingMatric] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -22,8 +25,28 @@ export const ProfilePage: React.FC = () => {
         full_name: user.full_name || "",
         matric_number: user.matric_number || "",
       });
+      setMatricInput(user.matric_number || "");
     }
   }, [user]);
+
+  const handleSaveMatric = async () => {
+    const value = matricInput.trim();
+    if (!value) {
+      setMatricError("Enter your matric number.");
+      return;
+    }
+    setIsSavingMatric(true);
+    setMatricError("");
+    try {
+      await updateMatric(value);
+    } catch (err: any) {
+      setMatricError(
+        err?.matric_number?.[0] ?? err?.detail ?? "Could not save matric number. Please try again."
+      );
+    } finally {
+      setIsSavingMatric(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +240,47 @@ export const ProfilePage: React.FC = () => {
                     </p>
                   </div>
                   <div className="md:col-span-2">
+                    {user.can_edit_matric ? (
+                      <>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={matricInput}
+                            onChange={(e) => { setMatricInput(e.target.value); setMatricError(""); }}
+                            placeholder="e.g. 23/SCI01/002"
+                            autoComplete="off"
+                            disabled={isSavingMatric}
+                            className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 ${
+                              matricError ? "border-red-400 bg-red-50" : "border-gray-300"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveMatric}
+                            disabled={isSavingMatric || matricInput.trim() === (user.matric_number || "")}
+                            className="px-5 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            {isSavingMatric ? "Saving..." : "Save Matric"}
+                          </button>
+                        </div>
+                        {matricError && <p className="text-xs text-red-500 mt-2">{matricError}</p>}
+                        <p className="text-xs text-gray-500 mt-2">
+                          Matric editing has been opened for you. Type it in capital letters,
+                          e.g. 23/SCI01/002.
+                        </p>
+                      </>
+                    ) : !user.matric_number ? (
+                      <>
+                        <div className="bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
+                          <span className="text-gray-500">Not added yet</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          You can add your matric number once the Super Admin opens matric
+                          editing for your level.
+                        </p>
+                      </>
+                    ) : (
+                    <>
                     <div className="bg-gray-50 px-4 py-3 rounded-lg border border-gray-200 flex items-center justify-between">
                       <span className="text-gray-900 font-medium">
                         {user.matric_number}
@@ -237,9 +301,10 @@ export const ProfilePage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      Matric numbers cannot be changed as they are used for
-                      student verification
+                      To change your matric number, see the Super Admin
                     </p>
+                    </>
+                    )}
                   </div>
                 </div>
 

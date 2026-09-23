@@ -25,6 +25,10 @@ interface StepState {
 
 const LEVELS = ["100", "200", "300", "400"];
 
+// 100 level students haven't been issued matric numbers yet. They add it from
+// their profile once the Super Admin opens matric editing.
+const MATRIC_OPTIONAL_LEVELS = ["100"];
+
 interface Props {
   onRegistered: () => void;
 }
@@ -202,6 +206,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
   });
 
   const isStaff = state.accountType === "staff";
+  const matricOptional = MATRIC_OPTIONAL_LEVELS.includes(state.level);
   const steps = isStaff ? ["Email", "Details", "Password"] : ["Email", "Identity", "Password"];
 
   const [errors, setErrors] = useState<Partial<Record<keyof StepState, string>>>({});
@@ -255,12 +260,15 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
     if (!state.otherNames.trim())   newErrors.otherNames   = "Other names are required.";
     if (!isStaff) {
       if (!state.level)               newErrors.level        = "Select your level.";
-      if (!state.matricNumber.trim()) newErrors.matricNumber = "Matric number is required.";
+      if (!state.matricNumber.trim() && !matricOptional)
+        newErrors.matricNumber = "Matric number is required.";
     }
     if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
-    // Staff never go through matric/roster verification — straight to password.
-    if (isStaff) {
+    // Staff, and 100 level students without a matric number yet, have nothing
+    // to verify against the roster — straight to password.
+    if (isStaff || !state.matricNumber.trim()) {
+      setState((s) => ({ ...s, verificationToken: "", studentInfo: null }));
       setStep(3);
       return;
     }
@@ -323,10 +331,11 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
         password2: state.password2,
         accountType: state.accountType,
         // Staff signups omit these entirely — no matric/level/roster check.
+        // 100 level without a matric sends neither matric nor token.
         ...(isStaff ? {} : {
           level: state.level,
-          matricNumber: state.matricNumber.trim(),
-          verificationToken: state.verificationToken,
+          matricNumber: state.matricNumber.trim() || undefined,
+          verificationToken: state.verificationToken || undefined,
         }),
       });
       toast.success(
@@ -366,15 +375,15 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
           <p className="text-sm text-gray-600 mb-4">
             {isStaff
               ? "Enter your email to get started."
-              : "Enter your university email to get started."}
+              : "Enter your email to get started."}
           </p>
           <Field
-            label="University Email"
+            label="Email"
             type="email"
             value={state.email}
             onChange={set("email")}
             error={errors.email}
-            placeholder="you@university.edu"
+            placeholder="you@gmail.com"
             autoComplete="email"
             disabled={isLoading}
           />
@@ -433,7 +442,7 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
                 disabled={isLoading}
               />
               <Field
-                label="Matric Number"
+                label={matricOptional ? "Matric Number (optional)" : "Matric Number"}
                 value={state.matricNumber}
                 onChange={set("matricNumber")}
                 error={errors.matricNumber}
@@ -441,6 +450,12 @@ export const RegisterFlow: React.FC<Props> = ({ onRegistered }) => {
                 autoComplete="off"
                 disabled={isLoading}
               />
+              {matricOptional && (
+                <p className="-mt-2 mb-4 text-xs text-gray-500">
+                  No matric number yet? Leave this blank — you can add it from your
+                  profile once matric numbers are issued.
+                </p>
+              )}
             </>
           )}
           <div className="flex gap-3 mt-2">

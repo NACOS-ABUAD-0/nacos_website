@@ -121,6 +121,13 @@ class User(AbstractUser):
         validators=[MATRIC_REGEX],
         help_text="Normalized format: '23/SCI01/002' or '202330217286FA'.",
     )
+    matric_edit_allowed = models.BooleanField(
+        default=False,
+        help_text=(
+            "Super Admin toggle: while True the user may set/change their own "
+            "matric number from their profile. Stays on until switched off."
+        ),
+    )
 
     role = models.CharField(
         max_length=30,
@@ -158,6 +165,20 @@ class User(AbstractUser):
     @property
     def is_executive(self) -> bool:
         return self.role in self.EXECUTIVE_ROLES
+
+    @property
+    def can_edit_matric(self) -> bool:
+        """
+        True if the Super Admin has opened matric editing for this user
+        individually, or for their whole level (see MatricEditLevel).
+        """
+        if self.matric_edit_allowed:
+            return True
+        profile = getattr(self, "student_profile", None)
+        return bool(
+            profile and profile.level
+            and MatricEditLevel.objects.filter(level=profile.level).exists()
+        )
 
     @property
     def can_assign_roles(self) -> bool:
@@ -205,6 +226,28 @@ class StudentProfile(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.full_name} Profile"
+
+
+# ─── Level-wide matric editing ─────────────────────────────────────────────────
+
+class MatricEditLevel(models.Model):
+    """
+    A row here means matric editing is open for every student at `level`
+    (e.g. all 100 level students right after the matric ceremony). The Super
+    Admin opens it, students enter their numbers, then it's closed by deleting
+    the row.
+    """
+    level = models.CharField(max_length=20, unique=True)
+    opened_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    opened_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["level"]
+
+    def __str__(self) -> str:
+        return f"Matric editing open for {self.level} level"
 
 
 # ─── Notification System ───────────────────────────────────────────────────────

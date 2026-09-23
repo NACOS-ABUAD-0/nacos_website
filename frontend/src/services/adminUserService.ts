@@ -29,6 +29,7 @@ export interface UserRecord {
   is_staff: boolean
   is_active: boolean
   is_email_verified: boolean
+  matric_edit_allowed: boolean
   date_joined: string
 }
 
@@ -100,4 +101,25 @@ export async function unbanUser(userId: number): Promise<UserRecord> {
 export async function assignUserRole(userId: number, role: UserRole): Promise<UserRecord> {
   const response = await api.patch<UserRecord>(`/admin/users/${userId}/role/`, { role })
   return response.data
+}
+
+/**
+ * Switches matric-number editing on/off for one user. While on, the user can
+ * set or change their own matric number from their profile. Super Admin only.
+ */
+export async function setUserMatricEdit(userId: number, allowed: boolean): Promise<UserRecord> {
+  const response = await api.patch<UserRecord>(`/admin/users/${userId}/matric-edit/`, { allowed })
+  return response.data
+}
+
+/** Levels that currently have matric editing open for every student. Super Admin only. */
+export async function fetchMatricEditLevels(): Promise<string[]> {
+  const response = await api.get<{ open_levels: string[] }>('/admin/matric-edit-levels/')
+  return response.data.open_levels
+}
+
+/** Opens/closes matric editing for every student at a level. Super Admin only. */
+export async function setLevelMatricEdit(level: string, open: boolean): Promise<string[]> {
+  const response = await api.patch<{ open_levels: string[] }>('/admin/matric-edit-levels/', { level, open })
+  return response.data.open_levels
 }
