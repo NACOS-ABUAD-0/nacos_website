@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import api from "../lib/api";
@@ -11,11 +11,15 @@ import {
   Search,
   Download,
   Eye,
-  Calendar,
   FileText,
   Upload,
   X,
-  Clock,
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  BookOpen,
+  GraduationCap,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface Resource {
@@ -42,26 +46,62 @@ interface ResourceCategory {
   name: string;
 }
 
-const getLevelFromCourseCode = (courseCode?: string): number | null => {
-  if (!courseCode) return null;
-  const match = courseCode.match(/\d{3}/);
-  if (match) {
-    const levelNum = parseInt(match[0][0]) * 100;
-    return [100, 200, 300, 400].includes(levelNum) ? levelNum : null;
-  }
-  return null;
+// ─── Level / folder classification ──────────────────────────────────────────
+// The first digit of a course code is its level: CSC 309 → 300 level,
+// CSC 101 → 100 level. Drive-synced files often have no course_code, so
+// fall back to finding one in the title ("phy 101exam.pdf", "CSC_102 Note"),
+// then to an explicit level in the title ("200lvl 1st Semester.pdf").
+
+const LEVELS = [100, 200, 300, 400] as const;
+// "images" holds every photo/scan regardless of course code — it has no
+// Notes/PDFs split and opens straight onto its file list.
+type LevelKey = (typeof LEVELS)[number] | "other" | "images";
+type FolderKey = "notes" | "pdfs";
+
+const isLevel = (n: number): n is (typeof LEVELS)[number] =>
+  (LEVELS as readonly number[]).includes(n);
+
+const COURSE_CODE_RE = /(?<![A-Za-z])([A-Za-z]{3})\s*[_-]?\s*(\d{3})(?!\d)/;
+const LEVEL_IN_TITLE_RE = /(?<!\d)([1-4])00\s*(?:l|lvl|level)(?![a-z])/i;
+const NOTE_RE = /(?<![a-z])notes?(?![a-z])/i;
+
+const getCourseCode = (r: Resource): string | null => {
+  if (r.course_code) return r.course_code.toUpperCase().replace(/\s+/g, "");
+  const m = r.title.match(COURSE_CODE_RE);
+  return m ? `${m[1]}${m[2]}`.toUpperCase() : null;
 };
 
-// Helper: sort CSC courses first
-const sortCSCFirst = (resources: Resource[]): Resource[] => {
-  return [...resources].sort((a, b) => {
-    const aIsCSC = a.course_code?.toUpperCase().startsWith("CSC") ?? false;
-    const bIsCSC = b.course_code?.toUpperCase().startsWith("CSC") ?? false;
-    if (aIsCSC && !bIsCSC) return -1;
-    if (!aIsCSC && bIsCSC) return 1;
-    return 0;
-  });
+const isImage = (r: Resource) => r.file_type.startsWith("image/");
+
+const getLevel = (r: Resource): LevelKey => {
+  if (isImage(r)) return "images";
+  const code = getCourseCode(r);
+  const digit = code?.match(/\d/)?.[0] ?? r.title.match(LEVEL_IN_TITLE_RE)?.[1];
+  const level = digit ? parseInt(digit) * 100 : NaN;
+  return isLevel(level) ? level : "other";
 };
+
+const getFolder = (r: Resource): FolderKey =>
+  NOTE_RE.test(r.title) ? "notes" : "pdfs";
+
+const FOLDERS: Record<FolderKey, { label: string; hint: string }> = {
+  notes: { label: "Notes", hint: "Lecture & class notes" },
+  pdfs: { label: "PDFs", hint: "Past questions, tests & other files" },
+};
+
+const levelLabel = (l: LevelKey) =>
+  l === "other" ? "Other" : l === "images" ? "Images" : `${l} Level`;
+
+// CSC courses first, then by course code, then title.
+const compareResources = (a: Resource, b: Resource) => {
+  const ac = getCourseCode(a) ?? "~";
+  const bc = getCourseCode(b) ?? "~";
+  const aCsc = ac.startsWith("CSC") ? 0 : 1;
+  const bCsc = bc.startsWith("CSC") ? 0 : 1;
+  return aCsc - bCsc || ac.localeCompare(bc) || a.title.localeCompare(b.title);
+};
+
+const MAX_SEARCH_RESULTS = 100;
 
 const ALLOWED_FILE_TYPES =
   ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.txt";
@@ -71,29 +111,47 @@ export const ResourcesPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   const [resources, setResources] = useState<Resource[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
-  const [pageSize] = useState(20);
+  // Current folder lives in the URL (?level=300&folder=notes) so the
+  // browser back button walks back up the folder tree.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const levelParam = searchParams.get("level");
+  const currentLevel: LevelKey | null =
+    levelParam === "other" || levelParam === "images"
+      ? levelParam
+      : isLevel(Number(levelParam))
+      ? (Number(levelParam) as LevelKey)
+      : null;
+  const folderParam = searchParams.get("folder");
+  const currentFolder: FolderKey | null =
+    currentLevel && currentLevel !== "images" && (folderParam === "notes" || folderParam === "pdfs")
+      ? folderParam
+      : null;
+
+  const openFolder = (level: LevelKey | null, folder: FolderKey | null = null) => {
+    const next: Record<string, string> = {};
+    if (level) next.level = String(level);
+    if (level && folder) next.folder = folder;
+    setSearchParams(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // ─── Community submitted resources ────────────────────────────────────────
+  // Approved student submissions are filed into the same level folders as
+  // the Drive-synced files.
   const [communityResources, setCommunityResources] = useState<Resource[]>([]);
-  const [isLoadingCommunity, setIsLoadingCommunity] = useState(false);
 
   const fetchCommunityResources = async () => {
-    setIsLoadingCommunity(true);
     try {
       const response = await resourcesAPI.getResources();
       setCommunityResources(response.data.results ?? response.data ?? []);
     } catch {
-      // Silently ignore — the Drive-synced list above still works.
-    } finally {
-      setIsLoadingCommunity(false);
+      // Silently ignore — the Drive-synced list still works.
     }
   };
 
@@ -186,50 +244,43 @@ export const ResourcesPage: React.FC = () => {
 
   // debounce
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
+  // The Drive list is one static JSON blob — fetch it once, search locally.
   useEffect(() => {
-    setResources([]);
-    setNextPageUrl(null);
-    fetchResources(true);
-  }, [debouncedSearch]);
+    api
+      .get("/resources/drive/")
+      .then((response) => setResources(response.data))
+      .catch(() => setError("Failed to load resources"))
+      .finally(() => setIsLoading(false));
+  }, []);
 
-  const fetchResources = async (reset = false) => {
-  if (reset) setIsLoading(true);
-  else setIsLoadingMore(true);
+  const allResources = useMemo(
+    () => [...communityResources, ...resources].sort(compareResources),
+    [resources, communityResources]
+  );
 
-  try {
-    if (reset) {
-      const response = await api.get("/resources/drive/");
-      let allData: Resource[] = response.data;
+  // level → folder → files
+  const tree = useMemo(() => {
+    const t = {} as Record<LevelKey, Record<FolderKey, Resource[]>>;
+    for (const l of [...LEVELS, "other" as const, "images" as const]) t[l] = { notes: [], pdfs: [] };
+    for (const r of allResources) t[getLevel(r)][getFolder(r)].push(r);
+    return t;
+  }, [allResources]);
 
-      if (debouncedSearch) {
-        const q = debouncedSearch.toLowerCase();
-        allData = allData.filter(
-          (r) =>
-            r.title.toLowerCase().includes(q) ||
-            r.description.toLowerCase().includes(q) ||
-            (r.course_code ?? "").toLowerCase().includes(q)
-        );
-      }
-
-      setResources(sortCSCFirst(allData));
-      setNextPageUrl(null);
-    }
-  } catch (err: any) {
-    setError("Failed to load resources");
-  } finally {
-    setIsLoading(false);
-    setIsLoadingMore(false);
-  }
-};
-
-  const filteredResources = useMemo(() => {
-    // Already sorted by fetch, but just in case
-    return resources;
-  }, [resources]);
+  const searchResults = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (!q) return null;
+    const compactQ = q.replace(/\s+/g, "");
+    return allResources.filter(
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        (r.description ?? "").toLowerCase().includes(q) ||
+        (getCourseCode(r) ?? "").toLowerCase().includes(compactQ)
+    );
+  }, [allResources, debouncedSearch]);
 
   const handleView = (r: Resource) => window.open(r.url, "_blank");
 
@@ -240,77 +291,113 @@ export const ResourcesPage: React.FC = () => {
     window.open(r.download_url || r.url, "_blank");
   };
 
-  const renderResourceCard = (r: Resource) => (
-    <div
-      key={r.id}
-      className="group bg-white rounded-2xl border p-6 hover:shadow-xl transition overflow-hidden"
-    >
-      {/* HEADER */}
-      <div className="flex justify-between mb-4">
-        <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#006E3A]/10 text-[#006E3A]">
-          <FileText />
+  const renderResourceRow = (r: Resource, showLocation = false) => {
+    const code = getCourseCode(r);
+    const level = getLevel(r);
+    return (
+      <li
+        key={r.id}
+        className="flex items-center gap-3 sm:gap-4 px-4 py-3 hover:bg-gray-50 transition"
+      >
+        <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-[#006E3A]/10 text-[#006E3A]">
+          {isImage(r) ? <ImageIcon className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
         </div>
-        <span className="text-xs bg-gray-100 px-2 py-1 rounded whitespace-nowrap">
-          {r.file_size_display}
-        </span>
-      </div>
 
-      {/* TITLE with overflow handling */}
-      <h3 className="font-semibold text-lg mb-2 group-hover:text-[#006E3A] line-clamp-2 break-words overflow-hidden">
-        {r.title}
-      </h3>
-
-      {/* DESCRIPTION */}
-      <p className="text-sm text-gray-600 mb-4 line-clamp-2 break-words">
-        {r.description}
-      </p>
-
-      {/* META */}
-      <div className="space-y-2 text-sm text-gray-500 mb-4">
-        {r.course_code && (
-          <div>{r.course_code} • {getLevelFromCourseCode(r.course_code)} Level</div>
-        )}
-        {r.year && (
-          <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            Year {r.year}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-gray-900 truncate" title={r.title}>
+            {r.title}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
+            {code && <span className="font-semibold text-[#006E3A]">{code}</span>}
+            {showLocation && (
+              <span>
+                {levelLabel(level)}
+                {level !== "images" && ` › ${FOLDERS[getFolder(r)].label}`}
+              </span>
+            )}
+            <span>{r.file_size_display}</span>
+            {r.year && <span>Year {r.year}</span>}
+            {r.submitted_by && <span>Shared by {r.submitted_by.full_name}</span>}
           </div>
-        )}
-        {r.submitted_by && (
-          <div className="text-xs text-gray-400">
-            Shared by {r.submitted_by.full_name}
-          </div>
-        )}
-      </div>
+        </div>
 
-      {/* TAGS */}
-      <div className="flex flex-wrap gap-1 mb-4">
-        {r.tags.slice(0, 3).map(tag => (
-          <span key={tag.id} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
-            {tag.name}
-          </span>
+        <div className="flex shrink-0 gap-1 sm:gap-2">
+          <button
+            onClick={() => handleView(r)}
+            aria-label={`View ${r.title}`}
+            className="flex items-center gap-1.5 p-2 sm:px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">View</span>
+          </button>
+          <button
+            onClick={() => handleDownload(r)}
+            aria-label={`Download ${r.title}`}
+            className="flex items-center gap-1.5 p-2 sm:px-3 rounded-lg bg-[#006E3A] text-white hover:bg-green-700 text-sm"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Download</span>
+          </button>
+        </div>
+      </li>
+    );
+  };
+
+  // Files inside a folder, grouped under course-code headings.
+  const renderFileList = (files: Resource[]) => {
+    if (files.length === 0) {
+      return (
+        <div className="text-center text-gray-500 py-16 bg-white rounded-2xl border">
+          This folder is empty for now.
+        </div>
+      );
+    }
+    const groups: Array<[string, Resource[]]> = [];
+    for (const r of files) {
+      const key = getCourseCode(r) ?? "General";
+      const last = groups[groups.length - 1];
+      if (last && last[0] === key) last[1].push(r);
+      else groups.push([key, [r]]);
+    }
+    return (
+      <div className="space-y-6">
+        {groups.map(([code, items]) => (
+          <section key={code} className="bg-white rounded-2xl border overflow-hidden">
+            <h3 className="px-4 py-2.5 bg-gray-50 border-b text-sm font-semibold text-gray-700">
+              {code} <span className="font-normal text-gray-400">· {items.length}</span>
+            </h3>
+            <ul className="divide-y">{items.map((r) => renderResourceRow(r))}</ul>
+          </section>
         ))}
       </div>
+    );
+  };
 
-      {/* ACTIONS */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => handleView(r)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
-        >
-          <Eye className="w-4 h-4" />
-          View
-        </button>
-
-        <button
-          onClick={() => handleDownload(r)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-[#006E3A] text-white hover:bg-green-700"
-        >
-          <Download className="w-4 h-4" />
-          Download
-        </button>
+  const renderFolderCard = (
+    key: string,
+    title: string,
+    subtitle: string,
+    count: number,
+    onClick: () => void,
+    Icon: React.ElementType
+  ) => (
+    <button
+      key={key}
+      onClick={onClick}
+      className="group text-left bg-white rounded-2xl border p-6 hover:shadow-lg hover:border-[#006E3A]/40 transition flex items-center gap-4"
+    >
+      <div className="w-14 h-14 shrink-0 flex items-center justify-center rounded-xl bg-[#006E3A]/10 text-[#006E3A] group-hover:bg-[#006E3A] group-hover:text-white transition">
+        <Icon className="w-7 h-7" />
       </div>
-    </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-lg text-gray-900">{title}</p>
+        <p className="text-sm text-gray-500 truncate">{subtitle}</p>
+      </div>
+      <div className="flex items-center gap-1 text-sm text-gray-400">
+        {count}
+        <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
+      </div>
+    </button>
   );
 
   return (
@@ -518,57 +605,118 @@ export const ResourcesPage: React.FC = () => {
             </div>
           )}
 
-          {/* GRID */}
+          {/* BROWSER */}
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-40 bg-gray-200 rounded-2xl animate-pulse" />
+                <div key={i} className="h-24 bg-gray-200 rounded-2xl animate-pulse" />
               ))}
             </div>
           ) : error ? (
             <div className="text-center text-red-500">{error}</div>
-          ) : (
-            <>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredResources.map(renderResourceCard)}
-              </div>
-
-              {/* LOAD MORE */}
-              {nextPageUrl && (
-                <div className="text-center mt-16 mb-20">
-                  <button
-                    onClick={() => fetchResources(false)}
-                    className="px-8 py-3 border rounded-xl hover:bg-gray-100"
-                  >
-                    {isLoadingMore ? "Loading..." : "Load More"}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* COMMUNITY SUBMITTED */}
-          {(isLoadingCommunity || communityResources.length > 0) && (
-            <div className="mt-20">
-              <div className="flex items-center gap-2 mb-8">
-                <Clock className="w-5 h-5 text-[#006E3A]" />
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Community Submitted
-                </h2>
-              </div>
-
-              {isLoadingCommunity ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-40 bg-gray-200 rounded-2xl animate-pulse" />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {communityResources.map(renderResourceCard)}
-                </div>
+          ) : searchResults ? (
+            /* SEARCH RESULTS — flat, across every level */
+            <div>
+              <p className="text-sm text-gray-500 mb-4">
+                {searchResults.length === 0
+                  ? `No resources match "${debouncedSearch}".`
+                  : searchResults.length > MAX_SEARCH_RESULTS
+                  ? `Showing the first ${MAX_SEARCH_RESULTS} of ${searchResults.length} matches — try a more specific search.`
+                  : `${searchResults.length} match${searchResults.length === 1 ? "" : "es"}`}
+              </p>
+              {searchResults.length > 0 && (
+                <ul className="bg-white rounded-2xl border overflow-hidden divide-y">
+                  {searchResults
+                    .slice(0, MAX_SEARCH_RESULTS)
+                    .map((r) => renderResourceRow(r, true))}
+                </ul>
               )}
             </div>
+          ) : (
+            <>
+              {/* BREADCRUMB */}
+              <nav className="flex flex-wrap items-center gap-1 text-sm mb-6">
+                <button
+                  onClick={() => openFolder(null)}
+                  className={currentLevel ? "text-[#006E3A] hover:underline" : "font-semibold text-gray-900"}
+                >
+                  All Levels
+                </button>
+                {currentLevel && (
+                  <>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    <button
+                      onClick={() => openFolder(currentLevel)}
+                      className={currentFolder ? "text-[#006E3A] hover:underline" : "font-semibold text-gray-900"}
+                    >
+                      {levelLabel(currentLevel)}
+                    </button>
+                  </>
+                )}
+                {currentLevel && currentFolder && (
+                  <>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    <span className="font-semibold text-gray-900">
+                      {FOLDERS[currentFolder].label}
+                    </span>
+                  </>
+                )}
+              </nav>
+
+              {!currentLevel ? (
+                /* LEVEL FOLDERS */
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {LEVELS.map((l) =>
+                    renderFolderCard(
+                      String(l),
+                      `${l} Level`,
+                      `${tree[l].notes.length} notes · ${tree[l].pdfs.length} PDFs`,
+                      tree[l].notes.length + tree[l].pdfs.length,
+                      () => openFolder(l),
+                      GraduationCap
+                    )
+                  )}
+                  {tree.other.notes.length + tree.other.pdfs.length > 0 &&
+                    renderFolderCard(
+                      "other",
+                      "Other",
+                      "General files & ones without a course code",
+                      tree.other.notes.length + tree.other.pdfs.length,
+                      () => openFolder("other"),
+                      Folder
+                    )}
+                  {tree.images.pdfs.length > 0 &&
+                    renderFolderCard(
+                      "images",
+                      "Images",
+                      "Photos & scanned pages",
+                      tree.images.pdfs.length,
+                      () => openFolder("images"),
+                      ImageIcon
+                    )}
+                </div>
+              ) : currentLevel === "images" ? (
+                /* IMAGES — no Notes/PDFs split */
+                renderFileList(tree.images.pdfs)
+              ) : !currentFolder ? (
+                /* NOTES / PDFS FOLDERS */
+                <div className="grid sm:grid-cols-2 gap-6 max-w-3xl">
+                  {(Object.keys(FOLDERS) as FolderKey[]).map((f) =>
+                    renderFolderCard(
+                      f,
+                      FOLDERS[f].label,
+                      FOLDERS[f].hint,
+                      tree[currentLevel][f].length,
+                      () => openFolder(currentLevel, f),
+                      f === "notes" ? BookOpen : FolderOpen
+                    )
+                  )}
+                </div>
+              ) : (
+                /* FILES */
+                renderFileList(tree[currentLevel][currentFolder])
+              )}
+            </>
           )}
         </div>
       </main>

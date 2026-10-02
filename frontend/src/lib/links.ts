@@ -1,2 +1,2 @@
 // External NACOS sites linked from the main app.
-export const SKILLS_HUB_URL = "https://nacos-skillhub.onrender.com";
+export const SKILLS_HUB_URL = "https://skillhub.nacosabuad.org";
