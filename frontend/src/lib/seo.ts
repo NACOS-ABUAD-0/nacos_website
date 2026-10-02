@@ -11,7 +11,7 @@ interface SEOProps {
 export const useSEO = ({
   title = 'NACOS ABUAD - Computing Innovation at ABUAD',
   description = 'Showcasing student talent, connecting opportunities, and powering community events at ABUAD University.',
-  image = '/assets/nacos-og-image.jpg',
+  image = 'https://www.nacosabuad.org/og-image.png',
   url = window.location.href
 }: SEOProps = {}) => {
   useEffect(() => {
@@ -57,8 +57,8 @@ export const useSEO = ({
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'NACOS ABUAD',
-      url: 'https://nacosabuad.org',
-      logo: 'https://nacosabuad.org/assets/nacos-logo.png',
+      url: 'https://www.nacosabuad.org',
+      logo: 'https://www.nacosabuad.org/icon-512.png',
       description: 'NACOS ABUAD - Computing Innovation at ABUAD University',
       address: {
         '@type': 'PostalAddress',
