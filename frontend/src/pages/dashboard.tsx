@@ -8,6 +8,7 @@ import { useEvents } from '../lib/hooks/useEvents';
 import { useQuery } from '@tanstack/react-query';
 import { usersAPI, resourcesAPI } from '../lib/api';
 import { useStudentProfile } from '../lib/hooks/useStudentProfile';
+import { SKILLS_HUB_URL } from '../lib/links';
 import { useLikedProjects } from '../lib/hooks/useLikedProjects';
 import { useNotifications, useMarkNotificationRead, useDeleteNotification } from '../lib/hooks/useNotifications';
 import Navbar from '../components/Navbar';
@@ -21,7 +22,7 @@ import {
   Users, Rocket, Settings, ChevronRight,
   Bell, BadgeCheck, Hash, Moon, Sun,
   Heart, ClipboardList, CheckCircle2, XCircle,
-  ArrowRight, Trash2
+  ArrowRight, Trash2, Lightbulb, ExternalLink
 } from 'lucide-react';
 
 // ========== Animation Variants ==========
@@ -265,13 +266,13 @@ interface ActionCardProps {
   label: string;
   desc: string;
   t: T;
+  external?: boolean;
+  className?: string;
 }
-const ActionCard: React.FC<ActionCardProps> = ({ to, icon, iconBg, label, desc, t }) => (
-  <motion.div whileHover="hover" whileTap="tap" variants={cardHover}>
-    <Link
-      to={to}
-      className={`flex items-center gap-3 p-3.5 border rounded-xl ${t.actCard} transition-all duration-200 group`}
-    >
+const ActionCard: React.FC<ActionCardProps> = ({ to, icon, iconBg, label, desc, t, external, className }) => {
+  const cls = `flex items-center gap-3 p-3.5 border rounded-xl ${t.actCard} transition-all duration-200 group`;
+  const body = (
+    <>
       <div className={`w-8 h-8 sm:w-9 sm:h-9 ${iconBg} rounded-[10px] flex items-center justify-center flex-shrink-0`}>
         {icon}
       </div>
@@ -279,10 +280,23 @@ const ActionCard: React.FC<ActionCardProps> = ({ to, icon, iconBg, label, desc, 
         <div className={`text-sm font-semibold ${t.t1} leading-tight`}>{label}</div>
         <div className={`text-[11px] ${t.t2} mt-0.5`}>{desc}</div>
       </div>
-      <ChevronRight className={`w-3.5 h-3.5 ${t.t3} ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity`} />
-    </Link>
-  </motion.div>
-);
+      {external ? (
+        <ExternalLink className={`w-3.5 h-3.5 ${t.t3} ml-auto flex-shrink-0`} />
+      ) : (
+        <ChevronRight className={`w-3.5 h-3.5 ${t.t3} ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity`} />
+      )}
+    </>
+  );
+  return (
+    <motion.div whileHover="hover" whileTap="tap" variants={cardHover} className={className}>
+      {external ? (
+        <a href={to} target="_blank" rel="noopener noreferrer" className={cls}>{body}</a>
+      ) : (
+        <Link to={to} className={cls}>{body}</Link>
+      )}
+    </motion.div>
+  );
+};
 
 interface EventItemProps {
   day: string;
@@ -928,6 +942,16 @@ export const DashboardPage: React.FC = () => {
                   <h2 className={`font-bold text-base sm:text-lg ${t.t1} mb-0.5`} style={syne}>Quick Actions</h2>
                   <p className={`text-xs ${t.t2} mb-4`}>Jump to what you need</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <ActionCard
+                      to={SKILLS_HUB_URL}
+                      external
+                      className="sm:col-span-2"
+                      iconBg={isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}
+                      label="NACOS Skills Hub"
+                      desc="Learn and level up your tech skills"
+                      icon={<Lightbulb className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />}
+                      t={t}
+                    />
                     <ActionCard to="/projects/new" iconBg={isDark ? 'bg-green-500/10' : 'bg-green-100'} label="Add Project" desc="Showcase your work" icon={<Plus className={`w-4 h-4 ${isDark ? 'text-green-400' : 'text-green-600'}`} />} t={t} />
                     <ActionCard to="/events" iconBg={isDark ? 'bg-violet-500/10' : 'bg-violet-100'} label="Browse Events" desc="Workshops & meetups" icon={<CalendarDays className={`w-4 h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />} t={t} />
                     <ActionCard to="/resources" iconBg={isDark ? 'bg-blue-500/10' : 'bg-blue-100'} label="Resources" desc="Study materials" icon={<BookOpen className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />} t={t} />

@@ -24,12 +24,15 @@ import {
   Handshake,
   MessageSquareWarning,
   Mail,
+  Lightbulb,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import NacosLogo from "/images/nacos_logo.png";
 import AbuadLogo from "/images/abuadLogo.png";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { SKILLS_HUB_URL } from "../lib/links";
 
 type NavItem = { name: string; path: string; icon: LucideIcon };
 type AccountLink = { to: string; icon: LucideIcon; label: string };
@@ -501,6 +504,18 @@ const Navbar = () => {
                             {label}
                           </NavLink>
                         ))}
+                        <a
+                          href={SKILLS_HUB_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          role="menuitem"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${FOCUS_RING} ${menuItemIdle}`}
+                        >
+                          <Lightbulb className="h-4 w-4 text-gray-400" />
+                          Skills Hub
+                          <ExternalLink className="ml-auto h-3.5 w-3.5 text-gray-400" />
+                        </a>
                       </div>
 
                       {/* Sign out */}
@@ -664,6 +679,19 @@ const Navbar = () => {
                           </NavLink>
                         </motion.div>
                       ))}
+                    <motion.div variants={drawerItemVariants}>
+                      <a
+                        href={SKILLS_HUB_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${FOCUS_RING} ${menuItemIdle}`}
+                      >
+                        <Lightbulb className="h-4 w-4 text-gray-400" />
+                        Skills Hub
+                        <ExternalLink className="ml-auto h-3.5 w-3.5 text-gray-400" />
+                      </a>
+                    </motion.div>
                   </div>
 
                   <motion.div variants={drawerItemVariants} className="mt-3 flex gap-2">
