@@ -103,35 +103,6 @@ const priceLabel = (event: EventItem): string => {
   return Math.min(...prices) === Math.max(...prices) ? formatNaira(prices[0]) : `From ${formatNaira(Math.min(...prices))}`
 }
 
-// ─── Three-dot menu ───────────────────────────────────────────────────────────
-interface DotsMenuProps {
-  open: boolean
-  onToggle: () => void
-  onEdit: () => void
-  onDelete: () => void
-  onCheckIn: () => void
-}
-
-const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete, onCheckIn }) => (
-  <div className="relative">
-    <button
-      onClick={(e) => { e.stopPropagation(); onToggle() }}
-      className="text-gray-400 hover:text-gray-600 p-1"
-    >
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-        <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
-      </svg>
-    </button>
-    {open && (
-      <div className="absolute right-0 top-7 w-36 bg-white rounded-xl shadow-lg border border-gray-100 z-50">
-        <button onClick={(e) => { e.stopPropagation(); onCheckIn() }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Check-in</button>
-        <button onClick={(e) => { e.stopPropagation(); onEdit() }}   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Edit</button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50">Delete</button>
-      </div>
-    )}
-  </div>
-)
-
 // ─── Status badge ─────────────────────────────────────────────────────────────
 const StatusBadge: React.FC<{ status?: EventStatus }> = ({ status }) => {
   const map: Record<string, string> = {
@@ -155,17 +126,8 @@ interface EventCardProps {
 }
 
 const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckIn }) => {
-  const [menuOpen, setMenuOpen] = useState<boolean>(false)
-
-  const handleCardClick = (): void => {
-    if (menuOpen) setMenuOpen(false)
-  }
-
   return (
-    <div
-      className="relative bg-[#eef6f3] rounded-lg flex flex-col max-w-[300px] w-full h-[420px] mb-8 mx-auto hover:shadow-md transition"
-      onClick={handleCardClick}
-    >
+    <div className="relative bg-[#eef6f3] rounded-lg flex flex-col max-w-[300px] w-full min-h-[420px] mb-8 mx-auto hover:shadow-md transition">
       <div className="relative overflow-hidden rounded-t-lg">
         {event.media?.poster ? (
           <img src={event.media.poster} alt={event.title} className="w-full h-48 object-cover" />
@@ -177,16 +139,6 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
             </svg>
           </div>
         )}
-
-        <div className="absolute top-3 right-3 z-50" onClick={e => e.stopPropagation()}>
-          <DotsMenu
-            open={menuOpen}
-            onToggle={() => setMenuOpen(o => !o)}
-            onEdit={() => { setMenuOpen(false); onEdit(event) }}
-            onDelete={() => { setMenuOpen(false); onDelete(event) }}
-            onCheckIn={() => { setMenuOpen(false); onCheckIn(event) }}
-          />
-        </div>
 
         {!event.is_published && (
           <span className="absolute top-3 left-3 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -216,6 +168,21 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
           </p>
         )}
         <p className="text-[13px] text-gray-700 line-clamp-2 flex-1">{event.description}</p>
+
+        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[#d5e6df]">
+          <button onClick={() => onCheckIn(event)}
+            className="text-xs font-semibold py-2 rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
+            Check-in
+          </button>
+          <button onClick={() => onEdit(event)}
+            className="text-xs font-semibold py-2 rounded-lg bg-[#1a7a3f] text-white hover:bg-[#155f32]">
+            Edit
+          </button>
+          <button onClick={() => onDelete(event)}
+            className="text-xs font-semibold py-2 rounded-lg bg-white text-red-600 border border-red-200 hover:bg-red-50">
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   )
