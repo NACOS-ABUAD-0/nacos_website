@@ -23,15 +23,20 @@ const RegistrationRow: React.FC<{
 }> = ({ registration, onCheckIn, isChecking }) => (
   <tr className="border-b border-gray-100">
     <td className="py-3 px-4 text-sm font-medium text-gray-900">
-      {registration.user.full_name}
+      {registration.name}
+      {!registration.user && (
+        <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-500">
+          Guest
+        </span>
+      )}
       {registration.ticket_type && (
         <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#1a7a3f]/10 text-[#1a7a3f]">
           {registration.ticket_type.name}
         </span>
       )}
     </td>
-    <td className="py-3 px-4 text-sm text-gray-500">{registration.user.matric_number ?? '—'}</td>
-    <td className="py-3 px-4 text-sm text-gray-500">{registration.user.email}</td>
+    <td className="py-3 px-4 text-sm text-gray-500">{registration.user?.matric_number ?? '—'}</td>
+    <td className="py-3 px-4 text-sm text-gray-500">{registration.email}</td>
     <td className="py-3 px-4">
       {registration.checked_in_at ? (
         <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
@@ -72,16 +77,16 @@ const EventCheckIn: React.FC = () => {
     const type = result.registration.ticket_type
     const typeLabel = type ? ` (${type.name}${type.venue && type.venue !== event?.location ? ` — ${type.venue}` : ''})` : ''
     if (result.status === 'checked_in') {
-      toast.success(`Checked in: ${result.registration.user.full_name}${typeLabel}`)
+      toast.success(`Checked in: ${result.registration.name}${typeLabel}`)
     } else {
-      toast(`Already checked in: ${result.registration.user.full_name} at ${formatTime(result.registration.checked_in_at!)}`, { icon: 'ℹ️' })
+      toast(`Already checked in: ${result.registration.name} at ${formatTime(result.registration.checked_in_at!)}`, { icon: 'ℹ️' })
     }
   }
 
   // A 400 with status "not_paid" means the QR belongs to a ticket whose payment hasn't gone through.
   const notPaidName = (error: unknown): string | null => {
     const data = (error as { response?: { data?: { status?: string; registration?: AdminEventRegistration } } })?.response?.data
-    return data?.status === 'not_paid' ? data.registration?.user.full_name ?? 'This person' : null
+    return data?.status === 'not_paid' ? data.registration?.name || 'This person' : null
   }
 
   const handleCheckIn = (registrationId: number) => {

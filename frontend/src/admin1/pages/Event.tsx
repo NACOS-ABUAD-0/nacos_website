@@ -7,7 +7,7 @@ import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
 import { api, cloudinaryAPI } from '../../lib/api'
 import { optimizeImage } from '../../lib/cloudinary'
-import { formatNaira, type TicketType } from '../../lib/hooks/useEvents'
+import { formatNaira, type EventAudience, type TicketType } from '../../lib/hooks/useEvents'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -28,6 +28,7 @@ interface EventItem {
   description?: string
   contact_email?: string
   capacity?: number | null
+  audience?: EventAudience
   ticket_types?: TicketType[]
   is_paid?: boolean
   price_from?: number
@@ -55,6 +56,7 @@ interface EventFormData {
   description: string
   contact_email: string
   capacity: string
+  audience: EventAudience
   ticket_types: TicketTypeRow[]
   is_published: boolean
 }
@@ -93,7 +95,7 @@ const fetchEvents = (): Promise<EventItem[]> => api.get('/events/').then(r => {
 const EMPTY_FORM: EventFormData = {
   title: '', start_time: '', end_time: '', location: '',
   is_remote: false, poster_url: '', description: '',
-  contact_email: '', capacity: '', ticket_types: [], is_published: true,
+  contact_email: '', capacity: '', audience: 'public', ticket_types: [], is_published: true,
 }
 
 const priceLabel = (event: EventItem): string => {
@@ -140,11 +142,18 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
           </div>
         )}
 
-        {!event.is_published && (
-          <span className="absolute top-3 left-3 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-            Draft
-          </span>
-        )}
+        <div className="absolute top-3 left-3 flex gap-1">
+          {!event.is_published && (
+            <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              Draft
+            </span>
+          )}
+          {event.audience === 'nacos_only' && (
+            <span className="bg-white/90 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+              NACOS only
+            </span>
+          )}
+        </div>
         <span className="absolute bottom-3 left-3 bg-white/90 text-[#1a7a3f] text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm">
           {priceLabel(event)}
         </span>
@@ -326,6 +335,26 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
           <textarea value={form.description} onChange={e => set('description', e.target.value)}
             rows={3} placeholder="Event description..." className="border p-2 rounded-lg text-sm resize-none" />
 
+          <label className="text-xs font-semibold text-gray-500 uppercase mt-2">Who can get tickets?</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup">
+            {([
+              { value: 'public', title: 'Open to everyone', hint: 'No sign-in. Name + email, one ticket per email.' },
+              { value: 'nacos_only', title: 'NACOS members only', hint: 'Must sign in with a NACOS account.' },
+            ] as const).map(option => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={form.audience === option.value}
+                onClick={() => set('audience', option.value)}
+                className={`text-left border-2 rounded-lg px-3 py-2 ${form.audience === option.value ? 'border-[#1a7a3f] bg-[#eef6f3]' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <span className="block text-sm font-semibold">{option.title}</span>
+                <span className="block text-xs text-gray-500">{option.hint}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between mt-2">
             <label className="text-xs font-semibold text-gray-500 uppercase">Tickets</label>
             <button type="button" onClick={addTicketType} className="text-xs font-semibold text-[#1a7a3f] hover:underline">
@@ -490,6 +519,7 @@ const Events: React.FC = () => {
         description:       (modal as EventItem).description ?? '',
         contact_email:     (modal as EventItem).contact_email ?? '',
         capacity:          (modal as EventItem).capacity != null ? String((modal as EventItem).capacity) : '',
+        audience:          (modal as EventItem).audience ?? 'nacos_only',
         ticket_types:      ((modal as EventItem).ticket_types ?? []).map(t => ({
           id: t.id,
           name: t.name,

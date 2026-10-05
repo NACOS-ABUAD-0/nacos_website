@@ -2,12 +2,14 @@ import json
 import logging
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import filters, mixins, permissions, viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from accounts.permissions import IsAdminOrExecutive
@@ -38,8 +40,13 @@ class IsEventManagerOrReadOnly(permissions.BasePermission):
         return request.method in permissions.SAFE_METHODS or can_manage_events(request.user)
 
 
+class GuestTicketThrottle(AnonRateThrottle):
+    """Caps tickets requested without signing in, per IP: each one can send an email."""
+    scope = 'event_ticket_guest'
+
+
 def registration_response(registration, payment=None, status=200):
-    """The student's registration, plus the Paystack checkout to continue when payment is pending."""
+    """The holder's registration, plus the Paystack checkout to continue when payment is pending."""
     data = EventRegistrationSerializer(registration).data
     payment = payment or open_checkout(registration)
     data["checkout_url"] = payment.checkout_url if payment else None
@@ -64,7 +71,10 @@ class EventViewSet(viewsets.ModelViewSet):
         # Registration is student-facing and only needs authentication;
         # everything else (including plain reads) follows the public
         # read / staff write rule below.
-        if self.action in ("register", "my_registration"):
+        if self.action == "register":
+            # Open events take guests; NACOS-only events check sign-in in register() itself.
+            return [permissions.AllowAny()]
+        if self.action == "my_registration":
             return [permissions.IsAuthenticated()]
         return [IsEventManagerOrReadOnly()]
 
@@ -108,16 +118,40 @@ class EventViewSet(viewsets.ModelViewSet):
             event.delete()
         return Response(status=204)
 
-    @action(detail=True, methods=["post"], url_path="register")
+    @action(detail=True, methods=["post"], url_path="register", throttle_classes=[GuestTicketThrottle])
     def register(self, request, pk=None):
         """
-        Body: { "ticket_type": <id> } — required when the event has more than one ticket type.
+        Body: { "ticket_type": <id>, "name": ..., "email": ... }
+        - ticket_type is required when the event has more than one ticket type.
+        - NACOS-only events need a signed-in account (name/email come from it).
+        - Open events take name + email from guests; signed-in users use their account. One ticket per email.
         Free tickets (and events without ticket types) are confirmed straight away. Paid tickets return
         a Paystack checkout_url; the registration stays pending_payment (no QR) until Paystack confirms.
         """
         event = self.get_object()
         if event.status == "completed":
             return Response({"detail": "Registration is closed for this event."}, status=400)
+
+        user = request.user if request.user.is_authenticated else None
+        if user is not None:
+            name, email = user.full_name, user.email
+        elif event.audience == Event.Audience.NACOS_ONLY:
+            return Response(
+                {"detail": "This event is for NACOS members only. Please sign in to get a ticket.", "code": "sign_in_required"},
+                status=401,
+            )
+        else:
+            name = str(request.data.get("name") or "").strip()
+            email = str(request.data.get("email") or "").strip()
+            errors = {}
+            if not 2 <= len(name) <= 120:
+                errors["name"] = ["Enter your full name."]
+            try:
+                validate_email(email)
+            except DjangoValidationError:
+                errors["email"] = ["Enter a valid email address."]
+            if errors:
+                return Response(errors, status=400)
 
         types = list(event.ticket_types.all())
         requested = request.data.get("ticket_type")
@@ -139,7 +173,7 @@ class EventViewSet(viewsets.ModelViewSet):
                 )
 
         try:
-            registration, payment, created = register(event, request.user, ticket_type)
+            registration, payment, created = register(event, user=user, name=name, email=email, ticket_type=ticket_type)
         except RegistrationError as exc:
             return Response({"detail": exc.detail, "code": exc.code}, status=exc.status)
         except PaystackError:
@@ -150,9 +184,12 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="my-registration")
     def my_registration(self, request, pk=None):
         event = self.get_object()
-        try:
-            registration = EventRegistration.objects.get(event=event, user=request.user)
-        except EventRegistration.DoesNotExist:
+        registration = (
+            EventRegistration.objects.filter(event=event, user=request.user).first()
+            # A ticket taken as a guest with the same email before signing in.
+            or EventRegistration.objects.filter(event=event, email=request.user.email.strip().lower()).first()
+        )
+        if registration is None:
             return Response({"detail": "Not registered for this event."}, status=404)
         if registration.status == EventRegistration.Status.PENDING_PAYMENT:
             # Catches payments whose webhook is late or never arrived.
@@ -176,7 +213,7 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
     pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["event"]
-    search_fields = ["user__full_name", "user__email", "user__matric_number"]
+    search_fields = ["name", "email", "user__full_name", "user__matric_number"]
 
     def _perform_check_in(self, registration_pk):
         with transaction.atomic():
@@ -234,13 +271,18 @@ class PaystackVerifyView(APIView):
     """
     The event page calls this after Paystack redirects back with ?reference=... .
     It asks Paystack directly, so it works even if the webhook is late, and never trusts the redirect.
+    Guest tickets are confirmed by whoever holds the (unguessable) reference, i.e. the buyer's browser;
+    member tickets only by that member.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, reference):
         payment = TicketPayment.objects.filter(reference=reference).select_related("registration").first()
-        if payment is None or payment.registration is None or payment.registration.user_id != request.user.pk:
+        owner_id = payment.registration.user_id if payment and payment.registration else None
+        if payment is None or payment.registration is None or (
+            owner_id is not None and owner_id != getattr(request.user, "pk", None)
+        ):
             return Response({"detail": "Payment not found."}, status=404)
         try:
             payment = settle_payment(reference)
@@ -285,3 +327,33 @@ class PaystackWebhookView(APIView):
             # Non-200 so Paystack retries later.
             return Response({"detail": "Processing failed"}, status=500)
         return Response({"detail": "Processed"}, status=200)
+
+
+class TicketView(APIView):
+    """
+    The holder's ticket page (QR code), opened from the link in the ticket email. Works without signing
+    in: the token in the URL is the ticket itself, the same secret the QR code holds.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, token):
+        registration = (
+            EventRegistration.objects.select_related("event", "ticket_type")
+            .filter(token=token, status=EventRegistration.Status.CONFIRMED).first()
+        )
+        if registration is None:
+            return Response({"detail": "Ticket not found."}, status=404)
+        event = registration.event
+        data = EventRegistrationSerializer(registration).data
+        data["name"] = registration.name
+        data["event"] = {
+            "id": event.pk,
+            "title": event.title,
+            "start_time": event.start_time,
+            "end_time": event.end_time,
+            "location": event.location,
+            "is_remote": event.is_remote,
+            "poster": event.poster_url or None,
+        }
+        return Response(data)

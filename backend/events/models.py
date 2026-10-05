@@ -7,6 +7,12 @@ from django.utils import timezone
 
 
 class Event(models.Model):
+    class Audience(models.TextChoices):
+        # Buyers must be signed in; their account name and email go on the ticket.
+        NACOS_ONLY = 'nacos_only', 'NACOS members only'
+        # Anyone can get a ticket with just a name and email; one ticket per email.
+        PUBLIC = 'public', 'Open to everyone'
+
     title = models.CharField(max_length=255)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(null=True, blank=True)
@@ -20,6 +26,8 @@ class Event(models.Model):
     contact_email = models.EmailField(blank=True)
     # Maximum registrations across all ticket types; null means unlimited.
     capacity = models.PositiveIntegerField(null=True, blank=True)
+    # Events created before this setting existed required sign-in, so that stays the default.
+    audience = models.CharField(max_length=20, choices=Audience.choices, default=Audience.NACOS_ONLY)
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -85,7 +93,14 @@ class EventRegistration(models.Model):
         CONFIRMED = 'confirmed', 'Confirmed'
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='registrations')
-    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='event_registrations')
+    # Null for guests on open events, who register with just a name and email.
+    user = models.ForeignKey(
+        'accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='event_registrations',
+    )
+    # Who the ticket is for. Copied from the account for signed-in users; lowercased email.
+    name = models.CharField(max_length=255, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    # Secret value in the QR code; also unlocks the ticket page for guests, so treat it like a password.
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     ticket_type = models.ForeignKey(
         TicketType, on_delete=models.SET_NULL, null=True, blank=True, related_name='registrations',
@@ -105,6 +120,10 @@ class EventRegistration(models.Model):
         unique_together = ['event', 'user']
         ordering = ['-created_at']
         indexes = [models.Index(fields=['event', 'checked_in_at'])]
+        # One ticket per email per event (guests and members alike).
+        constraints = [
+            models.UniqueConstraint(fields=['event', 'email'], name='unique_registration_email_per_event'),
+        ]
 
     @property
     def is_checked_in(self) -> bool:
@@ -115,7 +134,7 @@ class EventRegistration(models.Model):
         return self.status == self.Status.CONFIRMED
 
     def __str__(self):
-        return f"{self.user.full_name} → {self.event.title}"
+        return f"{self.name or self.email} → {self.event.title}"
 
 
 class TicketPayment(models.Model):

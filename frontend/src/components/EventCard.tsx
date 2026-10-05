@@ -18,6 +18,7 @@ export interface Event {
   is_paid?: boolean;
   price_from?: number;
   sold_out?: boolean;
+  audience?: "nacos_only" | "public";
   is_published: boolean;
   created_at: string;
   updated_at: string;
@@ -137,6 +138,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
             : event.is_paid
             ? `From ₦${Number(event.price_from ?? 0).toLocaleString("en-NG")}`
             : "Free"}
+          {event.audience === "nacos_only" && (
+            <span className="ml-2 text-xs font-medium text-gray-500">· NACOS members only</span>
+          )}
         </p>
 
         {/* Actions */}

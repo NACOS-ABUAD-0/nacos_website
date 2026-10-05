@@ -12,7 +12,10 @@ export interface AdminEventRegistrationUser {
 
 export interface AdminEventRegistration {
   id: number;
-  user: AdminEventRegistrationUser;
+  // null for guests on open events; name/email are always set.
+  user: AdminEventRegistrationUser | null;
+  name: string;
+  email: string;
   token: string;
   status: 'pending_payment' | 'confirmed';
   ticket_type: { id: number; name: string; price: number; venue: string } | null;

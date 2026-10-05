@@ -33,6 +33,7 @@ import { ProjectDetail } from "./pages/project-detail";
 import { ProjectFormPage } from "./pages/ProjectFormPage";
 import { ResourcesPage } from "./pages/resources";
 import Events from "./pages/events";
+import TicketPage from "./pages/ticket";
 import EventDetail from "./pages/event-detail";
 import Gallery from "./pages/gallery";
 import ContactPage from "./pages/contact";
@@ -259,6 +260,7 @@ function AppRoutes() {
       {/* ── Events ───────────────────────────────────────────────────── */}
       <Route path="/events" element={<Events isHome={false} />} />
       <Route path="/events/:id" element={<EventDetail />} />
+      <Route path="/tickets/:token" element={<TicketPage />} />
 
       {/* ── Gallery ──────────────────────────────────────────────────── */}
       <Route path="/gallery" element={<Gallery isHome={false} />} />

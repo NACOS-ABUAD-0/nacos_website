@@ -68,19 +68,51 @@ def settle_pending_payments(registration: EventRegistration) -> None:
     registration.refresh_from_db()
 
 
-def register(event: Event, user, ticket_type: TicketType | None) -> tuple[EventRegistration, TicketPayment | None, bool]:
+def _find_registration(event: Event, user, email: str, lock: bool = False) -> EventRegistration | None:
+    """A member's own registration first, otherwise whatever ticket this email already has."""
+    queryset = EventRegistration.objects.select_for_update() if lock else EventRegistration.objects.all()
+    if user is not None:
+        own = queryset.filter(event=event, user=user).first()
+        if own:
+            return own
+    return queryset.filter(event=event, email=email).first()
+
+
+def _already_confirmed(registration: EventRegistration, user) -> EventRegistration:
     """
-    Registers `user` for `event`. Free tickets (or events without ticket types) are confirmed at once;
+    What to do when this email already has a confirmed ticket. The member who owns it just gets it back.
+    A signed-in member whose email matches an earlier guest ticket takes it over. Anyone else gets the
+    ticket re-sent to that email, never shown on screen, so typing someone's email can't take their ticket.
+    """
+    if user is not None and registration.user_id in (None, user.pk):
+        if registration.user_id is None:
+            registration.user = user
+            registration.save(update_fields=['user'])
+        return registration
+    # Sent directly: on_commit would be dropped when the error below rolls the transaction back.
+    send_ticket_email(registration)
+    raise RegistrationError(
+        "A ticket has already been issued to this email. We've sent it to that inbox again.",
+        409, "ticket_already_issued",
+    )
+
+
+def register(event: Event, *, user, name: str, email: str, ticket_type: TicketType | None) -> tuple[EventRegistration, TicketPayment | None, bool]:
+    """
+    Gets `name`/`email` a ticket for `event`; `user` is the signed-in account or None for a guest.
+    One ticket per email. Free tickets (or events without ticket types) are confirmed at once;
     paid tickets hold a seat and return a Paystack checkout.
 
     Returns (registration, payment needing checkout or None, created).
-    Raises RegistrationError for sold-out / unavailable cases and PaystackError if checkout can't start.
+    Raises RegistrationError for sold-out / unavailable / already-issued cases and PaystackError if
+    checkout can't start.
     """
-    existing = EventRegistration.objects.filter(event=event, user=user).first()
+    email = email.strip().lower()
+    existing = _find_registration(event, user, email)
     if existing and existing.status == Status.PENDING_PAYMENT:
         settle_pending_payments(existing)
     if existing and existing.is_confirmed:
-        return existing, None, False
+        return _already_confirmed(existing, user), None, False
 
     if existing and ticket_type and not ticket_type.is_free:
         payment = open_checkout(existing, ticket_type)
@@ -90,9 +122,9 @@ def register(event: Event, user, ticket_type: TicketType | None) -> tuple[EventR
     with transaction.atomic():
         # Lock the event row so two buyers can't both take the last seat.
         Event.objects.select_for_update().get(pk=event.pk)
-        registration = EventRegistration.objects.select_for_update().filter(event=event, user=user).first()
+        registration = _find_registration(event, user, email, lock=True)
         if registration and registration.is_confirmed:
-            return registration, None, False
+            return _already_confirmed(registration, user), None, False
 
         if ticket_type is not None:
             # Re-read inside the lock in case the type was edited or removed a moment ago.
@@ -111,26 +143,32 @@ def register(event: Event, user, ticket_type: TicketType | None) -> tuple[EventR
 
         paid = ticket_type is not None and not ticket_type.is_free
         fields = {
+            'name': name.strip(),
+            'email': email,
             'ticket_type': ticket_type,
             'status': Status.PENDING_PAYMENT if paid else Status.CONFIRMED,
             'amount_kobo': ticket_type.price_kobo if paid else 0,
             'hold_expires_at': timezone.now() + timedelta(minutes=settings.TICKET_PAYMENT_HOLD_MINUTES) if paid else None,
         }
+        if user is not None:
+            fields['user'] = user
         created = registration is None
         if created:
-            registration = EventRegistration.objects.create(event=event, user=user, **fields)
+            registration = EventRegistration.objects.create(event=event, **fields)
         else:
-            for name, value in fields.items():
-                setattr(registration, name, value)
+            for field, value in fields.items():
+                setattr(registration, field, value)
             registration.save(update_fields=list(fields))
 
         if not paid:
+            confirmed = registration
+            transaction.on_commit(lambda: send_ticket_email(confirmed))
             return registration, None, created
 
         payment = TicketPayment.objects.create(
             registration=registration,
             event=event,
-            email=user.email,
+            email=email,
             ticket_type=ticket_type,
             reference=generate_reference(event.pk, registration.pk),
             amount_kobo=ticket_type.price_kobo,
@@ -139,7 +177,7 @@ def register(event: Event, user, ticket_type: TicketType | None) -> tuple[EventR
     try:
         checkout = initialize_payment(
             amount_kobo=payment.amount_kobo,
-            email=user.email,
+            email=email,
             reference=payment.reference,
             # Paystack appends ?trxref=...&reference=..., which the event page uses to confirm the payment.
             callback_url=f"{settings.FRONTEND_URL.rstrip('/')}/events/{event.pk}",
@@ -234,39 +272,48 @@ def settle_payment(reference: str) -> TicketPayment | None:
     return payment
 
 
+def ticket_url(registration: EventRegistration) -> str:
+    """The holder's ticket page with the QR code. Works without signing in, so it's only ever emailed."""
+    return f"{settings.FRONTEND_URL.rstrip('/')}/tickets/{registration.token}"
+
+
 def send_ticket_email(registration: EventRegistration) -> None:
-    """Confirmation for a paid ticket. The QR code itself lives on the event page."""
+    """Sends the holder a link to their ticket page (QR code), for free and paid tickets alike."""
+    if not registration.email or not registration.is_confirmed:
+        return
     event = registration.event
     type_name = registration.ticket_type.name if registration.ticket_type else 'Event'
-    event_url = f"{settings.FRONTEND_URL.rstrip('/')}/events/{event.pk}"
+    event_url = ticket_url(registration)
     when = timezone.localtime(event.start_time).strftime('%A %d %B %Y, %I:%M %p')
     where = registration.ticket_type.effective_venue if registration.ticket_type else (
         'Online' if event.is_remote else event.location
     )
-    amount = f"₦{registration.amount_kobo / 100:,.2f}"
+    amount = f"₦{registration.amount_kobo / 100:,.2f} paid" if registration.amount_kobo else "free"
+    holder = registration.name or registration.email
 
     message = (
-        f"Hi {registration.user.full_name},\n\n"
-        f"Your {type_name} ticket for {event.title} is confirmed ({amount} paid).\n\n"
+        f"Hi {holder},\n\n"
+        f"Your {type_name} ticket for {event.title} is confirmed ({amount}).\n\n"
         f"When: {when}\nWhere: {where}\n\n"
-        f"Open {event_url} while signed in to show your QR code at the entrance.\n\nNACOS ABUAD"
+        f"Your ticket and QR code: {event_url}\n"
+        f"Show the QR code at the entrance. It can only be scanned once, so don't share the link.\n\nNACOS ABUAD"
     )
     html_message = f"""
 <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a2e;">
   <h2 style="color: #006E3A; margin: 0 0 8px;">Your ticket is confirmed</h2>
-  <p style="margin: 0 0 16px;">Hi {escape(registration.user.full_name)}, your <strong>{escape(type_name)}</strong> ticket for
-  <strong>{escape(event.title)}</strong> is confirmed ({amount} paid).</p>
+  <p style="margin: 0 0 16px;">Hi {escape(holder)}, your <strong>{escape(type_name)}</strong> ticket for
+  <strong>{escape(event.title)}</strong> is confirmed ({amount}).</p>
   <p style="margin: 4px 0;"><strong>When:</strong> {when}</p>
   <p style="margin: 4px 0 20px;"><strong>Where:</strong> {escape(where)}</p>
   <a href="{escape(event_url)}" style="display: inline-block; background: #006E3A; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px;">Show my QR code</a>
-  <p style="font-size: 12px; color: #777; margin-top: 20px;">Sign in on the event page to show your QR code at the entrance.</p>
+  <p style="font-size: 12px; color: #777; margin-top: 20px;">Show the QR code at the entrance. It can only be scanned once, so don't share this link.</p>
 </div>"""
     try:
         send_mail(
             subject=f"Your {type_name} ticket: {event.title}",
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[registration.user.email],
+            recipient_list=[registration.email],
             html_message=html_message,
             fail_silently=False,
         )

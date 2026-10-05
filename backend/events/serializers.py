@@ -61,7 +61,7 @@ class EventSerializer(serializers.ModelSerializer):
             'id', 'title', 'start_time', 'end_time',
             'location', 'is_remote', 'poster_url',
             'description', 'registration_url', 'contact_email',
-            'capacity', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
+            'capacity', 'audience', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
             'is_published', 'status', 'media',
             'created_at', 'updated_at',
         ]
@@ -244,7 +244,8 @@ class AdminEventRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventRegistration
-        fields = ['id', 'user', 'token', 'status', 'ticket_type', 'amount_paid', 'checked_in_at', 'checked_in_by', 'created_at']
+        # user is null for guests; name/email are always set.
+        fields = ['id', 'user', 'name', 'email', 'token', 'status', 'ticket_type', 'amount_paid', 'checked_in_at', 'checked_in_by', 'created_at']
         read_only_fields = fields
 
     def get_amount_paid(self, obj):

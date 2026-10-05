@@ -7,6 +7,8 @@ import { api } from '../api';
  * =========================
  */
 
+export type EventAudience = 'nacos_only' | 'public';
+
 // A kind of ticket (e.g. Regular, VIP). Price is in naira; 0 means free.
 export interface TicketType {
   id: number;
@@ -42,6 +44,8 @@ export interface Event {
   registration_url: string;
   contact_email: string;
   capacity: number | null;
+  // nacos_only: must sign in. public: name + email, no account needed (one ticket per email).
+  audience: EventAudience;
   ticket_types: TicketType[];
   is_paid: boolean;
   price_from: number;
@@ -64,6 +68,7 @@ export interface CreateEventDTO {
   description: string;
   contact_email: string;
   capacity: number | null;
+  audience: EventAudience;
   ticket_types: TicketTypeInput[];
   is_published: boolean;
 }
@@ -201,9 +206,18 @@ export const useRegisterForEvent = () => {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId, ticketTypeId }: { eventId: string | number; ticketTypeId?: number | null }) =>
+    // name/email are only read for guests on open events; signed-in users use their account.
+    mutationFn: ({ eventId, ticketTypeId, name, email }: {
+      eventId: string | number;
+      ticketTypeId?: number | null;
+      name?: string;
+      email?: string;
+    }) =>
       api
-        .post(`/events/${eventId}/register/`, ticketTypeId ? { ticket_type: ticketTypeId } : {})
+        .post(`/events/${eventId}/register/`, {
+          ...(ticketTypeId ? { ticket_type: ticketTypeId } : {}),
+          ...(name !== undefined ? { name, email } : {}),
+        })
         .then(r => r.data as EventRegistration),
 
     onSuccess: (data, { eventId }) => {
@@ -229,6 +243,28 @@ export const useVerifyPayment = () => {
     },
   });
 };
+
+// The holder's ticket page, opened from the emailed link — no sign-in needed.
+export interface EventTicket extends EventRegistration {
+  name: string;
+  event: {
+    id: number;
+    title: string;
+    start_time: string;
+    end_time: string | null;
+    location: string;
+    is_remote: boolean;
+    poster: string | null;
+  };
+}
+
+export const useTicket = (token: string) =>
+  useQuery({
+    queryKey: ['event-ticket', token],
+    queryFn: () => api.get(`/event-tickets/${token}/`).then(r => r.data as EventTicket),
+    enabled: !!token,
+    retry: false,
+  });
 
 export const formatNaira = (amount: number): string =>
   amount > 0

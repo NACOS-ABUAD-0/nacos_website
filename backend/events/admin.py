@@ -17,11 +17,12 @@ class EventAdmin(admin.ModelAdmin):
         'start_time',
         'end_time',
         'location',
+        'audience',
         'is_published',
         'contact_email',
         'created_at',
     )
-    list_filter = ('is_published',)
+    list_filter = ('is_published', 'audience')
     search_fields = ('title', 'location', 'description')
     ordering = ('start_time',)
     inlines = [TicketTypeInline]
@@ -29,9 +30,9 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(EventRegistration)
 class EventRegistrationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'event', 'ticket_type', 'status', 'checked_in_at', 'checked_in_by', 'created_at')
+    list_display = ('name', 'email', 'user', 'event', 'ticket_type', 'status', 'checked_in_at', 'checked_in_by', 'created_at')
     list_filter = ('event', 'status', 'checked_in_at')
-    search_fields = ('user__full_name', 'user__matric_number', 'event__title')
+    search_fields = ('name', 'email', 'user__full_name', 'user__matric_number', 'event__title')
     readonly_fields = ('token', 'created_at')
 
 

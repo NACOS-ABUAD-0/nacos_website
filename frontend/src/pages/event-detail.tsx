@@ -26,19 +26,24 @@ export default function EventDetail() {
   const verifyMutation = useVerifyPayment();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
   const verifiedReference = useRef<string | null>(null);
 
   // Paystack sends the buyer back here with ?reference=...; confirm it with the server once.
   const returnedReference = searchParams.get("reference");
   useEffect(() => {
-    if (!returnedReference || !isAuthenticated || verifiedReference.current === returnedReference) return;
+    if (!returnedReference || verifiedReference.current === returnedReference) return;
     verifiedReference.current = returnedReference;
     verifyMutation.mutate(
       { eventId: id!, reference: returnedReference },
       {
         onSuccess: (data) => {
-          if (data.status === "confirmed") toast.success("Payment confirmed. Your ticket is ready!");
-          else if (data.payment_status === "failed" || data.payment_status === "abandoned")
+          if (data.status === "confirmed") {
+            toast.success("Payment confirmed. Your ticket is ready!");
+            // Guests have no account to come back to, so take them to their ticket page.
+            if (!isAuthenticated && data.token) navigate(`/tickets/${data.token}`);
+          } else if (data.payment_status === "failed" || data.payment_status === "abandoned")
             toast.error("The payment didn't go through. You can try again.");
           else toast("Payment is still processing. Refresh in a minute.", { icon: "⏳" });
         },
@@ -46,7 +51,7 @@ export default function EventDetail() {
         onSettled: () => setSearchParams({}, { replace: true }),
       }
     );
-  }, [returnedReference, isAuthenticated, id, verifyMutation, setSearchParams]);
+  }, [returnedReference, isAuthenticated, id, verifyMutation, setSearchParams, navigate]);
 
   if (isLoading) return <EventDetailSkeleton />;
 
@@ -89,18 +94,36 @@ export default function EventDetail() {
   const isClosed = event.status === "completed";
   const isSoldOut = event.sold_out || (ticketTypes.length > 0 && availableTypes.length === 0);
 
+  const isOpenEvent = event.audience === "public";
+  const isGuest = !isAuthenticated && isOpenEvent;
+
   const handleGetTicket = () => {
     if (needsChoice) return void toast.error("Choose a ticket type first.");
+    if (isGuest) {
+      if (guestName.trim().length < 2) return void toast.error("Enter your full name.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) return void toast.error("Enter a valid email address.");
+    }
     registerMutation.mutate(
-      { eventId: id!, ticketTypeId: selectedType?.id ?? null },
+      {
+        eventId: id!,
+        ticketTypeId: selectedType?.id ?? null,
+        ...(isGuest ? { name: guestName.trim(), email: guestEmail.trim() } : {}),
+      },
       {
         onSuccess: (data) => {
           if (data.checkout_url) window.location.href = data.checkout_url;
-          else toast.success("You're in! Your QR code is ready.");
+          else if (isGuest && data.token) {
+            toast.success("You're in! We've also emailed your ticket.");
+            navigate(`/tickets/${data.token}`);
+          } else toast.success("You're in! Your QR code is ready.");
         },
         onError: (error: unknown) => {
-          const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-          toast.error(detail ?? "Couldn't get your ticket. Please try again.");
+          const data = (error as { response?: { data?: { detail?: string; code?: string; name?: string[]; email?: string[] } } })
+            ?.response?.data;
+          const message = data?.detail ?? data?.name?.[0] ?? data?.email?.[0];
+          toast.error(message ?? "Couldn't get your ticket. Please try again.", {
+            duration: data?.code === "ticket_already_issued" ? 8000 : 4000,
+          });
         },
       }
     );
@@ -240,18 +263,55 @@ export default function EventDetail() {
 
           {/* In-app ticket + QR check-in */}
           <div className="mt-2">
-            {!isAuthenticated ? (
+            {verifyMutation.isPending ? (
+              <div className="flex items-center gap-3 text-gray-600">
+                <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
+                <span>Confirming your payment…</span>
+              </div>
+            ) : !isAuthenticated && !isOpenEvent ? (
               <p className="text-gray-600">
+                This event is for NACOS members.{" "}
                 <Link to="/login" className="text-[#006E3A] font-semibold hover:underline">
                   Log in
                 </Link>{" "}
                 to get your ticket and QR code.
               </p>
-            ) : registrationLoading || verifyMutation.isPending ? (
-              <div className="flex items-center gap-3 text-gray-600">
-                <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
-                {verifyMutation.isPending && <span>Confirming your payment…</span>}
+            ) : isGuest ? (
+              <div className="flex flex-col gap-3 w-full lg:max-w-md">
+                <p className="text-sm text-gray-600">
+                  No account needed. Enter your details and we'll email your ticket. One ticket per email address.
+                </p>
+                <input
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Full name"
+                  autoComplete="name"
+                  disabled={isClosed || isSoldOut}
+                  className="border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-[#006E3A]"
+                />
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  placeholder="Email address"
+                  autoComplete="email"
+                  disabled={isClosed || isSoldOut}
+                  className="border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-[#006E3A]"
+                />
+                <button
+                  onClick={handleGetTicket}
+                  disabled={registerMutation.isPending || isClosed || isSoldOut}
+                  className="inline-flex items-center justify-center gap-2 w-full px-8 py-4 bg-[#006E3A] text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all uppercase tracking-wide disabled:opacity-50"
+                >
+                  {buttonLabel()}
+                </button>
+                <p className="text-xs text-gray-500">
+                  Have a NACOS account?{" "}
+                  <Link to="/login" className="text-[#006E3A] font-semibold hover:underline">Log in</Link> instead.
+                </p>
               </div>
+            ) : registrationLoading ? (
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
             ) : registration && registration.status === "pending_payment" && registration.checkout_url ? (
               <div className="bg-white border border-amber-200 rounded-xl p-6 w-full lg:w-fit">
                 <p className="font-semibold text-gray-900 mb-1">Payment pending</p>
