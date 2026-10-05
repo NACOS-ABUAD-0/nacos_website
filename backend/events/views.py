@@ -10,7 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.permissions import IsAdmin
+from accounts.permissions import IsAdminOrExecutive
 
 from .filters import EventFilter
 from .models import Event, EventRegistration, TicketPayment
@@ -161,7 +161,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
 
 class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Admin-only roster + check-in actions for event attendance."""
+    """Roster + check-in for event attendance. Admins and every exco can scan tickets."""
 
     queryset = (
         EventRegistration.objects.filter(status=EventRegistration.Status.CONFIRMED)
@@ -169,7 +169,7 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
         .order_by("-created_at")
     )
     serializer_class = AdminEventRegistrationSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrExecutive]
     # Always scoped to a single event via ?event=<id>; the check-in screen
     # needs the full roster for client-side search, and the site-wide
     # PageNumberPagination default (PAGE_SIZE=10) would silently truncate it.

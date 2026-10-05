@@ -404,3 +404,32 @@ class TicketTypeVenueTest(APITestCase):
             {'id': vip['id'], 'name': 'VIP', 'price': 0, 'venue': ''},
         ]}, format='json')
         self.assertEqual([t['venue'] for t in edited.data['ticket_types']], ['Hall B', ''])
+
+
+class ExcoCheckInTest(APITestCase):
+    """Every exco can scan tickets at the gate; students can't."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.exco = User.objects.create_user(email='social@example.com', full_name='Social Director', password='pass12345', role='social_director')
+        self.student = User.objects.create_user(email='student@example.com', full_name='Student', password='pass12345', role='student')
+        self.event = Event.objects.create(title='Dinner', start_time=timezone.now() + timedelta(days=1), location='Hall')
+        self.registration = EventRegistration.objects.create(event=self.event, user=self.student)
+
+    def test_exco_can_see_roster_and_check_in(self):
+        self.client.force_authenticate(user=self.exco)
+        roster = self.client.get(reverse('admin-event-registration-list'), {'event': self.event.pk})
+        self.assertEqual(roster.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(roster.data), 1)
+        response = self.client.post(reverse('admin-event-registration-check-in-by-token'), {
+            'token': str(self.registration.token), 'event': self.event.pk,
+        })
+        self.assertEqual(response.data['status'], 'checked_in')
+        self.assertEqual(response.data['registration']['checked_in_by']['email'], 'social@example.com')
+
+    def test_student_cannot_check_in(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(reverse('admin-event-registration-check-in-by-token'), {
+            'token': str(self.registration.token), 'event': self.event.pk,
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
