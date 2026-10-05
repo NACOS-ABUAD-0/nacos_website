@@ -223,6 +223,7 @@ export default function EventDetail() {
                         <span className="font-semibold text-gray-900">{t.name}</span>
                         <span className="font-bold text-[#006E3A]">{formatNaira(Number(t.price))}</span>
                       </div>
+                      {t.venue && <p className="text-xs text-gray-600 mt-1">📍 {t.venue}</p>}
                       <p className="text-xs text-gray-500 mt-1">
                         {t.sold_out
                           ? "Sold out"
@@ -269,9 +270,14 @@ export default function EventDetail() {
             ) : registration && registration.status === "confirmed" && registration.token ? (
               <div className="bg-white border border-gray-200 rounded-xl p-6 w-fit">
                 {registration.ticket_type && (
-                  <span className="inline-block mb-3 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-[#006E3A] text-white uppercase">
-                    {registration.ticket_type.name}
-                  </span>
+                  <div className="mb-3">
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-[#006E3A] text-white uppercase">
+                      {registration.ticket_type.name}
+                    </span>
+                    {registration.ticket_type.venue && (
+                      <p className="text-sm text-gray-700 mt-2">📍 {registration.ticket_type.venue}</p>
+                    )}
+                  </div>
                 )}
                 {registration.checked_in_at ? (
                   <span className="inline-block mb-4 px-4 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">

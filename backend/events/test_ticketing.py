@@ -335,3 +335,72 @@ class TicketTypeAndPaymentTest(APITestCase):
         payment = TicketPayment.objects.get(reference=reference)
         self.assertIsNone(payment.registration)
         self.assertEqual(payment.email, 'student@example.com')
+
+
+class EventManagerPermissionTest(APITestCase):
+    """Admins and every exco can upload, edit and delete events; students can't."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.exco = User.objects.create_user(email='pro@example.com', full_name='PRO', password='pass12345', role='public_relations_officer')
+        self.student = User.objects.create_user(email='student@example.com', full_name='Student', password='pass12345', role='student')
+        self.draft = Event.objects.create(title='Draft', start_time=timezone.now() + timedelta(days=2), location='Hall', is_published=False)
+
+    def test_exco_can_create_edit_and_delete_events_and_see_drafts(self):
+        self.client.force_authenticate(user=self.exco)
+        listing = self.client.get(reverse('events-list'))
+        self.assertIn('Draft', [e['title'] for e in listing.data['results']])
+
+        created = self.client.post(reverse('events-list'), {
+            'title': 'Exco Event', 'start_time': (timezone.now() + timedelta(days=4)).isoformat(), 'location': 'Hall',
+        }, format='json')
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        edited = self.client.patch(reverse('events-detail', kwargs={'pk': created.data['id']}), {'title': 'Renamed'}, format='json')
+        self.assertEqual(edited.status_code, status.HTTP_200_OK)
+        deleted = self.client.delete(reverse('events-detail', kwargs={'pk': self.draft.pk}))
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_student_cannot_manage_events_or_see_drafts(self):
+        self.client.force_authenticate(user=self.student)
+        listing = self.client.get(reverse('events-list'))
+        self.assertNotIn('Draft', [e['title'] for e in listing.data['results']])
+        response = self.client.post(reverse('events-list'), {
+            'title': 'Nope', 'start_time': (timezone.now() + timedelta(days=4)).isoformat(), 'location': 'Hall',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.delete(reverse('events-detail', kwargs={'pk': self.draft.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class TicketTypeVenueTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.staff = User.objects.create_user(email='staff@example.com', full_name='Staff', password='pass12345', role='admin')
+        self.student = User.objects.create_user(email='student@example.com', full_name='Student', password='pass12345')
+
+    def test_each_type_can_have_its_own_venue(self):
+        self.client.force_authenticate(user=self.staff)
+        created = self.client.post(reverse('events-list'), {
+            'title': 'Dinner', 'start_time': (timezone.now() + timedelta(days=4)).isoformat(), 'location': 'Main Hall',
+            'ticket_types': [{'name': 'Regular', 'price': 0}, {'name': 'VIP', 'price': 0, 'venue': '  VIP Lounge  '}],
+        }, format='json')
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        regular, vip = created.data['ticket_types']
+        self.assertEqual((regular['venue'], vip['venue']), ('', 'VIP Lounge'))
+
+        self.client.force_authenticate(user=self.student)
+        url = reverse('events-register', kwargs={'pk': created.data['id']})
+        response = self.client.post(url, {'ticket_type': vip['id']}, format='json')
+        self.assertEqual(response.data['ticket_type']['venue'], 'VIP Lounge')
+
+        other = User.objects.create_user(email='other@example.com', full_name='Other', password='pass12345')
+        self.client.force_authenticate(user=other)
+        response = self.client.post(url, {'ticket_type': regular['id']}, format='json')
+        self.assertEqual(response.data['ticket_type']['venue'], 'Main Hall')  # falls back to the event location
+
+        self.client.force_authenticate(user=self.staff)
+        edited = self.client.patch(reverse('events-detail', kwargs={'pk': created.data['id']}), {'ticket_types': [
+            {'id': regular['id'], 'name': 'Regular', 'price': 0, 'venue': 'Hall B'},
+            {'id': vip['id'], 'name': 'VIP', 'price': 0, 'venue': ''},
+        ]}, format='json')
+        self.assertEqual([t['venue'] for t in edited.data['ticket_types']], ['Hall B', ''])

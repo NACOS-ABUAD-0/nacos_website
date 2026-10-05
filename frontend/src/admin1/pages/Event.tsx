@@ -8,6 +8,8 @@ import { Footer } from '../../components/Footer'
 import { api, cloudinaryAPI } from '../../lib/api'
 import { optimizeImage } from '../../lib/cloudinary'
 import { formatNaira, type TicketType } from '../../lib/hooks/useEvents'
+import { useAuth } from '../../context/AuthContext'
+import { isExecutiveTier } from '../../lib/roles'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ interface TicketTypeRow {
   name: string
   price: string
   capacity: string
+  venue: string
 }
 
 interface EventFormData {
@@ -60,7 +63,7 @@ interface EventFormData {
 
 interface EventPayload extends Omit<EventFormData, 'capacity' | 'ticket_types'> {
   capacity: number | null
-  ticket_types: { id?: number; name: string; price: number; capacity: number | null }[]
+  ticket_types: { id?: number; name: string; price: number; capacity: number | null; venue: string }[]
 }
 
 const MAX_POSTER_BYTES = 5 * 1024 * 1024
@@ -108,7 +111,8 @@ interface DotsMenuProps {
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
-  onCheckIn: () => void
+  // Omitted for excos: the check-in screen is full-admin only.
+  onCheckIn?: () => void
 }
 
 const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete, onCheckIn }) => (
@@ -123,7 +127,9 @@ const DotsMenu: React.FC<DotsMenuProps> = ({ open, onToggle, onEdit, onDelete, o
     </button>
     {open && (
       <div className="absolute right-0 top-7 w-36 bg-white rounded-xl shadow-lg border border-gray-100 z-50">
-        <button onClick={(e) => { e.stopPropagation(); onCheckIn() }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Check-in</button>
+        {onCheckIn && (
+          <button onClick={(e) => { e.stopPropagation(); onCheckIn() }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Check-in</button>
+        )}
         <button onClick={(e) => { e.stopPropagation(); onEdit() }}   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Edit</button>
         <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50">Delete</button>
       </div>
@@ -150,7 +156,7 @@ interface EventCardProps {
   event: EventItem
   onEdit: (event: EventItem) => void
   onDelete: (event: EventItem) => void
-  onCheckIn: (event: EventItem) => void
+  onCheckIn?: (event: EventItem) => void
 }
 
 const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckIn }) => {
@@ -183,7 +189,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
             onToggle={() => setMenuOpen(o => !o)}
             onEdit={() => { setMenuOpen(false); onEdit(event) }}
             onDelete={() => { setMenuOpen(false); onDelete(event) }}
-            onCheckIn={() => { setMenuOpen(false); onCheckIn(event) }}
+            onCheckIn={onCheckIn && (() => { setMenuOpen(false); onCheckIn(event) })}
           />
         </div>
 
@@ -211,7 +217,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
         </p>
         {!!event.ticket_types?.length && (
           <p className="text-[11px] text-gray-500 mb-2">
-            {event.ticket_types.map(t => `${t.name} ${formatNaira(Number(t.price))}`).join(' · ')}
+            {event.ticket_types.map(t => `${t.name} ${formatNaira(Number(t.price))}${t.venue ? ` @ ${t.venue}` : ''}`).join(' · ')}
           </p>
         )}
         <p className="text-[13px] text-gray-700 line-clamp-2 flex-1">{event.description}</p>
@@ -263,7 +269,7 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
   const setTicketType = (index: number, field: keyof TicketTypeRow, value: string): void =>
     setForm(f => ({ ...f, ticket_types: f.ticket_types.map((t, i) => (i === index ? { ...t, [field]: value } : t)) }))
   const addTicketType = (): void =>
-    setForm(f => ({ ...f, ticket_types: [...f.ticket_types, { name: f.ticket_types.length ? '' : 'Regular', price: '', capacity: '' }] }))
+    setForm(f => ({ ...f, ticket_types: [...f.ticket_types, { name: f.ticket_types.length ? '' : 'Regular', price: '', capacity: '', venue: '' }] }))
   const removeTicketType = (index: number): void =>
     setForm(f => ({ ...f, ticket_types: f.ticket_types.filter((_, i) => i !== index) }))
 
@@ -286,6 +292,7 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
         name: t.name.trim(),
         price: Number(t.price),
         capacity: t.capacity.trim() ? Number(t.capacity) : null,
+        venue: t.venue.trim(),
       })),
     })
   }
@@ -373,15 +380,20 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
                 <span>Name</span><span>Price (₦)</span><span>Seats</span><span />
               </div>
               {form.ticket_types.map((t, i) => (
-                <div key={t.id ?? `new-${i}`} className="grid grid-cols-[1fr_90px_80px_24px] gap-2 items-center">
-                  <input value={t.name} onChange={e => setTicketType(i, 'name', e.target.value)}
-                    placeholder="e.g. VIP" className="border p-2 rounded-lg text-sm min-w-0" />
-                  <input type="number" min="0" step="0.01" value={t.price} onChange={e => setTicketType(i, 'price', e.target.value)}
-                    placeholder="0 = free" className="border p-2 rounded-lg text-sm min-w-0" />
-                  <input type="number" min="1" value={t.capacity} onChange={e => setTicketType(i, 'capacity', e.target.value)}
-                    placeholder="No limit" className="border p-2 rounded-lg text-sm min-w-0" />
-                  <button type="button" onClick={() => removeTicketType(i)} aria-label={`Remove ${t.name || 'ticket type'}`}
-                    className="text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
+                <div key={t.id ?? `new-${i}`} className="flex flex-col gap-1.5 pb-2 border-b border-gray-100 last:border-0">
+                  <div className="grid grid-cols-[1fr_90px_80px_24px] gap-2 items-center">
+                    <input value={t.name} onChange={e => setTicketType(i, 'name', e.target.value)}
+                      placeholder="e.g. VIP" className="border p-2 rounded-lg text-sm min-w-0" />
+                    <input type="number" min="0" step="0.01" value={t.price} onChange={e => setTicketType(i, 'price', e.target.value)}
+                      placeholder="0 = free" className="border p-2 rounded-lg text-sm min-w-0" />
+                    <input type="number" min="1" value={t.capacity} onChange={e => setTicketType(i, 'capacity', e.target.value)}
+                      placeholder="No limit" className="border p-2 rounded-lg text-sm min-w-0" />
+                    <button type="button" onClick={() => removeTicketType(i)} aria-label={`Remove ${t.name || 'ticket type'}`}
+                      className="text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
+                  </div>
+                  <input value={t.venue} onChange={e => setTicketType(i, 'venue', e.target.value)}
+                    placeholder={`Venue for ${t.name || 'this ticket'} (leave blank to use the event location)`}
+                    className="border p-2 rounded-lg text-xs text-gray-700" />
                 </div>
               ))}
               <p className="text-xs text-gray-500">
@@ -458,6 +470,8 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ event, onConfirm, onCancel, i
 const Events: React.FC = () => {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isExecutive = isExecutiveTier(user?.role)
   const [modal, setModal] = useState<'add' | EventItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EventItem | null>(null)
 
@@ -521,6 +535,7 @@ const Events: React.FC = () => {
           name: t.name,
           price: String(Number(t.price)),
           capacity: t.capacity != null ? String(t.capacity) : '',
+          venue: t.venue ?? '',
         })),
         is_published:      (modal as EventItem).is_published ?? true,
       }
@@ -583,7 +598,7 @@ const Events: React.FC = () => {
                   event={event}
                   onEdit={setModal}
                   onDelete={setDeleteTarget}
-                  onCheckIn={(e) => navigate(`/admin/events/${e.id}/checkin`)}
+                  onCheckIn={isExecutive ? undefined : (e) => navigate(`/admin/events/${e.id}/checkin`)}
                 />
               ))}
             </div>

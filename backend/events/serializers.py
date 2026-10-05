@@ -20,12 +20,14 @@ class TicketTypeSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     price = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0, coerce_to_string=False)
     capacity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    # Blank means the event's own location.
+    venue = serializers.CharField(required=False, allow_blank=True, max_length=500, default='')
     tickets_remaining = serializers.SerializerMethodField()
     sold_out = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketType
-        fields = ['id', 'name', 'price', 'capacity', 'tickets_remaining', 'sold_out']
+        fields = ['id', 'name', 'price', 'capacity', 'venue', 'tickets_remaining', 'sold_out']
 
     def get_tickets_remaining(self, obj):
         event = obj.event
@@ -143,6 +145,7 @@ class EventSerializer(serializers.ModelSerializer):
         event = super().create(validated_data)
         for order, item in enumerate(ticket_types):
             item.pop('id', None)
+            item['venue'] = item.get('venue', '').strip()
             TicketType.objects.create(event=event, sort_order=order, **item)
         return event
 
@@ -164,6 +167,7 @@ class EventSerializer(serializers.ModelSerializer):
         for order, item in enumerate(items):
             type_id = item.pop('id', None)
             if type_id is None:
+                item['venue'] = item.get('venue', '').strip()
                 TicketType.objects.create(event=event, sort_order=order, **item)
                 continue
             ticket_type = existing.get(type_id)
@@ -183,6 +187,7 @@ class EventSerializer(serializers.ModelSerializer):
             ticket_type.name = item['name']
             ticket_type.price = item['price']
             ticket_type.capacity = capacity
+            ticket_type.venue = item.get('venue', ticket_type.venue).strip()
             ticket_type.sort_order = order
             ticket_type.save()
 
@@ -199,10 +204,12 @@ class EventSerializer(serializers.ModelSerializer):
 
 class TicketTypeBriefSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
+    # The ticket type's venue, or the event's location when it has none of its own.
+    venue = serializers.CharField(source='effective_venue', read_only=True)
 
     class Meta:
         model = TicketType
-        fields = ['id', 'name', 'price']
+        fields = ['id', 'name', 'price', 'venue']
 
 
 class EventRegistrationSerializer(serializers.ModelSerializer):

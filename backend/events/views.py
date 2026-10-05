@@ -11,7 +11,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsAdmin
-from projects.permissions import IsAdminOrReadOnly
 
 from .filters import EventFilter
 from .models import Event, EventRegistration, TicketPayment
@@ -25,6 +24,18 @@ from .serializers import (
 from .ticketing import RegistrationError, open_checkout, register, settle_payment, settle_pending_payments
 
 logger = logging.getLogger(__name__)
+
+
+def can_manage_events(user) -> bool:
+    """Admin-tier staff (Admin, Super Admin, Lecturer) and every exco can upload, edit and delete events."""
+    return bool(user and user.is_authenticated and (user.is_admin or user.is_executive))
+
+
+class IsEventManagerOrReadOnly(permissions.BasePermission):
+    message = "Only admins and excos can manage events."
+
+    def has_permission(self, request, view) -> bool:
+        return request.method in permissions.SAFE_METHODS or can_manage_events(request.user)
 
 
 def registration_response(registration, payment=None, status=200):
@@ -55,13 +66,13 @@ class EventViewSet(viewsets.ModelViewSet):
         # read / staff write rule below.
         if self.action in ("register", "my_registration"):
             return [permissions.IsAuthenticated()]
-        return [IsAdminOrReadOnly()]
+        return [IsEventManagerOrReadOnly()]
 
     def get_queryset(self):
-        # Staff sees everything; public sees published only.
+        # Event managers see drafts too; public sees published only.
         qs = (
             Event.objects.all()
-            if (self.request.user.is_authenticated and self.request.user.is_staff)
+            if can_manage_events(self.request.user)
             else Event.objects.filter(is_published=True)
         )
 

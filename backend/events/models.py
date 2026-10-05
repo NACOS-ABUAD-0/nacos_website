@@ -50,6 +50,8 @@ class TicketType(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     # Maximum tickets of this type; null means limited only by the event's capacity.
     capacity = models.PositiveIntegerField(null=True, blank=True)
+    # Where holders of this ticket go, when it differs from the event's location (e.g. a VIP lounge).
+    venue = models.CharField(max_length=500, blank=True, default="")
     sort_order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -65,6 +67,12 @@ class TicketType(models.Model):
     @property
     def price_kobo(self) -> int:
         return int(round(self.price * 100))
+
+    @property
+    def effective_venue(self) -> str:
+        if self.venue:
+            return self.venue
+        return 'Online' if self.event.is_remote else self.event.location
 
     def __str__(self):
         return f"{self.event.title} — {self.name}"

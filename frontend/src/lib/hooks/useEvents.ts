@@ -13,6 +13,8 @@ export interface TicketType {
   name: string;
   price: number;
   capacity: number | null;
+  // Blank means the event's own location.
+  venue: string;
   tickets_remaining: number | null;
   sold_out: boolean;
 }
@@ -23,6 +25,7 @@ export interface TicketTypeInput {
   name: string;
   price: number;
   capacity: number | null;
+  venue: string;
 }
 
 // What backend RETURNS
@@ -167,7 +170,8 @@ export interface EventRegistration {
   // null until a paid ticket is paid for — no QR before then.
   token: string | null;
   status: 'pending_payment' | 'confirmed';
-  ticket_type: { id: number; name: string; price: number } | null;
+  // venue is the ticket type's own venue, or the event location.
+  ticket_type: { id: number; name: string; price: number; venue: string } | null;
   amount_paid: number;
   hold_expires_at: string | null;
   checked_in_at: string | null;

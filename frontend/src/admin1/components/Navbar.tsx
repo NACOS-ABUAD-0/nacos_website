@@ -28,10 +28,11 @@ const MORE_NAV_LINKS = [
   { label: 'Resources',              to: '/admin/resources' },
 ]
 
-// Executives are restricted to Committee Applications (plus Home/Settings,
-// handled separately) — they don't have full admin-tier permissions.
+// Executives are restricted to Events and Committee Applications (plus
+// Home/Settings, handled separately) — they don't have full admin-tier permissions.
 const EXECUTIVE_PRIMARY_NAV_LINKS = [
-  { label: 'Home', to: '/admin' },
+  { label: 'Home',   to: '/admin' },
+  { label: 'Events', to: '/admin/events' },
 ]
 const EXECUTIVE_MORE_NAV_LINKS = [
   { label: 'Committee Applications', to: '/admin/committee-applications' },

@@ -15,7 +15,7 @@ export interface AdminEventRegistration {
   user: AdminEventRegistrationUser;
   token: string;
   status: 'pending_payment' | 'confirmed';
-  ticket_type: { id: number; name: string; price: number } | null;
+  ticket_type: { id: number; name: string; price: number; venue: string } | null;
   amount_paid: number;
   checked_in_at: string | null;
   checked_in_by: AdminEventRegistrationUser | null;

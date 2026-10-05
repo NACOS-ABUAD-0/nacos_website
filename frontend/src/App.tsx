@@ -378,9 +378,10 @@ function AppRoutes() {
       <Route
         path="/admin/events"
         element={
-          <RequireFullAdmin>
+          // Excos manage events too (create/edit/delete); check-in stays full-admin.
+          <RequireAdmin>
             <AdminEvents />
-          </RequireFullAdmin>
+          </RequireAdmin>
         }
       />
       <Route

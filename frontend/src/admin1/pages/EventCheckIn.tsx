@@ -69,7 +69,8 @@ const EventCheckIn: React.FC = () => {
   const checkedInCount = registrations.filter(r => r.checked_in_at).length
 
   const handleCheckInResult = (result: { status: string; registration: AdminEventRegistration }) => {
-    const typeLabel = result.registration.ticket_type ? ` (${result.registration.ticket_type.name})` : ''
+    const type = result.registration.ticket_type
+    const typeLabel = type ? ` (${type.name}${type.venue && type.venue !== event?.location ? ` — ${type.venue}` : ''})` : ''
     if (result.status === 'checked_in') {
       toast.success(`Checked in: ${result.registration.user.full_name}${typeLabel}`)
     } else {

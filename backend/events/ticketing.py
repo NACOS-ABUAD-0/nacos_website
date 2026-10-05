@@ -240,7 +240,9 @@ def send_ticket_email(registration: EventRegistration) -> None:
     type_name = registration.ticket_type.name if registration.ticket_type else 'Event'
     event_url = f"{settings.FRONTEND_URL.rstrip('/')}/events/{event.pk}"
     when = timezone.localtime(event.start_time).strftime('%A %d %B %Y, %I:%M %p')
-    where = 'Online' if event.is_remote else event.location
+    where = registration.ticket_type.effective_venue if registration.ticket_type else (
+        'Online' if event.is_remote else event.location
+    )
     amount = f"₦{registration.amount_kobo / 100:,.2f}"
 
     message = (
