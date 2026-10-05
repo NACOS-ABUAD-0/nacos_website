@@ -1,7 +1,15 @@
 // src/pages/event-detail.tsx  — uses real API data
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { useEvent, useMyRegistration, useRegisterForEvent } from "../lib/hooks/useEvents";
+import { toast } from "react-hot-toast";
+import {
+  formatNaira,
+  useEvent,
+  useMyRegistration,
+  useRegisterForEvent,
+  useVerifyPayment,
+} from "../lib/hooks/useEvents";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
@@ -15,6 +23,30 @@ export default function EventDetail() {
   const { isAuthenticated } = useAuth();
   const { data: registration, isLoading: registrationLoading } = useMyRegistration(id!, isAuthenticated);
   const registerMutation = useRegisterForEvent();
+  const verifyMutation = useVerifyPayment();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  const verifiedReference = useRef<string | null>(null);
+
+  // Paystack sends the buyer back here with ?reference=...; confirm it with the server once.
+  const returnedReference = searchParams.get("reference");
+  useEffect(() => {
+    if (!returnedReference || !isAuthenticated || verifiedReference.current === returnedReference) return;
+    verifiedReference.current = returnedReference;
+    verifyMutation.mutate(
+      { eventId: id!, reference: returnedReference },
+      {
+        onSuccess: (data) => {
+          if (data.status === "confirmed") toast.success("Payment confirmed. Your ticket is ready!");
+          else if (data.payment_status === "failed" || data.payment_status === "abandoned")
+            toast.error("The payment didn't go through. You can try again.");
+          else toast("Payment is still processing. Refresh in a minute.", { icon: "⏳" });
+        },
+        onError: () => toast.error("We couldn't confirm the payment yet. Please refresh in a moment."),
+        onSettled: () => setSearchParams({}, { replace: true }),
+      }
+    );
+  }, [returnedReference, isAuthenticated, id, verifyMutation, setSearchParams]);
 
   if (isLoading) return <EventDetailSkeleton />;
 
@@ -48,6 +80,39 @@ export default function EventDetail() {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   );
+
+  const ticketTypes = event.ticket_types ?? [];
+  const availableTypes = ticketTypes.filter((t) => !t.sold_out);
+  const selectedType =
+    ticketTypes.find((t) => t.id === selectedTypeId) ?? (availableTypes.length === 1 ? availableTypes[0] : null);
+  const needsChoice = ticketTypes.length > 1 && !selectedType;
+  const isClosed = event.status === "completed";
+  const isSoldOut = event.sold_out || (ticketTypes.length > 0 && availableTypes.length === 0);
+
+  const handleGetTicket = () => {
+    if (needsChoice) return void toast.error("Choose a ticket type first.");
+    registerMutation.mutate(
+      { eventId: id!, ticketTypeId: selectedType?.id ?? null },
+      {
+        onSuccess: (data) => {
+          if (data.checkout_url) window.location.href = data.checkout_url;
+          else toast.success("You're in! Your QR code is ready.");
+        },
+        onError: (error: unknown) => {
+          const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+          toast.error(detail ?? "Couldn't get your ticket. Please try again.");
+        },
+      }
+    );
+  };
+
+  const buttonLabel = () => {
+    if (isClosed) return "Registration closed";
+    if (isSoldOut) return "Sold out";
+    if (registerMutation.isPending) return "Please wait…";
+    if (selectedType && Number(selectedType.price) > 0) return `Pay ${formatNaira(Number(selectedType.price))}`;
+    return ticketTypes.length ? "Get free ticket" : "Join Event";
+  };
 
   const EmailIcon = () => (
     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,33 +201,78 @@ export default function EventDetail() {
             )}
           </div>
 
-          {event.status === "upcoming" && event.registration_url && (
-            <a
-              href={event.registration_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full lg:w-auto px-8 py-4 bg-gradient-to-r from-green-600 to-teal-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all uppercase tracking-wide"
-            >
-              Register for this event
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </a>
+          {/* Ticket types and prices */}
+          {ticketTypes.length > 0 && !(registration && registration.status === "confirmed") && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tickets</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {ticketTypes.map((t) => {
+                  const selected = selectedType?.id === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      disabled={t.sold_out || isClosed}
+                      onClick={() => setSelectedTypeId(t.id)}
+                      aria-pressed={selected}
+                      className={`text-left rounded-xl border-2 px-4 py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                        selected ? "border-[#006E3A] bg-green-50" : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-gray-900">{t.name}</span>
+                        <span className="font-bold text-[#006E3A]">{formatNaira(Number(t.price))}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t.sold_out
+                          ? "Sold out"
+                          : t.tickets_remaining != null && t.tickets_remaining <= 20
+                          ? `${t.tickets_remaining} left`
+                          : "Available"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          {/* In-app QR check-in — independent of the external registration_url above */}
-          <div className="mt-6">
+          {/* In-app ticket + QR check-in */}
+          <div className="mt-2">
             {!isAuthenticated ? (
               <p className="text-gray-600">
                 <Link to="/login" className="text-[#006E3A] font-semibold hover:underline">
                   Log in
                 </Link>{" "}
-                to register for check-in and get your QR code.
+                to get your ticket and QR code.
               </p>
-            ) : registrationLoading ? (
-              <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
-            ) : registration ? (
+            ) : registrationLoading || verifyMutation.isPending ? (
+              <div className="flex items-center gap-3 text-gray-600">
+                <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
+                {verifyMutation.isPending && <span>Confirming your payment…</span>}
+              </div>
+            ) : registration && registration.status === "pending_payment" && registration.checkout_url ? (
+              <div className="bg-white border border-amber-200 rounded-xl p-6 w-full lg:w-fit">
+                <p className="font-semibold text-gray-900 mb-1">Payment pending</p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Your {registration.ticket_type?.name ?? ""} ticket is held until{" "}
+                  {new Date(registration.hold_expires_at!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.
+                  Complete the payment to get your QR code.
+                </p>
+                <a
+                  href={registration.checkout_url}
+                  className="inline-flex items-center justify-center px-6 py-3 bg-[#006E3A] text-white font-bold rounded-xl hover:shadow-md"
+                >
+                  Complete payment
+                </a>
+              </div>
+            ) : registration && registration.status === "confirmed" && registration.token ? (
               <div className="bg-white border border-gray-200 rounded-xl p-6 w-fit">
+                {registration.ticket_type && (
+                  <span className="inline-block mb-3 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-[#006E3A] text-white uppercase">
+                    {registration.ticket_type.name}
+                  </span>
+                )}
                 {registration.checked_in_at ? (
                   <span className="inline-block mb-4 px-4 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
                     Checked in at{" "}
@@ -178,15 +288,11 @@ export default function EventDetail() {
               </div>
             ) : (
               <button
-                onClick={() => registerMutation.mutate(id!)}
-                disabled={registerMutation.isPending || event.status === "completed"}
+                onClick={handleGetTicket}
+                disabled={registerMutation.isPending || isClosed || isSoldOut}
                 className="inline-flex items-center justify-center gap-2 w-full lg:w-auto px-8 py-4 bg-[#006E3A] text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all uppercase tracking-wide disabled:opacity-50 disabled:hover:scale-100"
               >
-                {event.status === "completed"
-                  ? "Registration closed"
-                  : registerMutation.isPending
-                  ? "Joining…"
-                  : "Join Event"}
+                {buttonLabel()}
               </button>
             )}
           </div>

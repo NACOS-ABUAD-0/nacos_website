@@ -7,6 +7,24 @@ import { api } from '../api';
  * =========================
  */
 
+// A kind of ticket (e.g. Regular, VIP). Price is in naira; 0 means free.
+export interface TicketType {
+  id: number;
+  name: string;
+  price: number;
+  capacity: number | null;
+  tickets_remaining: number | null;
+  sold_out: boolean;
+}
+
+// What the admin form sends; omit id for a new type.
+export interface TicketTypeInput {
+  id?: number;
+  name: string;
+  price: number;
+  capacity: number | null;
+}
+
 // What backend RETURNS
 export interface Event {
   id: number;
@@ -20,6 +38,12 @@ export interface Event {
   description: string;
   registration_url: string;
   contact_email: string;
+  capacity: number | null;
+  ticket_types: TicketType[];
+  is_paid: boolean;
+  price_from: number;
+  tickets_remaining: number | null;
+  sold_out: boolean;
   is_published: boolean;
   media: { poster: string | null };
   created_at: string;
@@ -35,8 +59,9 @@ export interface CreateEventDTO {
   location: string;
   poster_url: string;
   description: string;
-  registration_url: string;
   contact_email: string;
+  capacity: number | null;
+  ticket_types: TicketTypeInput[];
   is_published: boolean;
 }
 
@@ -139,9 +164,18 @@ export const useDeleteEvent = () => {
 
 export interface EventRegistration {
   id: number;
-  token: string;
+  // null until a paid ticket is paid for — no QR before then.
+  token: string | null;
+  status: 'pending_payment' | 'confirmed';
+  ticket_type: { id: number; name: string; price: number } | null;
+  amount_paid: number;
+  hold_expires_at: string | null;
   checked_in_at: string | null;
   created_at: string;
+  // Paystack checkout to continue while payment is pending.
+  checkout_url: string | null;
+  reference: string | null;
+  payment_status?: 'pending' | 'successful' | 'failed' | 'abandoned';
 }
 
 export const useMyRegistration = (eventId: string | number, enabled: boolean = true) =>
@@ -163,11 +197,36 @@ export const useRegisterForEvent = () => {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (eventId: string | number) =>
-      api.post(`/events/${eventId}/register/`).then(r => r.data as EventRegistration),
+    mutationFn: ({ eventId, ticketTypeId }: { eventId: string | number; ticketTypeId?: number | null }) =>
+      api
+        .post(`/events/${eventId}/register/`, ticketTypeId ? { ticket_type: ticketTypeId } : {})
+        .then(r => r.data as EventRegistration),
 
-    onSuccess: (_data, eventId) => {
-      qc.invalidateQueries({ queryKey: ['event-registration', eventId] });
+    onSuccess: (data, { eventId }) => {
+      qc.setQueryData(['event-registration', eventId], data);
+      qc.invalidateQueries({ queryKey: ['event', eventId] });
     },
   });
 };
+
+// Called when Paystack sends the buyer back to the event page with ?reference=...
+export const useVerifyPayment = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reference }: { eventId: string | number; reference: string }) =>
+      api
+        .get(`/payments/paystack/verify/${encodeURIComponent(reference)}/`)
+        .then(r => r.data as EventRegistration),
+
+    onSuccess: (data, { eventId }) => {
+      qc.setQueryData(['event-registration', eventId], data);
+      qc.invalidateQueries({ queryKey: ['event', eventId] });
+    },
+  });
+};
+
+export const formatNaira = (amount: number): string =>
+  amount > 0
+    ? `₦${Number(amount).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
+    : 'Free';

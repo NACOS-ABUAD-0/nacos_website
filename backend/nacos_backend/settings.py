@@ -336,6 +336,12 @@ CLOUDINARY_UPLOAD_FOLDER = os.getenv("CLOUDINARY_UPLOAD_FOLDER", "nacos/projects
 # keeps the existing project-image upload path untouched.
 CLOUDINARY_RESOURCES_FOLDER = os.getenv("CLOUDINARY_RESOURCES_FOLDER", "nacos/resources")
 
+# Paystack (paid event tickets). sk_test_... for testing, sk_live_... for real payments.
+# Set the webhook URL in the Paystack dashboard to https://<api-host>/api/payments/paystack/webhook/
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
+# How long an unpaid ticket holds a seat while the buyer is on the Paystack checkout page.
+TICKET_PAYMENT_HOLD_MINUTES = int(os.getenv("TICKET_PAYMENT_HOLD_MINUTES", "30"))
+
 # AI Assistant (Google Gemini — free tier). Blank until a key is provided;
 # the assistant responds with a "not configured yet" message rather than
 # erroring when it's unset.

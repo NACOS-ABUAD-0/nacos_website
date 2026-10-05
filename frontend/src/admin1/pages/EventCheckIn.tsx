@@ -22,7 +22,14 @@ const RegistrationRow: React.FC<{
   isChecking: boolean
 }> = ({ registration, onCheckIn, isChecking }) => (
   <tr className="border-b border-gray-100">
-    <td className="py-3 px-4 text-sm font-medium text-gray-900">{registration.user.full_name}</td>
+    <td className="py-3 px-4 text-sm font-medium text-gray-900">
+      {registration.user.full_name}
+      {registration.ticket_type && (
+        <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#1a7a3f]/10 text-[#1a7a3f]">
+          {registration.ticket_type.name}
+        </span>
+      )}
+    </td>
     <td className="py-3 px-4 text-sm text-gray-500">{registration.user.matric_number ?? '—'}</td>
     <td className="py-3 px-4 text-sm text-gray-500">{registration.user.email}</td>
     <td className="py-3 px-4">
@@ -62,24 +69,37 @@ const EventCheckIn: React.FC = () => {
   const checkedInCount = registrations.filter(r => r.checked_in_at).length
 
   const handleCheckInResult = (result: { status: string; registration: AdminEventRegistration }) => {
+    const typeLabel = result.registration.ticket_type ? ` (${result.registration.ticket_type.name})` : ''
     if (result.status === 'checked_in') {
-      toast.success(`Checked in: ${result.registration.user.full_name}`)
+      toast.success(`Checked in: ${result.registration.user.full_name}${typeLabel}`)
     } else {
       toast(`Already checked in: ${result.registration.user.full_name} at ${formatTime(result.registration.checked_in_at!)}`, { icon: 'ℹ️' })
     }
   }
 
+  // A 400 with status "not_paid" means the QR belongs to a ticket whose payment hasn't gone through.
+  const notPaidName = (error: unknown): string | null => {
+    const data = (error as { response?: { data?: { status?: string; registration?: AdminEventRegistration } } })?.response?.data
+    return data?.status === 'not_paid' ? data.registration?.user.full_name ?? 'This person' : null
+  }
+
   const handleCheckIn = (registrationId: number) => {
     checkInMutation.mutate(registrationId, {
       onSuccess: handleCheckInResult,
-      onError: () => toast.error('Check-in failed. Please try again.'),
+      onError: (error) => {
+        const name = notPaidName(error)
+        toast.error(name ? `${name}'s ticket hasn't been paid for.` : 'Check-in failed. Please try again.')
+      },
     })
   }
 
   const handleScanSuccess = (token: string) => {
     checkInByTokenMutation.mutate(token, {
       onSuccess: handleCheckInResult,
-      onError: () => toast.error('No matching registration found for this event.'),
+      onError: (error) => {
+        const name = notPaidName(error)
+        toast.error(name ? `Not paid: ${name}'s ticket hasn't been paid for.` : 'No matching registration found for this event.')
+      },
     })
   }
 

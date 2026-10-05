@@ -5,7 +5,9 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
-import { api } from '../../lib/api'
+import { api, cloudinaryAPI } from '../../lib/api'
+import { optimizeImage } from '../../lib/cloudinary'
+import { formatNaira, type TicketType } from '../../lib/hooks/useEvents'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,11 +26,22 @@ interface EventItem {
   is_remote: boolean
   poster_url?: string
   description?: string
-  registration_url?: string
   contact_email?: string
+  capacity?: number | null
+  ticket_types?: TicketType[]
+  is_paid?: boolean
+  price_from?: number
   is_published: boolean
   status?: EventStatus
   media?: EventMedia
+}
+
+// Form inputs are strings while editing; converted to numbers on save.
+interface TicketTypeRow {
+  id?: number
+  name: string
+  price: string
+  capacity: string
 }
 
 interface EventFormData {
@@ -39,9 +52,35 @@ interface EventFormData {
   is_remote: boolean
   poster_url: string
   description: string
-  registration_url: string
   contact_email: string
+  capacity: string
+  ticket_types: TicketTypeRow[]
   is_published: boolean
+}
+
+interface EventPayload extends Omit<EventFormData, 'capacity' | 'ticket_types'> {
+  capacity: number | null
+  ticket_types: { id?: number; name: string; price: number; capacity: number | null }[]
+}
+
+const MAX_POSTER_BYTES = 5 * 1024 * 1024
+
+// DRF errors come back as { detail } or { field: [messages] }.
+const apiErrorMessage = (error: unknown, fallback: string): string => {
+  const data = (error as { response?: { data?: unknown } })?.response?.data
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>
+    if (typeof record.detail === 'string') return record.detail
+    for (const value of Object.values(record)) {
+      if (typeof value === 'string') return value
+      if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
+      if (Array.isArray(value) && value[0] && typeof value[0] === 'object') {
+        const nested = Object.values(value[0] as Record<string, unknown>)[0]
+        if (Array.isArray(nested) && typeof nested[0] === 'string') return nested[0]
+      }
+    }
+  }
+  return fallback
 }
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
@@ -53,7 +92,14 @@ const fetchEvents = (): Promise<EventItem[]> => api.get('/events/').then(r => {
 const EMPTY_FORM: EventFormData = {
   title: '', start_time: '', end_time: '', location: '',
   is_remote: false, poster_url: '', description: '',
-  registration_url: '', contact_email: '', is_published: true,
+  contact_email: '', capacity: '', ticket_types: [], is_published: true,
+}
+
+const priceLabel = (event: EventItem): string => {
+  const types = event.ticket_types ?? []
+  if (!types.length || !event.is_paid) return 'Free'
+  const prices = types.map(t => Number(t.price))
+  return Math.min(...prices) === Math.max(...prices) ? formatNaira(prices[0]) : `From ${formatNaira(Math.min(...prices))}`
 }
 
 // ─── Three-dot menu ───────────────────────────────────────────────────────────
@@ -146,6 +192,9 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
             Draft
           </span>
         )}
+        <span className="absolute bottom-3 left-3 bg-white/90 text-[#1a7a3f] text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+          {priceLabel(event)}
+        </span>
       </div>
 
       <div className="p-4 flex flex-col flex-1">
@@ -160,6 +209,11 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
         <p className="text-[12px] text-gray-500 mb-3">
           {event.is_remote ? '🌐 Remote' : `📍 ${event.location}`}
         </p>
+        {!!event.ticket_types?.length && (
+          <p className="text-[11px] text-gray-500 mb-2">
+            {event.ticket_types.map(t => `${t.name} ${formatNaira(Number(t.price))}`).join(' · ')}
+          </p>
+        )}
         <p className="text-[13px] text-gray-700 line-clamp-2 flex-1">{event.description}</p>
       </div>
     </div>
@@ -169,25 +223,70 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
 // ─── Event form modal ─────────────────────────────────────────────────────────
 interface EventModalProps {
   initial: EventFormData | null
-  onSave: (data: EventFormData) => void
+  onSave: (data: EventPayload) => void
   onClose: () => void
   isSaving: boolean
 }
 
 const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSaving }) => {
   const [form, setForm] = useState<EventFormData>(initial ?? EMPTY_FORM)
+  const [uploading, setUploading] = useState<boolean>(false)
   const set = <K extends keyof EventFormData>(field: K, value: EventFormData[K]): void =>
     setForm(f => ({ ...f, [field]: value }))
 
-  const toLocal = (iso: string): string => iso ? iso.slice(0, 16) : ''
+  // datetime-local wants local time; the API stores UTC.
+  const toLocal = (iso: string): string => {
+    if (!iso) return ''
+    if (!iso.endsWith('Z') && !/[+-]\d\d:\d\d$/.test(iso)) return iso.slice(0, 16)
+    const date = new Date(iso)
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  }
   const fromLocal = (local: string): string => local ? new Date(local).toISOString() : ''
+
+  const handlePosterChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return void toast.error('Poster must be a JPG, PNG or WebP image.')
+    if (file.size > MAX_POSTER_BYTES) return void toast.error('Poster must be 5 MB or smaller.')
+    setUploading(true)
+    try {
+      const { secure_url } = await cloudinaryAPI.upload(file)
+      set('poster_url', secure_url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Poster upload failed.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const setTicketType = (index: number, field: keyof TicketTypeRow, value: string): void =>
+    setForm(f => ({ ...f, ticket_types: f.ticket_types.map((t, i) => (i === index ? { ...t, [field]: value } : t)) }))
+  const addTicketType = (): void =>
+    setForm(f => ({ ...f, ticket_types: [...f.ticket_types, { name: f.ticket_types.length ? '' : 'Regular', price: '', capacity: '' }] }))
+  const removeTicketType = (index: number): void =>
+    setForm(f => ({ ...f, ticket_types: f.ticket_types.filter((_, i) => i !== index) }))
 
   const handleSubmit = (): void => {
     if (!form.title || !form.start_time) return void toast.error('Title and start time are required.')
+    if (uploading) return void toast.error('Wait for the poster to finish uploading.')
+    for (const t of form.ticket_types) {
+      if (!t.name.trim()) return void toast.error('Every ticket type needs a name.')
+      if (t.price.trim() === '' || Number(t.price) < 0 || Number.isNaN(Number(t.price))) {
+        return void toast.error(`Enter a price for ${t.name} (0 for free).`)
+      }
+    }
     onSave({
       ...form,
       start_time: fromLocal(form.start_time),
       end_time: form.end_time ? fromLocal(form.end_time) : '',
+      capacity: form.capacity.trim() ? Number(form.capacity) : null,
+      ticket_types: form.ticket_types.map(t => ({
+        ...(t.id ? { id: t.id } : {}),
+        name: t.name.trim(),
+        price: Number(t.price),
+        capacity: t.capacity.trim() ? Number(t.capacity) : null,
+      })),
     })
   }
 
@@ -230,17 +329,70 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
             Remote / Online event
           </label>
 
-          <label className="text-xs font-semibold text-gray-500 uppercase">Poster URL</label>
-          <input value={form.poster_url} onChange={e => set('poster_url', e.target.value)}
-            placeholder="https://..." className="border p-2 rounded-lg text-sm" />
+          <label className="text-xs font-semibold text-gray-500 uppercase">Poster</label>
+          {form.poster_url ? (
+            <div className="relative">
+              <img src={optimizeImage(form.poster_url, 800)} alt="Event poster" className="w-full max-h-56 object-cover rounded-lg border" />
+              <div className="absolute top-2 right-2 flex gap-2">
+                <label className="bg-white/90 text-xs font-semibold px-3 py-1 rounded-lg shadow cursor-pointer hover:bg-white">
+                  Change
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePosterChange} />
+                </label>
+                <button type="button" onClick={() => set('poster_url', '')}
+                  className="bg-white/90 text-xs font-semibold text-red-500 px-3 py-1 rounded-lg shadow hover:bg-white">
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className={`flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-lg py-6 text-sm text-gray-500 ${uploading ? 'opacity-60' : 'cursor-pointer hover:border-[#1a7a3f] hover:text-[#1a7a3f]'}`}>
+              {uploading ? 'Uploading…' : 'Upload poster from your device'}
+              <span className="text-xs text-gray-400">JPG, PNG or WebP, up to 5 MB</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                disabled={uploading} onChange={handlePosterChange} />
+            </label>
+          )}
 
           <label className="text-xs font-semibold text-gray-500 uppercase">Description</label>
           <textarea value={form.description} onChange={e => set('description', e.target.value)}
             rows={3} placeholder="Event description..." className="border p-2 rounded-lg text-sm resize-none" />
 
-          <label className="text-xs font-semibold text-gray-500 uppercase">Registration URL</label>
-          <input value={form.registration_url} onChange={e => set('registration_url', e.target.value)}
-            placeholder="https://forms.google.com/..." className="border p-2 rounded-lg text-sm" />
+          <div className="flex items-center justify-between mt-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Tickets</label>
+            <button type="button" onClick={addTicketType} className="text-xs font-semibold text-[#1a7a3f] hover:underline">
+              + Add ticket type
+            </button>
+          </div>
+          {form.ticket_types.length === 0 ? (
+            <p className="text-xs text-gray-500 -mt-1">
+              Free for everyone. Add ticket types (e.g. Regular and VIP) to charge for entry through Paystack.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-[1fr_90px_80px_24px] gap-2 text-[10px] font-semibold text-gray-400 uppercase">
+                <span>Name</span><span>Price (₦)</span><span>Seats</span><span />
+              </div>
+              {form.ticket_types.map((t, i) => (
+                <div key={t.id ?? `new-${i}`} className="grid grid-cols-[1fr_90px_80px_24px] gap-2 items-center">
+                  <input value={t.name} onChange={e => setTicketType(i, 'name', e.target.value)}
+                    placeholder="e.g. VIP" className="border p-2 rounded-lg text-sm min-w-0" />
+                  <input type="number" min="0" step="0.01" value={t.price} onChange={e => setTicketType(i, 'price', e.target.value)}
+                    placeholder="0 = free" className="border p-2 rounded-lg text-sm min-w-0" />
+                  <input type="number" min="1" value={t.capacity} onChange={e => setTicketType(i, 'capacity', e.target.value)}
+                    placeholder="No limit" className="border p-2 rounded-lg text-sm min-w-0" />
+                  <button type="button" onClick={() => removeTicketType(i)} aria-label={`Remove ${t.name || 'ticket type'}`}
+                    className="text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
+                </div>
+              ))}
+              <p className="text-xs text-gray-500">
+                A type's price can't change once someone has a ticket of that type.
+              </p>
+            </div>
+          )}
+
+          <label className="text-xs font-semibold text-gray-500 uppercase">Total capacity</label>
+          <input type="number" min="1" value={form.capacity} onChange={e => set('capacity', e.target.value)}
+            placeholder="No limit" className="border p-2 rounded-lg text-sm" />
 
           <label className="text-xs font-semibold text-gray-500 uppercase">Contact Email</label>
           <input type="email" value={form.contact_email} onChange={e => set('contact_email', e.target.value)}
@@ -259,7 +411,7 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={isSaving || uploading}
             className="flex-1 bg-[#1a7a3f] text-white p-2 rounded-lg text-sm hover:bg-[#155f32] disabled:opacity-50"
           >
             {isSaving ? 'Saving…' : 'Save'}
@@ -315,16 +467,16 @@ const Events: React.FC = () => {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: EventFormData) => api.post('/events/', data).then(r => r.data),
+    mutationFn: (data: EventPayload) => api.post('/events/', data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-events'] }); setModal(null); toast.success('Event created!') },
-    onError:   () => toast.error('Failed to create event.'),
+    onError:   (error) => toast.error(apiErrorMessage(error, 'Failed to create event.')),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: EventFormData }) =>
+    mutationFn: ({ id, data }: { id: number; data: EventPayload }) =>
       api.patch(`/events/${id}/`, data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-events'] }); setModal(null); toast.success('Event updated!') },
-    onError:   () => toast.error('Failed to update event.'),
+    onError:   (error) => toast.error(apiErrorMessage(error, 'Failed to update event.')),
   })
 
   const deleteMutation = useMutation({
@@ -334,10 +486,10 @@ const Events: React.FC = () => {
       setDeleteTarget(null)
       toast.success('Event deleted.')
     },
-    onError: () => toast.error('Failed to delete event.'),
+    onError: (error) => toast.error(apiErrorMessage(error, 'Failed to delete event.'), { duration: 6000 }),
   })
 
-  const handleSave = (formData: EventFormData): void => {
+  const handleSave = (formData: EventPayload): void => {
     if (modal === 'add') {
       createMutation.mutate(formData)
     } else if (modal && typeof modal === 'object') {
@@ -362,8 +514,14 @@ const Events: React.FC = () => {
         is_remote:         (modal as EventItem).is_remote ?? false,
         poster_url:        (modal as EventItem).poster_url ?? '',
         description:       (modal as EventItem).description ?? '',
-        registration_url:  (modal as EventItem).registration_url ?? '',
         contact_email:     (modal as EventItem).contact_email ?? '',
+        capacity:          (modal as EventItem).capacity != null ? String((modal as EventItem).capacity) : '',
+        ticket_types:      ((modal as EventItem).ticket_types ?? []).map(t => ({
+          id: t.id,
+          name: t.name,
+          price: String(Number(t.price)),
+          capacity: t.capacity != null ? String(t.capacity) : '',
+        })),
         is_published:      (modal as EventItem).is_published ?? true,
       }
     : null

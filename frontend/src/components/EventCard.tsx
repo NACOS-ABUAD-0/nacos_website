@@ -14,8 +14,10 @@ export interface Event {
   is_remote: boolean;
   poster_url?: string;
   description?: string;
-  registration_url?: string;
   contact_email?: string;
+  is_paid?: boolean;
+  price_from?: number;
+  sold_out?: boolean;
   is_published: boolean;
   created_at: string;
   updated_at: string;
@@ -121,12 +123,21 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
 
         {/* Location */}
-        <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-4">
+        <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-2">
           <LocationIcon />
           <span className="truncate">
             {event.is_remote ? "Remote Event" : event.location}
           </span>
         </div>
+
+        {/* Price */}
+        <p className="text-sm font-semibold text-[#006E3A] mb-4">
+          {event.sold_out
+            ? "Sold out"
+            : event.is_paid
+            ? `From ₦${Number(event.price_from ?? 0).toLocaleString("en-NG")}`
+            : "Free"}
+        </p>
 
         {/* Actions */}
         <div className="flex items-center justify-between gap-3 mt-auto pt-1">
@@ -140,10 +151,10 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
           {event.status === "upcoming" && (
             <Link
-              to={`/register/${event.id}`}
+              to={`/events/${event.id}`}
               className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white text-xs font-bold rounded-lg hover:shadow-md hover:scale-105 transition-all tracking-wide whitespace-nowrap"
             >
-              Register Now
+              {event.is_paid ? "Get Ticket" : "Register Now"}
             </Link>
           )}
         </div>

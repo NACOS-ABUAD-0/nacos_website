@@ -14,13 +14,16 @@ export interface AdminEventRegistration {
   id: number;
   user: AdminEventRegistrationUser;
   token: string;
+  status: 'pending_payment' | 'confirmed';
+  ticket_type: { id: number; name: string; price: number } | null;
+  amount_paid: number;
   checked_in_at: string | null;
   checked_in_by: AdminEventRegistrationUser | null;
   created_at: string;
 }
 
 export interface CheckInResult {
-  status: 'checked_in' | 'already_checked_in';
+  status: 'checked_in' | 'already_checked_in' | 'not_paid';
   registration: AdminEventRegistration;
 }
 
