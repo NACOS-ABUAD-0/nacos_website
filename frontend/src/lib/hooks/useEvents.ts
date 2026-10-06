@@ -46,6 +46,8 @@ export interface Event {
   capacity: number | null;
   // nacos_only: must sign in. public: name + email, no account needed (one ticket per email).
   audience: EventAudience;
+  // Key of a ticket email design (see GET /events/email-designs/).
+  email_design: string;
   ticket_types: TicketType[];
   is_paid: boolean;
   price_from: number;
@@ -69,6 +71,7 @@ export interface CreateEventDTO {
   contact_email: string;
   capacity: number | null;
   audience: EventAudience;
+  email_design: string;
   ticket_types: TicketTypeInput[];
   is_published: boolean;
 }

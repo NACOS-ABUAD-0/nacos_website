@@ -23,6 +23,7 @@ from .serializers import (
     EventSerializer,
     TicketTypeBriefSerializer,
 )
+from .emails import email_design_choices
 from .ticketing import RegistrationError, open_checkout, register, settle_payment, settle_pending_payments
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,13 @@ logger = logging.getLogger(__name__)
 def can_manage_events(user) -> bool:
     """Admin-tier staff (Admin, Super Admin, Lecturer) and every exco can upload, edit and delete events."""
     return bool(user and user.is_authenticated and (user.is_admin or user.is_executive))
+
+
+class IsEventManager(permissions.BasePermission):
+    message = "Only admins and excos can manage events."
+
+    def has_permission(self, request, view) -> bool:
+        return can_manage_events(request.user)
 
 
 class IsEventManagerOrReadOnly(permissions.BasePermission):
@@ -76,6 +84,8 @@ class EventViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         if self.action == "my_registration":
             return [permissions.IsAuthenticated()]
+        if self.action == "email_designs":
+            return [permissions.IsAuthenticated(), IsEventManager()]
         return [IsEventManagerOrReadOnly()]
 
     def get_queryset(self):
@@ -102,6 +112,11 @@ class EventViewSet(viewsets.ModelViewSet):
             qs = qs.filter(end_time__lt=now)
 
         return qs.prefetch_related("ticket_types")
+
+    @action(detail=False, methods=["get"], url_path="email-designs")
+    def email_designs(self, request):
+        """Ticket email designs for the admin event form's dropdown."""
+        return Response(email_design_choices())
 
     def destroy(self, request, *args, **kwargs):
         event = self.get_object()

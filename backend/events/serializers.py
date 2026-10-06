@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
 
+from .emails import EMAIL_DESIGNS
 from .models import Event, EventRegistration, TicketType
 from .ticketing import seat_counts
 
@@ -61,7 +62,7 @@ class EventSerializer(serializers.ModelSerializer):
             'id', 'title', 'start_time', 'end_time',
             'location', 'is_remote', 'poster_url',
             'description', 'registration_url', 'contact_email',
-            'capacity', 'audience', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
+            'capacity', 'audience', 'email_design', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
             'is_published', 'status', 'media',
             'created_at', 'updated_at',
         ]
@@ -105,6 +106,11 @@ class EventSerializer(serializers.ModelSerializer):
         return self.get_tickets_remaining(obj) == 0
 
     # ── Validation ────────────────────────────────────────────────────────────
+
+    def validate_email_design(self, value):
+        if value not in EMAIL_DESIGNS:
+            raise serializers.ValidationError(f"Unknown email design. Choose one of: {', '.join(EMAIL_DESIGNS)}.")
+        return value
 
     def validate_ticket_types(self, value):
         if len(value) > MAX_TICKET_TYPES_PER_EVENT:

@@ -46,6 +46,9 @@ class Event(models.Model):
     capacity = models.PositiveIntegerField(null=True, blank=True)
     # Events created before this setting existed required sign-in, so that stays the default.
     audience = models.CharField(max_length=20, choices=Audience.choices, default=Audience.NACOS_ONLY)
+    # Look of the ticket email: a key of events.emails.EMAIL_DESIGNS. Not a DB-level choice, so adding a
+    # design for a new event needs no migration.
+    email_design = models.CharField(max_length=40, default='standard')
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

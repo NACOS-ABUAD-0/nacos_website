@@ -29,6 +29,7 @@ interface EventItem {
   contact_email?: string
   capacity?: number | null
   audience?: EventAudience
+  email_design?: string
   ticket_types?: TicketType[]
   is_paid?: boolean
   price_from?: number
@@ -57,6 +58,7 @@ interface EventFormData {
   contact_email: string
   capacity: string
   audience: EventAudience
+  email_design: string
   ticket_types: TicketTypeRow[]
   is_published: boolean
 }
@@ -95,7 +97,7 @@ const fetchEvents = (): Promise<EventItem[]> => api.get('/events/').then(r => {
 const EMPTY_FORM: EventFormData = {
   title: '', start_time: '', end_time: '', location: '',
   is_remote: false, poster_url: '', description: '',
-  contact_email: '', capacity: '', audience: 'public', ticket_types: [], is_published: true,
+  contact_email: '', capacity: '', audience: 'public', email_design: 'standard', ticket_types: [], is_published: true,
 }
 
 const priceLabel = (event: EventItem): string => {
@@ -207,6 +209,11 @@ interface EventModalProps {
 
 const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSaving }) => {
   const [form, setForm] = useState<EventFormData>(initial ?? EMPTY_FORM)
+  const { data: emailDesigns = [] } = useQuery<{ value: string; label: string }[]>({
+    queryKey: ['event-email-designs'],
+    queryFn: () => api.get('/events/email-designs/').then(r => r.data),
+    staleTime: Infinity,
+  })
   const [uploading, setUploading] = useState<boolean>(false)
   const set = <K extends keyof EventFormData>(field: K, value: EventFormData[K]): void =>
     setForm(f => ({ ...f, [field]: value }))
@@ -393,6 +400,15 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
             </div>
           )}
 
+          <label className="text-xs font-semibold text-gray-500 uppercase">Ticket email design</label>
+          <select value={form.email_design} onChange={e => set('email_design', e.target.value)}
+            className="border p-2 rounded-lg text-sm bg-white">
+            {(emailDesigns.length ? emailDesigns : [{ value: form.email_design, label: form.email_design }]).map(d => (
+              <option key={d.value} value={d.value}>{d.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 -mt-1">How the confirmation email with the ticket looks for this event.</p>
+
           <label className="text-xs font-semibold text-gray-500 uppercase">Total capacity</label>
           <input type="number" min="1" value={form.capacity} onChange={e => set('capacity', e.target.value)}
             placeholder="No limit" className="border p-2 rounded-lg text-sm" />
@@ -520,6 +536,7 @@ const Events: React.FC = () => {
         contact_email:     (modal as EventItem).contact_email ?? '',
         capacity:          (modal as EventItem).capacity != null ? String((modal as EventItem).capacity) : '',
         audience:          (modal as EventItem).audience ?? 'nacos_only',
+        email_design:      (modal as EventItem).email_design ?? 'standard',
         ticket_types:      ((modal as EventItem).ticket_types ?? []).map(t => ({
           id: t.id,
           name: t.name,

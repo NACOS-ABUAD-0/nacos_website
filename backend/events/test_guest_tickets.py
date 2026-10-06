@@ -254,3 +254,45 @@ class TicketEmailDesignTest(APITestCase):
         html = render_ticket_email(registration)[2]
         self.assertNotIn('<script>x</script>', html)
         self.assertNotIn('<b>Party', html)
+
+
+@override_settings(FRONTEND_URL='https://front.test')
+class EmailDesignChoiceTest(APITestCase):
+    """Each event picks its ticket email design; events without one use Standard."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.staff = User.objects.create_user(email='staff@example.com', full_name='Staff', password='pass12345', role='admin')
+        self.event = Event.objects.create(title='Movie Night', start_time=timezone.now() + timedelta(days=1), location='Hall')
+        self.registration = EventRegistration.objects.create(event=self.event, name='Ada Guest', email='ada@example.com')
+
+    def test_new_events_use_standard_design(self):
+        from .emails import render_ticket_email
+        self.assertEqual(self.event.email_design, 'standard')
+        _, text, html = render_ticket_email(self.registration)
+        self.assertIn('#006E3A', html)
+        self.assertNotIn('popcorn', text)
+
+    def test_movie_night_design(self):
+        from .emails import render_ticket_email
+        self.event.email_design = 'movie_night'
+        self.event.save()
+        _, text, html = render_ticket_email(self.registration)
+        self.assertIn('Grab your popcorn, we saved you a seat.', html)
+        self.assertIn('Come early for the best seats.', text)
+        self.assertIn('#c8102e', html)
+
+    def test_admin_lists_and_picks_designs(self):
+        self.client.force_authenticate(user=self.staff)
+        designs = self.client.get(reverse('events-email-designs'))
+        self.assertEqual(designs.status_code, status.HTTP_200_OK)
+        self.assertEqual({d['value'] for d in designs.data}, {'standard', 'movie_night'})
+
+        url = reverse('events-detail', kwargs={'pk': self.event.pk})
+        self.assertEqual(self.client.patch(url, {'email_design': 'movie_night'}, format='json').data['email_design'], 'movie_night')
+        self.assertEqual(self.client.patch(url, {'email_design': 'nope'}, format='json').status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_students_cannot_list_designs(self):
+        student = User.objects.create_user(email='s@example.com', full_name='Student', password='pass12345', role='student')
+        self.client.force_authenticate(user=student)
+        self.assertEqual(self.client.get(reverse('events-email-designs')).status_code, status.HTTP_403_FORBIDDEN)

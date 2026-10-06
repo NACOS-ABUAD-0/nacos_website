@@ -18,6 +18,7 @@ class EventAdmin(admin.ModelAdmin):
         'end_time',
         'location',
         'audience',
+        'email_design',
         'is_published',
         'contact_email',
         'created_at',

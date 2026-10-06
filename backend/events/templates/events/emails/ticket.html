@@ -1,0 +1,109 @@
+{% comment %}
+Ticket confirmation email shared by the designs in events.emails.EMAIL_DESIGNS; each design supplies
+its own colours (`t`) and wording. Table layout with inline styles so it holds up in Gmail, Outlook
+and phone mail apps. A design with a different layout gets its own template instead.
+{% endcomment %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="{{ t.color_scheme }}">
+<meta name="supported-color-schemes" content="{{ t.color_scheme }}">
+<title>{{ type_name }} ticket: {{ event.title }}</title>
+<style>
+  /* Phones: full-width poster, tighter sides, date/time/venue stacked. Clients that drop <style> get the desktop layout. */
+  @media only screen and (max-width: 620px) {
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+    .poster { width: 100% !important; height: auto !important; }
+    .stack { display: block !important; width: 100% !important; padding: 10px 0 !important; }
+    .title { font-size: 32px !important; }
+    .code { font-size: 24px !important; letter-spacing: 4px !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:{{ t.page_bg }};">
+<div style="display:none; max-height:0; overflow:hidden; opacity:0;">Your {{ type_name }} ticket for {{ event.title }} is confirmed. Ticket code {{ short_code }}.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{{ t.page_bg }}" style="background-color:{{ t.page_bg }};">
+<tr><td align="center" style="padding:24px 12px;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{{ t.card_bg }}" style="max-width:600px; background-color:{{ t.card_bg }}; border:1px solid {{ t.card_border }};">
+  <tr><td height="6" bgcolor="{{ t.accent }}" style="background-color:{{ t.accent }}; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <tr><td class="px" style="padding:36px 36px 8px 36px; font-family:Arial, Helvetica, sans-serif;">
+    <p style="margin:0 0 12px; font-size:12px; letter-spacing:3px; color:{{ t.eyebrow }}; text-transform:uppercase;">&#9679;&nbsp; Ticket confirmed</p>
+    <h1 class="title" style="margin:0; font-family:{{ t.title_font }}; font-size:40px; line-height:1.2; font-weight:bold; color:{{ t.heading }};">{{ title_start }}{% if title_highlight %} <span style="background-color:{{ t.highlight_bg }}; color:{{ t.highlight_text }}; padding:0 8px;">{{ title_highlight }}</span>{% endif %}</h1>
+    <p style="margin:16px 0 0; font-size:16px; line-height:1.5; color:{{ t.body }};">Hi {{ first_name }}, {{ greeting }}</p>
+  </td></tr>
+
+  {% if poster_url %}
+  <tr><td class="px" style="padding:24px 36px 0 36px;">
+    <img class="poster" src="{{ poster_url }}" width="528" alt="{{ event.title }} poster" style="display:block; width:100%; max-width:528px; height:auto; border:0;">
+  </td></tr>
+  {% endif %}
+
+  <tr><td class="px" style="padding:24px 36px 0 36px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid {{ t.divider }}; border-bottom:1px solid {{ t.divider }};">
+      <tr>
+        <td class="stack" valign="top" style="padding:18px 12px 18px 0; font-family:Arial, Helvetica, sans-serif;">
+          <p style="margin:0 0 6px; font-size:11px; letter-spacing:2px; color:{{ t.muted }}; text-transform:uppercase;">Date</p>
+          <p style="margin:0; font-size:16px; font-weight:bold; color:{{ t.heading }};">{{ date }}</p>
+        </td>
+        <td class="stack" valign="top" style="padding:18px 12px; font-family:Arial, Helvetica, sans-serif;">
+          <p style="margin:0 0 6px; font-size:11px; letter-spacing:2px; color:{{ t.muted }}; text-transform:uppercase;">Time</p>
+          <p style="margin:0; font-size:16px; font-weight:bold; color:{{ t.heading }};">{{ time }}</p>
+        </td>
+        <td class="stack" valign="top" style="padding:18px 0 18px 12px; font-family:Arial, Helvetica, sans-serif;">
+          <p style="margin:0 0 6px; font-size:11px; letter-spacing:2px; color:{{ t.muted }}; text-transform:uppercase;">Venue</p>
+          <p style="margin:0; font-size:16px; font-weight:bold; color:{{ t.heading }};">{{ venue }}</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <tr><td class="px" style="padding:28px 36px 0 36px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff; border-radius:10px; border:1px solid {{ t.stub_border }};">
+      <tr><td bgcolor="{{ t.accent }}" style="background-color:{{ t.accent }}; border-radius:10px 10px 0 0; padding:18px 24px; font-family:Arial, Helvetica, sans-serif;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td style="font-size:13px; font-weight:bold; letter-spacing:3px; color:#ffffff; text-transform:uppercase;">{{ type_name }} ticket</td>
+          <td align="right" style="font-size:20px; font-weight:bold; color:#ffffff;">{{ price }}</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:22px 24px 20px; font-family:Arial, Helvetica, sans-serif;">
+        <p style="margin:0 0 6px; font-size:11px; letter-spacing:2px; color:#8a7f7f; text-transform:uppercase;">Ticket holder</p>
+        <p style="margin:0; font-size:22px; font-weight:bold; color:#141414;">{{ holder }}</p>
+      </td></tr>
+      <tr><td style="padding:0 12px;"><div style="border-top:2px dashed #d9d4d4; font-size:0; line-height:0;">&nbsp;</div></td></tr>
+      <tr><td align="center" style="padding:20px 24px 24px; font-family:Arial, Helvetica, sans-serif;">
+        <p style="margin:0 0 10px; font-size:11px; letter-spacing:2px; color:#8a7f7f; text-transform:uppercase;">Single-use ticket code</p>
+        <p class="code" style="margin:0; font-family:'Courier New', Courier, monospace; font-size:30px; font-weight:bold; letter-spacing:6px; color:#141414;">{{ short_code }}</p>
+        <p style="margin:12px 0 0; font-size:13px; color:#6b6262;">Show your QR code or this code at the entrance. Works once.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td class="px" style="padding:28px 36px 0 36px; font-family:Arial, Helvetica, sans-serif;">
+    <p style="margin:0 0 12px; font-size:12px; letter-spacing:3px; color:{{ t.eyebrow }}; text-transform:uppercase;">Good to know</p>
+    <ul style="margin:0; padding:0 0 0 18px; color:{{ t.body }}; font-size:15px; line-height:1.6;">
+      {% for tip in tips %}<li style="margin:0 0 8px;">{{ tip }}</li>{% endfor %}
+    </ul>
+  </td></tr>
+
+  <tr><td class="px" align="center" style="padding:24px 36px 32px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td bgcolor="{{ t.button_bg }}" style="background-color:{{ t.button_bg }}; border-radius:6px;">
+        <a href="{{ ticket_url }}" style="display:inline-block; padding:15px 38px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; letter-spacing:2px; color:{{ t.button_text }}; text-decoration:none; text-transform:uppercase;">View my ticket</a>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <tr><td class="px" style="padding:0 36px;"><div style="border-top:1px solid {{ t.divider }}; font-size:0; line-height:0;">&nbsp;</div></td></tr>
+  <tr><td class="px" align="center" style="padding:20px 36px 28px; font-family:Arial, Helvetica, sans-serif;">
+    <p style="margin:0 0 4px; font-size:14px; color:{{ t.muted }};">Presented by {{ presented_by }}</p>
+    <p style="margin:0; font-size:13px; color:{{ t.faint }};">@nacosabuad on Instagram, X and Snapchat</p>
+  </td></tr>
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>
