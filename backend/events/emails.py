@@ -112,7 +112,12 @@ def _custom_design(options: dict) -> dict:
         "button_bg": highlight, "button_text": _readable_on(highlight),
     }
     if options.get("mode") == "dark":
-        # The dark base uses a red eyebrow; follow the chosen colour instead when it's light enough to read.
+        # Neutral dark greys, not Movie Night's red-tinted ones, so any chosen colour sits well on it.
+        theme.update({
+            "page_bg": "#0d0f12", "card_bg": "#16191f", "card_border": "#262a33",
+            "body": "#cfd3da", "muted": "#9aa0aa", "faint": "#6b717c", "divider": "#2c313a",
+        })
+        # The eyebrow follows the chosen colour when it's light enough to read on the dark card.
         theme["eyebrow"] = accent if _readable_on(accent) == "#141414" else highlight
     return {
         "label": "Custom",
