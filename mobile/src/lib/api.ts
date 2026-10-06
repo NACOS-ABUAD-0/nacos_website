@@ -188,6 +188,9 @@ export interface EventData {
   is_published: boolean;
   status: 'upcoming' | 'ongoing' | 'completed';
   media: { poster: string | null };
+  capacity?: number | null;
+  // Confirmed tickets; only sent to admins and excos.
+  booked_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -445,13 +448,58 @@ export const attendanceAPI = {
   scan: (token: string) => api.post<ScanAttendanceResponse>('/attendance/scan/', { token }),
 };
 
+export interface AdminCheckInRegistration {
+  id: number;
+  // null for guests on open events; name is always set.
+  user: { id: number; full_name: string } | null;
+  name: string;
+  ticket_type: { id: number; name: string; price: number; venue: string } | null;
+  checked_in_at: string | null;
+  checked_in_by: { id: number; full_name: string } | null;
+}
+
 export interface AdminCheckInResponse {
   status: 'checked_in' | 'already_checked_in';
-  registration: {
-    id: number;
-    user: { id: number; full_name: string };
-    checked_in_at: string | null;
-  };
+  registration: AdminCheckInRegistration;
+}
+
+// Error body for a refused scan: not_paid / cancelled (400) or invalid / wrong_event (404).
+export interface AdminCheckInError {
+  status?: 'not_paid' | 'cancelled' | 'invalid' | 'wrong_event';
+  detail?: string;
+  registration?: AdminCheckInRegistration;
+}
+
+// Counts are tickets; money is in naira. "booked" = confirmed tickets (free and paid).
+export interface SalesFigures {
+  booked: number;
+  checked_in: number;
+  // Started checkout, seat held, payment not confirmed yet.
+  awaiting_payment: number;
+  // Successful Paystack payments, including duplicates not yet refunded.
+  paid: number;
+  revenue: number;
+  fees: number;
+  net: number;
+  refunded: number;
+  refunded_amount: number;
+  needs_attention: number;
+  capacity: number | null;
+  remaining: number | null;
+}
+
+export interface TicketTypeSales extends SalesFigures {
+  // null for "General admission" (no ticket types) or tickets whose type was deleted.
+  id: number | null;
+  name: string;
+  price: number | null;
+}
+
+export interface EventSales {
+  event: number;
+  totals: SalesFigures;
+  ticket_types: TicketTypeSales[];
+  generated_at: string;
 }
 
 export const adminAttendanceAPI = {
@@ -460,6 +508,7 @@ export const adminAttendanceAPI = {
       event: eventId,
       token,
     }),
+  getSales: (eventId: number | string) => api.get<EventSales>(`/events/${eventId}/sales/`),
 };
 
 export default api;

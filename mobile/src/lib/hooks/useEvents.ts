@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { eventsAPI } from '@/lib/api';
+import { adminAttendanceAPI, eventsAPI } from '@/lib/api';
 
 export function useEvents(params?: Record<string, unknown>) {
   return useQuery({
@@ -37,5 +37,15 @@ export function useRegisterForEvent(id: number | string) {
   return useMutation({
     mutationFn: () => eventsAPI.register(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['event-registration', id] }),
+  });
+}
+
+// Live bookings and money for the admin check-in screen; polls so new bookings show within seconds.
+export function useEventSales(id: number | string) {
+  return useQuery({
+    queryKey: ['event-sales', id],
+    queryFn: async () => (await adminAttendanceAPI.getSales(id)).data,
+    enabled: !!id,
+    refetchInterval: 5000,
   });
 }

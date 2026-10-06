@@ -17,22 +17,25 @@ function EventRow({ item }: { item: EventData }) {
         <Text className="font-semibold text-gray-900" numberOfLines={1}>
           {item.title}
         </Text>
-        <Text className="mt-0.5 text-xs text-gray-400">{item.status}</Text>
+        <Text className="mt-0.5 text-xs text-gray-400">
+          {item.status}
+          {item.booked_count != null ? ` · ${item.booked_count} booked${item.capacity ? ` of ${item.capacity}` : ''}` : ''}
+        </Text>
       </View>
-      <Ionicons name="qr-code-outline" size={20} color="#006E3A" />
+      <Ionicons name="chevron-forward" size={20} color="#006E3A" />
     </Pressable>
   );
 }
 
 export default function AdminCheckinPickerScreen() {
-  const { isAdmin } = useAuth();
+  const { canManageEvents } = useAuth();
   const { data, isLoading } = useEvents();
   const events = data?.results ?? [];
 
-  if (!isAdmin) {
+  if (!canManageEvents) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-center text-gray-500">Admins only.</Text>
+        <Text className="text-center text-gray-500">Admins and excos only.</Text>
       </SafeAreaView>
     );
   }
@@ -43,9 +46,9 @@ export default function AdminCheckinPickerScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color="#374151" />
         </Pressable>
-        <Text className="text-lg font-bold text-gray-900">Event Check-in</Text>
+        <Text className="text-lg font-bold text-gray-900">Event Sales & Check-in</Text>
       </View>
-      <Text className="px-4 py-3 text-sm text-gray-500">Pick an event to scan attendee QR codes for.</Text>
+      <Text className="px-4 py-3 text-sm text-gray-500">Pick an event to see live bookings and scan tickets.</Text>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">

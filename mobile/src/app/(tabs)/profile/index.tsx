@@ -22,7 +22,7 @@ function MenuRow({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMa
 }
 
 export default function ProfileScreen() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, canManageEvents } = useAuth();
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -48,10 +48,10 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {isAdmin && (
+        {canManageEvents && (
           <View className="mt-6">
             <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-400">Admin Tools</Text>
-            <MenuRow icon="qr-code-outline" label="Event Check-in Scanner" onPress={() => router.push('/admin/checkin')} />
+            <MenuRow icon="stats-chart-outline" label="Event Sales & Check-in" onPress={() => router.push('/admin/checkin')} />
           </View>
         )}
 

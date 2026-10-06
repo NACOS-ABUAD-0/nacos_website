@@ -31,7 +31,16 @@ interface AuthContextType extends AuthState {
   updateProfile: (data: Partial<User>) => Promise<void>;
   refreshProfile: () => Promise<void>;
   isAdmin: boolean;
+  // Admins, lecturers and every exco: event sales and check-in (matches the backend's can_manage_events).
+  canManageEvents: boolean;
 }
+
+// Lecturer plus the executive titles (backend User.EXECUTIVE_ROLES).
+const EVENT_MANAGER_ROLES = new Set([
+  'lecturer', 'president', 'vice_president', 'general_secretary', 'asst_general_secretary', 'financial_secretary',
+  'software_director', 'hardware_director', 'social_director', 'welfare_director', 'academic_director',
+  'public_relations_officer', 'sports_director', 'chief_of_staff',
+]);
 
 type AuthAction =
   | { type: 'SET_LOADING'; payload: boolean }
@@ -132,10 +141,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = state.user?.role === 'admin' || state.user?.role === 'super_admin' || state.user?.is_staff === true;
+  const canManageEvents = isAdmin || EVENT_MANAGER_ROLES.has(state.user?.role ?? '');
 
   return (
     <AuthContext.Provider
-      value={{ ...state, login, register, logout, updateProfile, refreshProfile, isAdmin }}
+      value={{ ...state, login, register, logout, updateProfile, refreshProfile, isAdmin, canManageEvents }}
     >
       {children}
     </AuthContext.Provider>
