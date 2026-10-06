@@ -30,12 +30,26 @@ interface EventItem {
   capacity?: number | null
   audience?: EventAudience
   email_design?: string
+  email_custom?: Partial<CustomEmailDesign>
   ticket_types?: TicketType[]
   is_paid?: boolean
   price_from?: number
   is_published: boolean
   status?: EventStatus
   media?: EventMedia
+}
+
+// Used when the email design is "custom". Colours are #RRGGBB.
+interface CustomEmailDesign {
+  mode: 'light' | 'dark'
+  accent: string
+  highlight: string
+  greeting: string
+  note: string
+}
+
+const DEFAULT_CUSTOM_EMAIL: CustomEmailDesign = {
+  mode: 'light', accent: '#006e3a', highlight: '#fde68a', greeting: '', note: '',
 }
 
 // Form inputs are strings while editing; converted to numbers on save.
@@ -59,6 +73,7 @@ interface EventFormData {
   capacity: string
   audience: EventAudience
   email_design: string
+  email_custom: CustomEmailDesign
   ticket_types: TicketTypeRow[]
   is_published: boolean
 }
@@ -97,7 +112,8 @@ const fetchEvents = (): Promise<EventItem[]> => api.get('/events/').then(r => {
 const EMPTY_FORM: EventFormData = {
   title: '', start_time: '', end_time: '', location: '',
   is_remote: false, poster_url: '', description: '',
-  contact_email: '', capacity: '', audience: 'public', email_design: 'standard', ticket_types: [], is_published: true,
+  contact_email: '', capacity: '', audience: 'public', email_design: 'standard',
+  email_custom: DEFAULT_CUSTOM_EMAIL, ticket_types: [], is_published: true,
 }
 
 const priceLabel = (event: EventItem): string => {
@@ -215,8 +231,12 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
     staleTime: Infinity,
   })
   const [uploading, setUploading] = useState<boolean>(false)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState<boolean>(false)
   const set = <K extends keyof EventFormData>(field: K, value: EventFormData[K]): void =>
     setForm(f => ({ ...f, [field]: value }))
+  const setCustom = <K extends keyof CustomEmailDesign>(field: K, value: CustomEmailDesign[K]): void =>
+    setForm(f => ({ ...f, email_custom: { ...f.email_custom, [field]: value } }))
 
   // datetime-local wants local time; the API stores UTC.
   const toLocal = (iso: string): string => {
@@ -251,16 +271,7 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
   const removeTicketType = (index: number): void =>
     setForm(f => ({ ...f, ticket_types: f.ticket_types.filter((_, i) => i !== index) }))
 
-  const handleSubmit = (): void => {
-    if (!form.title || !form.start_time) return void toast.error('Title and start time are required.')
-    if (uploading) return void toast.error('Wait for the poster to finish uploading.')
-    for (const t of form.ticket_types) {
-      if (!t.name.trim()) return void toast.error('Every ticket type needs a name.')
-      if (t.price.trim() === '' || Number(t.price) < 0 || Number.isNaN(Number(t.price))) {
-        return void toast.error(`Enter a price for ${t.name} (0 for free).`)
-      }
-    }
-    onSave({
+  const buildPayload = (): EventPayload => ({
       ...form,
       start_time: fromLocal(form.start_time),
       end_time: form.end_time ? fromLocal(form.end_time) : '',
@@ -272,7 +283,31 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
         capacity: t.capacity.trim() ? Number(t.capacity) : null,
         venue: t.venue.trim(),
       })),
-    })
+  })
+
+  const handleSubmit = (): void => {
+    if (!form.title || !form.start_time) return void toast.error('Title and start time are required.')
+    if (uploading) return void toast.error('Wait for the poster to finish uploading.')
+    for (const t of form.ticket_types) {
+      if (!t.name.trim()) return void toast.error('Every ticket type needs a name.')
+      if (t.price.trim() === '' || Number(t.price) < 0 || Number.isNaN(Number(t.price))) {
+        return void toast.error(`Enter a price for ${t.name} (0 for free).`)
+      }
+    }
+    onSave(buildPayload())
+  }
+
+  // Renders the ticket email from the form as it is now (saved or not), with a sample buyer.
+  const handlePreview = async (): Promise<void> => {
+    setPreviewing(true)
+    try {
+      const { data } = await api.post<{ html: string }>('/events/email-preview/', buildPayload())
+      setPreviewHtml(data.html)
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "Couldn't build the preview."))
+    } finally {
+      setPreviewing(false)
+    }
   }
 
   return (
@@ -407,7 +442,56 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
               <option key={d.value} value={d.value}>{d.label}</option>
             ))}
           </select>
-          <p className="text-xs text-gray-500 -mt-1">How the confirmation email with the ticket looks for this event.</p>
+          <p className="text-xs text-gray-500 -mt-1">
+            How the confirmation email looks. Each buyer's name, ticket code, ticket type, venue and price are filled in automatically.
+          </p>
+
+          {form.email_design === 'custom' && (
+            <div className="flex flex-col gap-3 border border-gray-200 rounded-lg p-3 bg-gray-50">
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Email background">
+                {(['light', 'dark'] as const).map(mode => (
+                  <button key={mode} type="button" role="radio" aria-checked={form.email_custom.mode === mode}
+                    onClick={() => setCustom('mode', mode)}
+                    className={`text-sm font-semibold py-2 rounded-lg border-2 ${form.email_custom.mode === mode
+                      ? 'border-[#1a7a3f] bg-white' : 'border-gray-200 bg-white/60 text-gray-500'}`}>
+                    {mode === 'light' ? 'Light background' : 'Dark background'}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ['accent', 'Main colour', 'Top bar and ticket header'],
+                  ['highlight', 'Highlight colour', 'Title highlight and button'],
+                ] as const).map(([field, label, hint]) => (
+                  <label key={field} className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold text-gray-600">{label}</span>
+                    <span className="flex items-center gap-2">
+                      <input type="color" value={form.email_custom[field]} onChange={e => setCustom(field, e.target.value)}
+                        className="w-10 h-9 rounded border border-gray-300 bg-white p-0.5 cursor-pointer" />
+                      <input value={form.email_custom[field]} onChange={e => setCustom(field, e.target.value)}
+                        maxLength={7} className="border p-1.5 rounded-lg text-xs font-mono w-full min-w-0" />
+                    </span>
+                    <span className="text-[11px] text-gray-400">{hint}</span>
+                  </label>
+                ))}
+              </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-600">Greeting (after "Hi Ada,")</span>
+                <input value={form.email_custom.greeting} onChange={e => setCustom('greeting', e.target.value)}
+                  maxLength={200} placeholder="you're in. We've saved you a spot." className="border p-2 rounded-lg text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-600">Extra note under "Good to know" (optional)</span>
+                <input value={form.email_custom.note} onChange={e => setCustom('note', e.target.value)}
+                  maxLength={200} placeholder="e.g. Dress code: all white." className="border p-2 rounded-lg text-sm" />
+              </label>
+            </div>
+          )}
+
+          <button type="button" onClick={handlePreview} disabled={previewing}
+            className="self-start text-sm font-semibold text-[#1a7a3f] border border-[#1a7a3f] rounded-lg px-4 py-2 hover:bg-[#eef6f3] disabled:opacity-50">
+            {previewing ? 'Building preview…' : 'Preview email'}
+          </button>
 
           <label className="text-xs font-semibold text-gray-500 uppercase">Total capacity</label>
           <input type="number" min="1" value={form.capacity} onChange={e => set('capacity', e.target.value)}
@@ -423,6 +507,24 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
             Published (visible to everyone)
           </label>
         </div>
+
+        {previewHtml && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3" onClick={() => setPreviewHtml(null)}>
+            <div className="bg-white rounded-2xl w-full max-w-[680px] h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <div>
+                  <p className="font-bold text-sm">Email preview</p>
+                  <p className="text-xs text-gray-500">Sample buyer "Ada Example". Real emails use each buyer's own name and code.</p>
+                </div>
+                <button onClick={() => setPreviewHtml(null)} className="text-sm font-semibold px-3 py-1.5 rounded-lg border hover:bg-gray-50">
+                  Close
+                </button>
+              </div>
+              {/* sandbox="": the preview can't run scripts or navigate this page. */}
+              <iframe title="Ticket email preview" srcDoc={previewHtml} sandbox="" className="flex-1 w-full border-0" />
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 mt-5">
           <button onClick={onClose} className="flex-1 border p-2 rounded-lg text-sm hover:bg-gray-50">
@@ -537,6 +639,7 @@ const Events: React.FC = () => {
         capacity:          (modal as EventItem).capacity != null ? String((modal as EventItem).capacity) : '',
         audience:          (modal as EventItem).audience ?? 'nacos_only',
         email_design:      (modal as EventItem).email_design ?? 'standard',
+        email_custom:      { ...DEFAULT_CUSTOM_EMAIL, ...((modal as EventItem).email_custom ?? {}) },
         ticket_types:      ((modal as EventItem).ticket_types ?? []).map(t => ({
           id: t.id,
           name: t.name,

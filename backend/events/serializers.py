@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
 
-from .emails import EMAIL_DESIGNS
+from .emails import CUSTOM_EMAIL_DESIGN, EMAIL_DESIGNS, validate_custom_design
 from .models import Event, EventRegistration, TicketType
 from .ticketing import seat_counts
 
@@ -62,7 +62,7 @@ class EventSerializer(serializers.ModelSerializer):
             'id', 'title', 'start_time', 'end_time',
             'location', 'is_remote', 'poster_url',
             'description', 'registration_url', 'contact_email',
-            'capacity', 'audience', 'email_design', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
+            'capacity', 'audience', 'email_design', 'email_custom', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
             'is_published', 'status', 'media',
             'created_at', 'updated_at',
         ]
@@ -108,9 +108,17 @@ class EventSerializer(serializers.ModelSerializer):
     # ── Validation ────────────────────────────────────────────────────────────
 
     def validate_email_design(self, value):
-        if value not in EMAIL_DESIGNS:
-            raise serializers.ValidationError(f"Unknown email design. Choose one of: {', '.join(EMAIL_DESIGNS)}.")
+        if value not in EMAIL_DESIGNS and value != CUSTOM_EMAIL_DESIGN:
+            raise serializers.ValidationError(
+                f"Unknown email design. Choose one of: {', '.join([*EMAIL_DESIGNS, CUSTOM_EMAIL_DESIGN])}."
+            )
         return value
+
+    def validate_email_custom(self, value):
+        try:
+            return validate_custom_design(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc))
 
     def validate_ticket_types(self, value):
         if len(value) > MAX_TICKET_TYPES_PER_EVENT:

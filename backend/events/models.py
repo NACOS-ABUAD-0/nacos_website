@@ -49,6 +49,8 @@ class Event(models.Model):
     # Look of the ticket email: a key of events.emails.EMAIL_DESIGNS. Not a DB-level choice, so adding a
     # design for a new event needs no migration.
     email_design = models.CharField(max_length=40, default='standard')
+    # Used when email_design is "custom": {mode: light|dark, accent, highlight, greeting, note}.
+    email_custom = models.JSONField(default=dict, blank=True)
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -46,8 +46,9 @@ export interface Event {
   capacity: number | null;
   // nacos_only: must sign in. public: name + email, no account needed (one ticket per email).
   audience: EventAudience;
-  // Key of a ticket email design (see GET /events/email-designs/).
+  // Key of a ticket email design (see GET /events/email-designs/), or "custom".
   email_design: string;
+  email_custom: { mode?: 'light' | 'dark'; accent?: string; highlight?: string; greeting?: string; note?: string };
   ticket_types: TicketType[];
   is_paid: boolean;
   price_from: number;

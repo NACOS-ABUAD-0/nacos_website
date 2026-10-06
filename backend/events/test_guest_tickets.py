@@ -286,7 +286,7 @@ class EmailDesignChoiceTest(APITestCase):
         self.client.force_authenticate(user=self.staff)
         designs = self.client.get(reverse('events-email-designs'))
         self.assertEqual(designs.status_code, status.HTTP_200_OK)
-        self.assertEqual({d['value'] for d in designs.data}, {'standard', 'movie_night'})
+        self.assertEqual({d['value'] for d in designs.data}, {'standard', 'movie_night', 'custom'})
 
         url = reverse('events-detail', kwargs={'pk': self.event.pk})
         self.assertEqual(self.client.patch(url, {'email_design': 'movie_night'}, format='json').data['email_design'], 'movie_night')
@@ -296,3 +296,70 @@ class EmailDesignChoiceTest(APITestCase):
         student = User.objects.create_user(email='s@example.com', full_name='Student', password='pass12345', role='student')
         self.client.force_authenticate(user=student)
         self.assertEqual(self.client.get(reverse('events-email-designs')).status_code, status.HTTP_403_FORBIDDEN)
+
+
+@override_settings(FRONTEND_URL='https://front.test')
+class CustomEmailDesignTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.staff = User.objects.create_user(email='staff@example.com', full_name='Staff', password='pass12345', role='admin')
+        self.client.force_authenticate(user=self.staff)
+        self.event = Event.objects.create(title='Code Jam', start_time=timezone.now() + timedelta(days=1), location='Lab 1')
+        self.url = reverse('events-detail', kwargs={'pk': self.event.pk})
+
+    def test_custom_colours_and_wording_are_used_with_real_ticket_details(self):
+        from .emails import render_ticket_email
+        response = self.client.patch(self.url, {'email_design': 'custom', 'email_custom': {
+            'mode': 'dark', 'accent': '#1D4ED8', 'highlight': '#FACC15',
+            'greeting': 'you are in for Code Jam!', 'note': 'Bring your laptop and charger.',
+        }}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['email_custom']['accent'], '#1d4ed8')
+
+        self.event.refresh_from_db()
+        ticket = EventRegistration.objects.create(event=self.event, name='Chidi Okeke', email='chidi@example.com')
+        _, text, html = render_ticket_email(ticket)
+        self.assertIn('#1d4ed8', html)
+        self.assertIn('#facc15', html)
+        self.assertIn('Hi Chidi, you are in for Code Jam!', html)
+        self.assertIn('Bring your laptop and charger.', text)
+        # The ticket's own details, not the design's.
+        self.assertIn('Chidi Okeke', html)
+        self.assertIn(ticket.short_code, html)
+        self.assertIn('Lab 1', html)
+
+    def test_text_colour_follows_the_highlight(self):
+        from .emails import _custom_design
+        self.assertEqual(_custom_design({'highlight': '#facc15'})['theme']['button_text'], '#141414')
+        self.assertEqual(_custom_design({'highlight': '#1d4ed8'})['theme']['button_text'], '#ffffff')
+
+    def test_bad_colours_and_long_text_are_rejected(self):
+        for custom in (
+            {'accent': 'red; background:url(x)'},
+            {'highlight': '#12345'},
+            {'mode': 'neon'},
+            {'greeting': 'x' * 201},
+        ):
+            response = self.client.patch(self.url, {'email_design': 'custom', 'email_custom': custom}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, custom)
+
+    def test_preview_uses_form_values_and_a_sample_buyer_without_saving(self):
+        before = (Event.objects.count(), EventRegistration.objects.count(), TicketType.objects.count())
+        response = self.client.post(reverse('events-email-preview'), {
+            'title': 'Freshers Party', 'start_time': '2026-11-20T19:00:00+01:00', 'location': 'Sports Complex',
+            'email_design': 'custom', 'email_custom': {'mode': 'light', 'accent': '#7c3aed'},
+            'ticket_types': [{'name': 'Regular', 'price': 1000}, {'name': 'VIP', 'price': 5000, 'venue': 'VIP Lounge'}],
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        html = response.data['html']
+        for expected in ('Freshers', 'Party', 'Ada Example', 'K7QF-3M2P', 'Sports Complex', '7:00 PM WAT', '#7c3aed', 'VIP is in VIP Lounge.'):
+            self.assertIn(expected, html)
+        self.assertIn('₦1,000', html)
+        self.assertEqual(before, (Event.objects.count(), EventRegistration.objects.count(), TicketType.objects.count()))
+
+    def test_preview_rejects_bad_custom_values_and_non_managers(self):
+        response = self.client.post(reverse('events-email-preview'), {'email_design': 'custom', 'email_custom': {'accent': 'javascript:'}}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        student = User.objects.create_user(email='s@example.com', full_name='Student', password='pass12345', role='student')
+        self.client.force_authenticate(user=student)
+        self.assertEqual(self.client.post(reverse('events-email-preview'), {}, format='json').status_code, status.HTTP_403_FORBIDDEN)

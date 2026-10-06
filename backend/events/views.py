@@ -23,7 +23,7 @@ from .serializers import (
     EventSerializer,
     TicketTypeBriefSerializer,
 )
-from .emails import email_design_choices
+from .emails import email_design_choices, render_preview
 from .ticketing import RegistrationError, open_checkout, register, settle_payment, settle_pending_payments
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class EventViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         if self.action == "my_registration":
             return [permissions.IsAuthenticated()]
-        if self.action == "email_designs":
+        if self.action in ("email_designs", "email_preview"):
             return [permissions.IsAuthenticated(), IsEventManager()]
         return [IsEventManagerOrReadOnly()]
 
@@ -117,6 +117,14 @@ class EventViewSet(viewsets.ModelViewSet):
     def email_designs(self, request):
         """Ticket email designs for the admin event form's dropdown."""
         return Response(email_design_choices())
+
+    @action(detail=False, methods=["post"], url_path="email-preview")
+    def email_preview(self, request):
+        """The ticket email for the admin form's current values, filled with a sample buyer."""
+        try:
+            return Response({"html": render_preview(request.data)})
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
 
     def destroy(self, request, *args, **kwargs):
         event = self.get_object()
