@@ -141,3 +141,42 @@ class GuestTicketTest(APITestCase):
         self.client.force_authenticate(user=self.staff)
         response = self.client.patch(reverse('events-detail', kwargs={'pk': self.members_event.pk}), {'audience': 'public'}, format='json')
         self.assertEqual(response.data['audience'], 'public')
+
+
+class ScanReasonTest(APITestCase):
+    """The gate screen shows why a scan failed."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.staff = User.objects.create_user(email='staff@example.com', full_name='Staff', password='pass12345', role='admin')
+        self.event = Event.objects.create(title='Dinner', start_time=timezone.now() + timedelta(days=1), location='Hall')
+        self.other = Event.objects.create(title='Football Final', start_time=timezone.now() + timedelta(days=1), location='Pitch')
+        self.holder = User.objects.create_user(email='holder@example.com', full_name='Holder', password='pass12345')
+        self.ticket = EventRegistration.objects.create(event=self.other, user=self.holder, name='Holder', email='holder@example.com')
+        self.client.force_authenticate(user=self.staff)
+
+    def scan(self, token):
+        return self.client.post(reverse('admin-event-registration-check-in-by-token'), {'token': token, 'event': self.event.pk})
+
+    def test_ticket_for_another_event_names_it(self):
+        response = self.scan(str(self.ticket.token))
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data['status'], 'wrong_event')
+        self.assertIn('Football Final', response.data['detail'])
+
+    def test_unknown_or_garbage_code_is_invalid(self):
+        for token in ('00000000-0000-0000-0000-000000000000', 'https://example.com/not-a-ticket'):
+            response = self.scan(token)
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.data['status'], 'invalid')
+
+
+@override_settings(FRONTEND_URL='https://front.test', EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class TicketEmailTest(APITestCase):
+    def test_email_labels_the_venue(self):
+        from .ticketing import send_ticket_email
+        event = Event.objects.create(title='Dinner', start_time=timezone.now() + timedelta(days=1), location='Main Hall')
+        registration = EventRegistration.objects.create(event=event, name='Ada', email='ada@example.com')
+        send_ticket_email(registration)
+        self.assertIn('Venue: Main Hall', mail.outbox[0].body)
+        self.assertNotIn('Where:', mail.outbox[0].body)

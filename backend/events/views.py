@@ -261,9 +261,17 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
         if not token or not event_id:
             return Response({"detail": "token and event are required."}, status=400)
         try:
-            registration = EventRegistration.objects.get(token=token, event_id=event_id)
+            registration = EventRegistration.objects.select_related("event").get(token=token)
         except (EventRegistration.DoesNotExist, ValueError, DjangoValidationError):
-            return Response({"detail": "No matching registration found for this event."}, status=404)
+            return Response(
+                {"status": "invalid", "detail": "This QR code isn't a valid NACOS ticket."},
+                status=404,
+            )
+        if str(registration.event_id) != str(event_id):
+            return Response(
+                {"status": "wrong_event", "detail": f"This ticket is for {registration.event.title}, not this event."},
+                status=404,
+            )
         return self._perform_check_in(registration.pk)
 
 
@@ -347,6 +355,7 @@ class TicketView(APIView):
         event = registration.event
         data = EventRegistrationSerializer(registration).data
         data["name"] = registration.name
+        data["email"] = registration.email
         data["event"] = {
             "id": event.pk,
             "title": event.title,

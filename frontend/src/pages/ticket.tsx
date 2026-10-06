@@ -1,6 +1,6 @@
 // src/pages/ticket.tsx — the holder's ticket (QR code), opened from the link in the ticket email.
 // Works without signing in: the token in the URL is the ticket.
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { useTicket } from "../lib/hooks/useEvents";
 import Navbar from "../components/Navbar";
@@ -10,6 +10,9 @@ import { optimizeImage } from "../lib/cloudinary";
 export default function TicketPage() {
   const { token } = useParams<{ token: string }>();
   const { data: ticket, isLoading, error } = useTicket(token!);
+  // Set when Paystack has just sent the buyer here after a successful payment.
+  const [searchParams] = useSearchParams();
+  const justPaid = searchParams.get("paid") === "1";
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F5F7FA]">
@@ -24,7 +27,17 @@ export default function TicketPage() {
             <Link to="/events" className="text-[#006E3A] font-semibold underline">Browse events</Link>
           </div>
         ) : (
-          <article className="w-full max-w-sm bg-white rounded-2xl shadow-md overflow-hidden">
+          <div className="w-full max-w-sm">
+          {justPaid && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-800 rounded-2xl px-5 py-4" role="status">
+              <p className="font-bold">Payment successful 🎉</p>
+              <p className="text-sm mt-1">
+                Check your email for your ticket. We've sent it to <strong>{ticket.email}</strong> (look in spam if it
+                isn't there). You can also show the QR code below.
+              </p>
+            </div>
+          )}
+          <article className="w-full bg-white rounded-2xl shadow-md overflow-hidden">
             {ticket.event.poster && (
               <img src={optimizeImage(ticket.event.poster, 800)} alt="" className="w-full h-40 object-cover" />
             )}
@@ -65,6 +78,7 @@ export default function TicketPage() {
               </Link>
             </div>
           </article>
+          </div>
         )}
       </main>
       <Footer />

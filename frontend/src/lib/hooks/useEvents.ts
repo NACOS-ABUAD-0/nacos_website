@@ -247,6 +247,7 @@ export const useVerifyPayment = () => {
 // The holder's ticket page, opened from the emailed link — no sign-in needed.
 export interface EventTicket extends EventRegistration {
   name: string;
+  email: string;
   event: {
     id: number;
     title: string;

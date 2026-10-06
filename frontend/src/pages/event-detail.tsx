@@ -28,6 +28,7 @@ export default function EventDetail() {
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const [justPaid, setJustPaid] = useState(false);
   const verifiedReference = useRef<string | null>(null);
 
   // Paystack sends the buyer back here with ?reference=...; confirm it with the server once.
@@ -40,9 +41,10 @@ export default function EventDetail() {
       {
         onSuccess: (data) => {
           if (data.status === "confirmed") {
-            toast.success("Payment confirmed. Your ticket is ready!");
+            toast.success("Payment successful! Check your email for your ticket.", { duration: 8000 });
             // Guests have no account to come back to, so take them to their ticket page.
-            if (!isAuthenticated && data.token) navigate(`/tickets/${data.token}`);
+            if (!isAuthenticated && data.token) navigate(`/tickets/${data.token}?paid=1`);
+            else setJustPaid(true);
           } else if (data.payment_status === "failed" || data.payment_status === "abandoned")
             toast.error("The payment didn't go through. You can try again.");
           else toast("Payment is still processing. Refresh in a minute.", { icon: "⏳" });
@@ -328,6 +330,15 @@ export default function EventDetail() {
                 </a>
               </div>
             ) : registration && registration.status === "confirmed" && registration.token ? (
+              <div className="flex flex-col gap-4 w-full lg:w-fit">
+              {justPaid && (
+                <div className="bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-4" role="status">
+                  <p className="font-bold">Payment successful 🎉</p>
+                  <p className="text-sm mt-1">
+                    Check your email for your ticket. We've sent it to your inbox (look in spam if it isn't there).
+                  </p>
+                </div>
+              )}
               <div className="bg-white border border-gray-200 rounded-xl p-6 w-fit">
                 {registration.ticket_type && (
                   <div className="mb-3">
@@ -351,6 +362,7 @@ export default function EventDetail() {
                   <p className="text-sm text-gray-600 mb-4">Show this QR code at the event for check-in.</p>
                 )}
                 <QRCodeSVG value={registration.token} size={180} />
+              </div>
               </div>
             ) : (
               <button
