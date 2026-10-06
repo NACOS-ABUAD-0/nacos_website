@@ -259,8 +259,9 @@ class AdminEventRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventRegistration
-        # user is null for guests; name/email are always set.
-        fields = ['id', 'user', 'name', 'email', 'token', 'short_code', 'status', 'ticket_type', 'amount_paid', 'checked_in_at', 'checked_in_by', 'created_at']
+        # user is null for guests; name/email are always set. No token: that's the QR secret, and
+        # anyone on the gate team could otherwise copy it and walk in as that person.
+        fields = ['id', 'user', 'name', 'email', 'short_code', 'status', 'ticket_type', 'amount_paid', 'checked_in_at', 'checked_in_by', 'created_at']
         read_only_fields = fields
 
     def get_amount_paid(self, obj):

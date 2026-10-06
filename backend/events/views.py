@@ -9,7 +9,7 @@ from rest_framework import filters, mixins, permissions, viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
 
 from accounts.permissions import IsAdminOrExecutive
@@ -24,7 +24,9 @@ from .serializers import (
     TicketTypeBriefSerializer,
 )
 from .emails import email_design_choices, render_preview
-from .ticketing import RegistrationError, open_checkout, register, settle_payment, settle_pending_payments
+from .ticketing import (
+    RegistrationError, handle_dispute, handle_refund, open_checkout, register, settle_payment, settle_pending_payments,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -207,11 +209,13 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="my-registration")
     def my_registration(self, request, pk=None):
         event = self.get_object()
-        registration = (
-            EventRegistration.objects.filter(event=event, user=request.user).first()
-            # A ticket taken as a guest with the same email before signing in.
-            or EventRegistration.objects.filter(event=event, email=request.user.email.strip().lower()).first()
-        )
+        registration = EventRegistration.objects.filter(event=event, user=request.user).first()
+        if registration is None and request.user.is_email_verified:
+            # A ticket taken as a guest with the same email before signing in. Only for verified
+            # emails: otherwise anyone could sign up with a guest's address and see their QR code.
+            registration = EventRegistration.objects.filter(
+                event=event, email=request.user.email.strip().lower(),
+            ).first()
         if registration is None:
             return Response({"detail": "Not registered for this event."}, status=404)
         if registration.status == EventRegistration.Status.PENDING_PAYMENT:
@@ -241,6 +245,15 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
     def _perform_check_in(self, registration_pk):
         with transaction.atomic():
             registration = EventRegistration.objects.select_for_update().get(pk=registration_pk)
+            if registration.status == EventRegistration.Status.CANCELLED:
+                return Response(
+                    {
+                        "status": "cancelled",
+                        "detail": "This ticket was cancelled (refunded), so it can't be used.",
+                        "registration": AdminEventRegistrationSerializer(registration).data,
+                    },
+                    status=400,
+                )
             if not registration.is_confirmed:
                 return Response(
                     {
@@ -313,6 +326,8 @@ class PaystackVerifyView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "paystack_verify"
 
     def get(self, request, reference):
         payment = TicketPayment.objects.filter(reference=reference).select_related("registration").first()
@@ -351,18 +366,31 @@ class PaystackWebhookView(APIView):
         except ValueError:
             return Response({"detail": "Invalid JSON"}, status=400)
 
-        reference = (body.get("data") or {}).get("reference")
-        if body.get("event") != "charge.success" or not reference:
-            return Response({"detail": "Ignored"}, status=200)
+        event_type = body.get("event")
+        data = body.get("data") if isinstance(body.get("data"), dict) else {}
+        transaction_data = data.get("transaction") if isinstance(data.get("transaction"), dict) else {}
 
         try:
-            # Re-verifies with Paystack and is idempotent, so repeated webhooks are harmless.
-            if settle_payment(reference) is None:
-                return Response({"detail": "Unknown reference"}, status=200)
+            if event_type == "charge.success":
+                reference = data.get("reference")
+                # Re-verifies with Paystack and is idempotent, so repeated webhooks are harmless.
+                handled = settle_payment(reference) if reference else None
+            elif event_type == "refund.processed":
+                reference = data.get("transaction_reference") or transaction_data.get("reference")
+                handled = handle_refund(reference, data.get("amount")) if reference else None
+            elif event_type in ("charge.dispute.create", "charge.dispute.remind"):
+                reference = transaction_data.get("reference") or data.get("transaction_reference")
+                handled = handle_dispute(reference) if reference else None
+            else:
+                return Response({"detail": "Ignored"}, status=200)
         except PaystackError as exc:
-            logger.error("Paystack webhook processing failed for %s: %s", reference, exc)
-            # Non-200 so Paystack retries later.
+            logger.error("Paystack webhook %s processing failed: %s", event_type, exc)
+            # Non-200 so Paystack retries later. Any other error also returns 500 and is retried.
             return Response({"detail": "Processing failed"}, status=500)
+
+        if handled is None:
+            # Not one of our ticket payments (e.g. another product on the same Paystack account).
+            return Response({"detail": "Unknown reference"}, status=200)
         return Response({"detail": "Processed"}, status=200)
 
 

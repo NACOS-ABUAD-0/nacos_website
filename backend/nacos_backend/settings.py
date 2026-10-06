@@ -90,6 +90,8 @@ REST_FRAMEWORK = {
         'login': '10/min',
         # Event tickets requested without signing in (each sends an email).
         'event_ticket_guest': '30/hour',
+        # Payment-return page; guests confirm a payment with just its reference.
+        'paystack_verify': '120/hour',
         # Account-creation spam.
         'register': '5/hour',
         # check-email / verify-student — both used pre-registration and

@@ -40,7 +40,8 @@ class EventRegistrationAdmin(admin.ModelAdmin):
 
 @admin.register(TicketPayment)
 class TicketPaymentAdmin(admin.ModelAdmin):
-    list_display = ('reference', 'event', 'email', 'ticket_type', 'amount_kobo', 'status', 'paid_at', 'created_at')
-    list_filter = ('status', 'event')
+    list_display = ('reference', 'event', 'email', 'ticket_type', 'amount_kobo', 'status', 'needs_attention', 'paid_at', 'created_at')
+    list_filter = ('needs_attention', 'status', 'event')
     search_fields = ('reference', 'email', 'paystack_id')
-    readonly_fields = [field.name for field in TicketPayment._meta.fields]
+    # Everything is read-only except the attention flag, which an admin clears once it's dealt with.
+    readonly_fields = [field.name for field in TicketPayment._meta.fields if field.name != 'needs_attention']

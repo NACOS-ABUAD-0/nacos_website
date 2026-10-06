@@ -5,7 +5,7 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import mail_admins, send_mail
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -18,6 +18,33 @@ logger = logging.getLogger(__name__)
 
 Status = EventRegistration.Status
 PaymentStatus = TicketPayment.Status
+Attention = TicketPayment.Attention
+
+# Fields of a Paystack transaction worth keeping. Everything else (card details, the reusable
+# authorization code, customer profile, metadata) is dropped before saving.
+GATEWAY_PAYLOAD_KEEP = {"id", "status", "reference", "amount", "currency", "fees", "paid_at", "created_at", "channel", "gateway_response", "message"}
+
+
+def safe_gateway_payload(data) -> dict:
+    if not isinstance(data, dict):
+        return {}
+    return {key: value for key, value in data.items() if key in GATEWAY_PAYLOAD_KEEP}
+
+
+def flag_payment(payment: TicketPayment, reason: str, summary: str) -> None:
+    """Marks a payment for a person to look at and emails the admins (ADMIN_EMAILS) once it's saved.
+    Logs carry the reference and amounts only, never the payer's details."""
+    payment.needs_attention = reason
+    payment.save(update_fields=['needs_attention', 'updated_at'])
+    logger.warning("Payment %s needs attention (%s): %s", payment.reference, reason, summary)
+    event_title = payment.event.title if payment.event_id else "an event"
+    transaction.on_commit(lambda: mail_admins(
+        f"Ticket payment needs attention: {Attention(reason).label}",
+        f"{summary}\n\nEvent: {event_title}\nPaystack reference: {payment.reference}\n"
+        f"Amount: {payment.amount_kobo / 100:,.2f} NGN\n\n"
+        f"Find it in Django admin under Events > Ticket payments, filtered by 'needs attention'.",
+        fail_silently=True,
+    ))
 
 
 def active_registration_q() -> Q:
@@ -35,8 +62,9 @@ def seat_counts(event_id: int) -> tuple[int, dict[int, int]]:
     return sum(row['n'] for row in rows), by_type
 
 
-def generate_reference(event_id: int, registration_id: int) -> str:
-    return f"NACOS-{event_id}-{registration_id}-{secrets.token_hex(5).upper()}"
+def generate_reference(event_id: int) -> str:
+    # 128 random bits: the reference also unlocks a guest's ticket on the payment-return page.
+    return f"NACOS-{event_id}-{secrets.token_hex(16).upper()}"
 
 
 class RegistrationError(Exception):
@@ -78,13 +106,30 @@ def _find_registration(event: Event, user, email: str, lock: bool = False) -> Ev
     return queryset.filter(event=event, email=email).first()
 
 
+def _guard_unverified_account(registration: EventRegistration | None, user) -> None:
+    """
+    A ticket that belongs to someone else's email is only handed to an account that has verified
+    that email. Otherwise anyone could sign up with a guest's address and see their QR code.
+    """
+    if registration is None or user is None or registration.user_id == user.pk or user.is_email_verified:
+        return
+    if registration.is_confirmed:
+        send_ticket_email(registration)  # direct, not on_commit: the error below rolls back
+    raise RegistrationError(
+        "There's already a ticket for this email address. Verify your account's email (use the link we "
+        "sent when you signed up) to see it here. If a ticket exists, we've also sent it to that inbox.",
+        409, "verify_email_required",
+    )
+
+
 def _already_confirmed(registration: EventRegistration, user) -> EventRegistration:
     """
     What to do when this email already has a confirmed ticket. The member who owns it just gets it back.
     A signed-in member whose email matches an earlier guest ticket takes it over. Anyone else gets the
     ticket re-sent to that email, never shown on screen, so typing someone's email can't take their ticket.
     """
-    if user is not None and registration.user_id in (None, user.pk):
+    if user is not None and (registration.user_id == user.pk
+                             or (registration.user_id is None and user.is_email_verified)):
         if registration.user_id is None:
             registration.user = user
             registration.save(update_fields=['user'])
@@ -92,7 +137,7 @@ def _already_confirmed(registration: EventRegistration, user) -> EventRegistrati
     # Sent directly: on_commit would be dropped when the error below rolls the transaction back.
     send_ticket_email(registration)
     raise RegistrationError(
-        "A ticket has already been issued to this email. We've sent it to that inbox again.",
+        "If this email already has a ticket for this event, we've sent it to that inbox again.",
         409, "ticket_already_issued",
     )
 
@@ -109,6 +154,7 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
     """
     email = email.strip().lower()
     existing = _find_registration(event, user, email)
+    _guard_unverified_account(existing, user)
     if existing and existing.status == Status.PENDING_PAYMENT:
         settle_pending_payments(existing)
     if existing and existing.is_confirmed:
@@ -123,6 +169,7 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
         # Lock the event row so two buyers can't both take the last seat.
         Event.objects.select_for_update().get(pk=event.pk)
         registration = _find_registration(event, user, email, lock=True)
+        _guard_unverified_account(registration, user)
         if registration and registration.is_confirmed:
             return _already_confirmed(registration, user), None, False
 
@@ -170,7 +217,7 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
             event=event,
             email=email,
             ticket_type=ticket_type,
-            reference=generate_reference(event.pk, registration.pk),
+            reference=generate_reference(event.pk),
             amount_kobo=ticket_type.price_kobo,
         )
 
@@ -186,7 +233,7 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
     except PaystackError as exc:
         logger.error("Paystack initialize failed for %s: %s %s", payment.reference, exc, exc.body)
         payment.status = PaymentStatus.FAILED
-        payment.gateway_payload = exc.body or {'message': str(exc)}
+        payment.gateway_payload = {'message': str(exc)}
         payment.save(update_fields=['status', 'gateway_payload', 'updated_at'])
         registration.hold_expires_at = timezone.now()
         registration.save(update_fields=['hold_expires_at'])
@@ -215,7 +262,8 @@ def settle_payment(reference: str) -> TicketPayment | None:
     payment = TicketPayment.objects.filter(reference=reference).first()
     if payment is None:
         return None
-    if payment.status == PaymentStatus.SUCCESSFUL:
+    # Final states: a late or replayed "success" must never bring a refunded payment back to life.
+    if payment.status in (PaymentStatus.SUCCESSFUL, PaymentStatus.REFUNDED):
         return payment
 
     verified = verify_payment(reference)
@@ -224,37 +272,48 @@ def settle_payment(reference: str) -> TicketPayment | None:
     if gateway_status != PaymentStatus.SUCCESSFUL:
         if gateway_status != payment.status:
             payment.status = gateway_status
-            payment.gateway_payload = verified
+            payment.gateway_payload = safe_gateway_payload(verified)
             payment.save(update_fields=['status', 'gateway_payload', 'updated_at'])
         return payment
 
     paid_amount = int(verified.get('amount') or 0)
-    if paid_amount < payment.amount_kobo or str(verified.get('currency', '')).upper() != 'NGN':
-        logger.error("Payment %s amount mismatch: expected %s kobo NGN, got %s", reference, payment.amount_kobo, verified)
-        payment.status = PaymentStatus.FAILED
-        payment.gateway_payload = verified
-        payment.save(update_fields=['status', 'gateway_payload', 'updated_at'])
+    currency = str(verified.get('currency', '')).upper()
+    if paid_amount < payment.amount_kobo or currency != 'NGN':
+        with transaction.atomic():
+            payment = TicketPayment.objects.select_for_update().get(pk=payment.pk)
+            if payment.status == PaymentStatus.SUCCESSFUL or payment.needs_attention == Attention.UNDERPAID:
+                return payment
+            payment.status = PaymentStatus.FAILED
+            payment.gateway_payload = safe_gateway_payload(verified)
+            payment.save(update_fields=['status', 'gateway_payload', 'updated_at'])
+            flag_payment(payment, Attention.UNDERPAID,
+                         f"Paystack took {paid_amount / 100:,.2f} {currency or '?'} but the ticket costs "
+                         f"{payment.amount_kobo / 100:,.2f} NGN, so no ticket was issued. Refund the buyer in Paystack.")
         return payment
 
     newly_confirmed = None
     with transaction.atomic():
         payment = TicketPayment.objects.select_for_update().get(pk=payment.pk)
-        if payment.status != PaymentStatus.SUCCESSFUL:
-            fees = verified.get('fees')
-            payment.status = PaymentStatus.SUCCESSFUL
-            payment.paid_at = timezone.now()
-            payment.paystack_id = str(verified.get('id') or '')
-            payment.fees_kobo = int(fees) if isinstance(fees, (int, float)) else None
-            payment.gateway_payload = verified
-            payment.save()
+        # Another request (the webhook, the return page, a retry) confirmed this same payment while we
+        # waited for the lock. It already issued the ticket; going on would misreport a double payment.
+        if payment.status in (PaymentStatus.SUCCESSFUL, PaymentStatus.REFUNDED):
+            return payment
+        fees = verified.get('fees')
+        payment.status = PaymentStatus.SUCCESSFUL
+        payment.paid_at = timezone.now()
+        payment.paystack_id = str(verified.get('id') or '')
+        payment.fees_kobo = int(fees) if isinstance(fees, (int, float)) else None
+        payment.gateway_payload = safe_gateway_payload(verified)
+        payment.save()
 
         registration = (
             EventRegistration.objects.select_for_update().filter(pk=payment.registration_id).first()
             if payment.registration_id else None
         )
         if registration is None:
-            logger.warning("Payment %s succeeded but its registration no longer exists; refund required", reference)
-        elif registration.status == Status.PENDING_PAYMENT:
+            flag_payment(payment, Attention.TICKET_MISSING,
+                         "This payment went through but its ticket had been deleted (e.g. the account was removed). Refund the buyer.")
+        elif registration.status in (Status.PENDING_PAYMENT, Status.CANCELLED):
             # Issue even if the hold expired: they paid, so they get the ticket. The checkout that was
             # actually paid decides the ticket type and price.
             registration.status = Status.CONFIRMED
@@ -264,8 +323,10 @@ def settle_payment(reference: str) -> TicketPayment | None:
                 registration.ticket_type_id = payment.ticket_type_id
             registration.save(update_fields=['status', 'amount_kobo', 'hold_expires_at', 'ticket_type'])
             newly_confirmed = registration
-        else:
-            logger.warning("Payment %s succeeded but registration %s was already confirmed; refund required", reference, registration.pk)
+        elif payment.needs_attention != Attention.DUPLICATE:
+            flag_payment(payment, Attention.DUPLICATE,
+                         "This buyer already had a confirmed ticket when this payment went through, so they paid twice. "
+                         "Refund this payment in Paystack.")
 
     if newly_confirmed is not None:
         transaction.on_commit(lambda: send_ticket_email(newly_confirmed))
@@ -288,3 +349,65 @@ def send_ticket_email(registration: EventRegistration) -> None:
         )
     except Exception as exc:  # The ticket is confirmed either way; email is a courtesy.
         logger.error("Ticket confirmed for registration %s but email failed: %s", registration.pk, exc)
+
+
+def handle_refund(reference: str, amount_kobo) -> TicketPayment | None:
+    """
+    Paystack refund.processed. A full refund cancels the ticket (QR and code stop working) unless the
+    buyer has another successful payment for it, e.g. when the refund was for a duplicate payment.
+    A partial refund only flags the payment for an admin. Safe to receive more than once.
+    """
+    with transaction.atomic():
+        payment = TicketPayment.objects.select_for_update().filter(reference=reference).first()
+        if payment is None or payment.status == PaymentStatus.REFUNDED:
+            return payment
+
+        try:
+            refunded = int(amount_kobo)
+        except (TypeError, ValueError):
+            refunded = None
+        if refunded is None or refunded < payment.amount_kobo:
+            if payment.needs_attention != Attention.PARTIAL_REFUND:
+                shown = "an unknown amount" if refunded is None else f"{refunded / 100:,.2f} NGN"
+                flag_payment(payment, Attention.PARTIAL_REFUND,
+                             f"Paystack refunded {shown} of this payment. The ticket is still valid; cancel it in "
+                             f"Django admin if the buyer shouldn't attend.")
+            return payment
+
+        payment.status = PaymentStatus.REFUNDED
+        payment.needs_attention = Attention.NONE
+        payment.save(update_fields=['status', 'needs_attention', 'updated_at'])
+
+        registration = (
+            EventRegistration.objects.select_for_update().filter(pk=payment.registration_id).first()
+            if payment.registration_id else None
+        )
+        cancelled = False
+        if registration and registration.status == Status.CONFIRMED and registration.amount_kobo \
+                and not registration.payments.filter(status=PaymentStatus.SUCCESSFUL).exists():
+            registration.status = Status.CANCELLED
+            registration.save(update_fields=['status'])
+            cancelled = True
+
+        logger.info("Payment %s refunded; ticket %s", reference, "cancelled" if cancelled else "kept")
+        event_title = payment.event.title
+        transaction.on_commit(lambda: mail_admins(
+            "Ticket refunded",
+            f"Paystack refunded payment {reference} for {event_title}. "
+            + ("The ticket has been cancelled: its QR code and ticket code no longer work."
+               if cancelled else "The ticket stays valid (the buyer has another successful payment, or no ticket was issued)."),
+            fail_silently=True,
+        ))
+        return payment
+
+
+def handle_dispute(reference: str) -> TicketPayment | None:
+    """Paystack charge.dispute.create: the buyer's bank is disputing the charge. The ticket stays valid
+    until an admin decides; they're emailed so they can respond in Paystack before the deadline."""
+    with transaction.atomic():
+        payment = TicketPayment.objects.select_for_update().filter(reference=reference).first()
+        if payment is not None and payment.needs_attention != Attention.DISPUTED:
+            flag_payment(payment, Attention.DISPUTED,
+                         "The buyer's bank opened a dispute (chargeback) on this payment. Respond in the Paystack "
+                         "dashboard, and cancel the ticket in Django admin if you accept the dispute.")
+        return payment

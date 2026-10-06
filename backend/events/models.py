@@ -114,6 +114,8 @@ class EventRegistration(models.Model):
         # Waiting for Paystack; holds a seat until hold_expires_at, and can't be checked in.
         PENDING_PAYMENT = 'pending_payment', 'Pending payment'
         CONFIRMED = 'confirmed', 'Confirmed'
+        # Refunded (or cancelled by an admin): the QR code and ticket code no longer work.
+        CANCELLED = 'cancelled', 'Cancelled'
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='registrations')
     # Null for guests on open events, who register with just a name and email.
@@ -170,6 +172,16 @@ class TicketPayment(models.Model):
         SUCCESSFUL = 'successful', 'Successful'
         FAILED = 'failed', 'Failed'
         ABANDONED = 'abandoned', 'Abandoned'
+        REFUNDED = 'refunded', 'Refunded'
+
+    class Attention(models.TextChoices):
+        # Payments a person has to look at; admins are emailed when one is flagged.
+        NONE = '', 'Nothing to do'
+        DUPLICATE = 'duplicate_payment', 'Paid twice: refund one'
+        UNDERPAID = 'underpaid', 'Paid less than the price (or wrong currency): refund'
+        TICKET_MISSING = 'ticket_missing', 'Paid but the ticket was deleted: refund'
+        PARTIAL_REFUND = 'partial_refund', 'Partly refunded: decide whether the ticket stays valid'
+        DISPUTED = 'disputed', 'Disputed by the bank: respond in Paystack'
 
     # Payment records outlive their registration (e.g. a deleted account), so the event and payer
     # email are kept on the payment itself. Deleting an event with payments is blocked (PROTECT).
@@ -188,7 +200,9 @@ class TicketPayment(models.Model):
     # Paystack's fee in kobo, from the verify response.
     fees_kobo = models.PositiveIntegerField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
-    # Last verify response from Paystack, kept for reconciliation and disputes.
+    needs_attention = models.CharField(max_length=40, choices=Attention.choices, default='', blank=True, db_index=True)
+    # Last verify response from Paystack, kept for reconciliation and disputes. Card details and the
+    # reusable authorization code are stripped before saving (see ticketing.safe_gateway_payload).
     gateway_payload = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

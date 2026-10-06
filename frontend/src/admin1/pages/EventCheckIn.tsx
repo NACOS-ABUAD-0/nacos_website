@@ -30,6 +30,9 @@ const scanFailure = (error: unknown): ScanOutcome => {
   if (data?.status === 'not_paid') {
     return { kind: 'failed', title: 'Not paid', reason: "This ticket's payment hasn't gone through, so it can't be used yet.", registration: data.registration }
   }
+  if (data?.status === 'cancelled') {
+    return { kind: 'failed', title: 'Ticket cancelled', reason: data.detail ?? 'This ticket was refunded, so it can\'t be used.', registration: data.registration }
+  }
   if (data?.status === 'wrong_event') return { kind: 'failed', title: 'Wrong event', reason: data.detail ?? 'This ticket is for a different event.' }
   if (response?.status === 404) return { kind: 'failed', title: 'Invalid ticket', reason: data?.detail ?? "This QR code isn't a valid ticket for this event." }
   if (!response) return { kind: 'failed', title: 'No connection', reason: "Couldn't reach the server. Check the internet connection and scan again." }

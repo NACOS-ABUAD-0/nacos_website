@@ -16,9 +16,8 @@ export interface AdminEventRegistration {
   user: AdminEventRegistrationUser | null;
   name: string;
   email: string;
-  token: string;
   short_code: string;
-  status: 'pending_payment' | 'confirmed';
+  status: 'pending_payment' | 'confirmed' | 'cancelled';
   ticket_type: { id: number; name: string; price: number; venue: string } | null;
   amount_paid: number;
   checked_in_at: string | null;
@@ -27,7 +26,7 @@ export interface AdminEventRegistration {
 }
 
 export interface CheckInResult {
-  status: 'checked_in' | 'already_checked_in' | 'not_paid';
+  status: 'checked_in' | 'already_checked_in' | 'not_paid' | 'cancelled';
   registration: AdminEventRegistration;
 }
 

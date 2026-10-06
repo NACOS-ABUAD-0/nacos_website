@@ -114,7 +114,8 @@ class GuestTicketTest(APITestCase):
 
     def test_member_who_registered_as_guest_sees_that_ticket_after_signing_in(self, _init):
         self.guest_register(self.open_event, name='Ada Guest', email='ada@example.com')
-        member = User.objects.create_user(email='ada@example.com', full_name='Ada Member', password='pass12345')
+        member = User.objects.create_user(email='ada@example.com', full_name='Ada Member', password='pass12345',
+                                          is_email_verified=True)
         self.client.force_authenticate(user=member)
         mine = self.client.get(reverse('events-my-registration', kwargs={'pk': self.open_event.pk}))
         self.assertEqual(mine.status_code, status.HTTP_200_OK)
