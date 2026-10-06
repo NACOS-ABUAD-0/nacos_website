@@ -9,8 +9,8 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
-from django.utils.html import escape
 
+from .emails import render_ticket_email
 from .models import Event, EventRegistration, TicketPayment, TicketType
 from .paystack import PaystackError, initialize_payment, verify_payment
 
@@ -272,52 +272,18 @@ def settle_payment(reference: str) -> TicketPayment | None:
     return payment
 
 
-def ticket_url(registration: EventRegistration) -> str:
-    """The holder's ticket page with the QR code. Works without signing in, so it's only ever emailed."""
-    return f"{settings.FRONTEND_URL.rstrip('/')}/tickets/{registration.token}"
-
-
 def send_ticket_email(registration: EventRegistration) -> None:
-    """Sends the holder a link to their ticket page (QR code), for free and paid tickets alike."""
+    """Sends the holder their ticket (code + link to the QR page), for free and paid tickets alike."""
     if not registration.email or not registration.is_confirmed:
         return
-    event = registration.event
-    type_name = registration.ticket_type.name if registration.ticket_type else 'Event'
-    event_url = ticket_url(registration)
-    when = timezone.localtime(event.start_time).strftime('%A %d %B %Y, %I:%M %p')
-    where = registration.ticket_type.effective_venue if registration.ticket_type else (
-        'Online' if event.is_remote else event.location
-    )
-    amount = f"₦{registration.amount_kobo / 100:,.2f} paid" if registration.amount_kobo else "free"
-    holder = registration.name or registration.email
-
-    message = (
-        f"Hi {holder},\n\n"
-        f"Your {type_name} ticket for {event.title} is confirmed ({amount}).\n\n"
-        f"When: {when}\nVenue: {where}\n\n"
-        f"Your ticket and QR code: {event_url}\n"
-        f"Ticket code: {registration.short_code} (give this at the entrance if the QR code won't scan)\n"
-        f"Show the QR code at the entrance. It can only be scanned once, so don't share the link.\n\nNACOS ABUAD"
-    )
-    html_message = f"""
-<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a2e;">
-  <h2 style="color: #006E3A; margin: 0 0 8px;">Your ticket is confirmed</h2>
-  <p style="margin: 0 0 16px;">Hi {escape(holder)}, your <strong>{escape(type_name)}</strong> ticket for
-  <strong>{escape(event.title)}</strong> is confirmed ({amount}).</p>
-  <p style="margin: 4px 0;"><strong>When:</strong> {when}</p>
-  <p style="margin: 4px 0;"><strong>Venue:</strong> {escape(where)}</p>
-  <p style="margin: 4px 0 20px;"><strong>Ticket code:</strong> <span style="font-family: monospace; font-size: 16px; letter-spacing: 2px;">{registration.short_code}</span>
-  <br><span style="font-size: 12px; color: #777;">Give this code at the entrance if the QR code won't scan.</span></p>
-  <a href="{escape(event_url)}" style="display: inline-block; background: #006E3A; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px;">Show my QR code</a>
-  <p style="font-size: 12px; color: #777; margin-top: 20px;">Show the QR code at the entrance. It can only be scanned once, so don't share this link.</p>
-</div>"""
     try:
+        subject, text, html = render_ticket_email(registration)
         send_mail(
-            subject=f"Your {type_name} ticket: {event.title}",
-            message=message,
+            subject=subject,
+            message=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[registration.email],
-            html_message=html_message,
+            html_message=html,
             fail_silently=False,
         )
     except Exception as exc:  # The ticket is confirmed either way; email is a courtesy.

@@ -218,3 +218,39 @@ class TicketCodeTest(APITestCase):
         self.assertIn(self.ticket.short_code, mail.outbox[0].body)
         self.ticket.status = EventRegistration.Status.PENDING_PAYMENT
         self.assertIsNone(EventRegistrationSerializer(self.ticket).data['short_code'])
+
+
+@override_settings(FRONTEND_URL='https://front.test')
+class TicketEmailDesignTest(APITestCase):
+    def test_times_are_lagos_time_and_free_tickets_say_free(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from .emails import render_ticket_email
+        event = Event.objects.create(
+            title='Movie Night', start_time=datetime(2026, 10, 9, 17, 0, tzinfo=ZoneInfo('UTC')), location='Sciences Auditorium',
+        )
+        TicketType.objects.create(event=event, name='Regular', price=0, sort_order=0)
+        vip = TicketType.objects.create(event=event, name='VIP', price=Decimal('2500'), venue='Hardware Lab', sort_order=1)
+        free = EventRegistration.objects.create(event=event, name='Ada Guest', email='ada@example.com',
+                                                ticket_type=event.ticket_types.get(name='Regular'))
+        subject, text, html = render_ticket_email(free)
+        self.assertEqual(subject, 'Your Regular ticket: Movie Night')
+        self.assertIn('Fri, 9 Oct 2026', text)
+        self.assertIn('6:00 PM WAT', text)          # 17:00 UTC is 6 PM in Lagos
+        self.assertIn('(FREE)', text)
+        self.assertIn('VIP is in Hardware Lab.', text)
+        self.assertIn(free.short_code, html)
+        self.assertIn('Hi Ada', html)
+
+        paid = EventRegistration.objects.create(event=event, name='Bo', email='bo@example.com', ticket_type=vip, amount_kobo=250000)
+        _, text, html = render_ticket_email(paid)
+        self.assertIn('Venue: Hardware Lab', text)
+        self.assertIn('₦2,500', html)
+
+    def test_names_in_email_are_escaped(self):
+        from .emails import render_ticket_email
+        event = Event.objects.create(title='<b>Party</b>', start_time=timezone.now() + timedelta(days=1), location='Hall')
+        registration = EventRegistration.objects.create(event=event, name='<script>x</script>', email='x@example.com')
+        html = render_ticket_email(registration)[2]
+        self.assertNotIn('<script>x</script>', html)
+        self.assertNotIn('<b>Party', html)

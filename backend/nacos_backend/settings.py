@@ -341,6 +341,8 @@ CLOUDINARY_RESOURCES_FOLDER = os.getenv("CLOUDINARY_RESOURCES_FOLDER", "nacos/re
 # Paystack (paid event tickets). sk_test_... for testing, sk_live_... for real payments.
 # Set the webhook URL in the Paystack dashboard to https://<api-host>/api/payments/paystack/webhook/
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
+# Footer line of ticket emails; change when a new administration takes over.
+TICKET_EMAIL_PRESENTED_BY = os.getenv("TICKET_EMAIL_PRESENTED_BY", "NACOS ABUAD · The Pulsar Administration")
 # How long an unpaid ticket holds a seat while the buyer is on the Paystack checkout page.
 TICKET_PAYMENT_HOLD_MINUTES = int(os.getenv("TICKET_PAYMENT_HOLD_MINUTES", "30"))
 
