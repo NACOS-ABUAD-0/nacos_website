@@ -34,6 +34,8 @@ interface EventItem {
   ticket_types?: TicketType[]
   is_paid?: boolean
   price_from?: number
+  // Confirmed tickets; only sent to admins and excos.
+  booked_count?: number
   is_published: boolean
   status?: EventStatus
   media?: EventMedia
@@ -194,12 +196,17 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
             {event.ticket_types.map(t => `${t.name} ${formatNaira(Number(t.price))}${t.venue ? ` @ ${t.venue}` : ''}`).join(' · ')}
           </p>
         )}
+        {event.booked_count != null && (
+          <p className="text-[12px] font-semibold text-[#1a7a3f] mb-2">
+            {event.booked_count} booked{event.capacity ? ` of ${event.capacity}` : ''}
+          </p>
+        )}
         <p className="text-[13px] text-gray-700 line-clamp-2 flex-1">{event.description}</p>
 
         <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[#d5e6df]">
           <button onClick={() => onCheckIn(event)}
             className="text-xs font-semibold py-2 rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
-            Check-in
+            Sales & check-in
           </button>
           <button onClick={() => onEdit(event)}
             className="text-xs font-semibold py-2 rounded-lg bg-[#1a7a3f] text-white hover:bg-[#155f32]">

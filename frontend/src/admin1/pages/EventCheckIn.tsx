@@ -9,9 +9,11 @@ import {
   useEventRegistrations,
   useCheckIn,
   useCheckInByToken,
+  useEventSales,
   type AdminEventRegistration,
 } from '../../lib/hooks/useEventAttendance'
 import BackCameraScanner from '../../components/BackCameraScanner'
+import EventSalesPanel, { type TicketTypeFilter } from '../components/EventSalesPanel'
 
 const formatTime = (iso: string): string =>
   new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -140,13 +142,19 @@ const EventCheckIn: React.FC = () => {
   const [scanMode, setScanMode] = useState<'idle' | 'scanning' | 'checking' | 'result'>('idle')
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null)
   const [typedCode, setTypedCode] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TicketTypeFilter>('all')
 
   const { data: event } = useEvent(id!)
-  const { data: registrations = [], isLoading } = useEventRegistrations(id!, search)
+  const { data: allRegistrations = [], isLoading } = useEventRegistrations(id!, search)
+  const { data: sales, isError: salesError } = useEventSales(id!)
   const checkInMutation = useCheckIn(id!)
   const checkInByTokenMutation = useCheckInByToken(id!)
 
-  const checkedInCount = registrations.filter(r => r.checked_in_at).length
+  // null matches "General admission" / tickets whose type was deleted.
+  const registrations = typeFilter === 'all'
+    ? allRegistrations
+    : allRegistrations.filter(r => (r.ticket_type?.id ?? null) === typeFilter)
+  const filterName = typeFilter === 'all' ? null : sales?.ticket_types.find(t => t.id === typeFilter)?.name
 
   const handleCheckInResult = (result: { status: string; registration: AdminEventRegistration }) => {
     const type = result.registration.ticket_type
@@ -209,9 +217,7 @@ const EventCheckIn: React.FC = () => {
               {new Date(event.start_time).toLocaleDateString()} · {event.is_remote ? 'Remote' : event.location}
             </p>
           )}
-          <p className="text-lg font-semibold text-gray-900">
-            {checkedInCount} / {registrations.length} checked in
-          </p>
+          <EventSalesPanel sales={sales} isError={salesError} filter={typeFilter} onFilterChange={setTypeFilter} />
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs px-4 sm:px-6 py-5 mb-6">
@@ -278,13 +284,23 @@ const EventCheckIn: React.FC = () => {
             placeholder="Search by name, matric number, email or ticket code…"
             className="border p-2 rounded-lg text-sm w-full mb-4"
           />
+          {filterName && (
+            <p className="text-xs text-gray-500 mb-3">
+              Showing {filterName} tickets only.{' '}
+              <button onClick={() => setTypeFilter('all')} className="font-semibold text-[#1a7a3f] hover:underline">
+                Show all
+              </button>
+            </p>
+          )}
 
           {isLoading ? (
             <div className="flex justify-center py-10">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a7a3f]" />
             </div>
           ) : registrations.length === 0 ? (
-            <p className="text-gray-500 text-center py-10">No registrations yet.</p>
+            <p className="text-gray-500 text-center py-10">
+              {filterName ? `No ${filterName} tickets match.` : search ? 'No tickets match your search.' : 'No registrations yet.'}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">

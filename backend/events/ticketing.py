@@ -2,12 +2,14 @@
 """Seat counting, the paid-registration flow and Paystack settlement."""
 import logging
 import secrets
+import threading
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.mail import mail_admins, send_mail
-from django.db import transaction
-from django.db.models import Count, Q
+from django.db import connection, transaction
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from .emails import render_ticket_email
@@ -331,6 +333,116 @@ def settle_payment(reference: str) -> TicketPayment | None:
     if newly_confirmed is not None:
         transaction.on_commit(lambda: send_ticket_email(newly_confirmed))
     return payment
+
+
+def event_sales(event: Event) -> dict:
+    """
+    Live booking and money totals for the admin sales panel, overall and per ticket type.
+    "booked" is confirmed tickets (free and paid); money is what Paystack actually took, so it matches
+    the Paystack dashboard: duplicate payments count until refunded, refunds are listed separately.
+    """
+    now = timezone.now()
+    regs = EventRegistration.objects.filter(event=event)
+    reg_rows = regs.values('ticket_type_id').annotate(
+        booked=Count('id', filter=Q(status=Status.CONFIRMED)),
+        checked_in=Count('id', filter=Q(status=Status.CONFIRMED, checked_in_at__isnull=False)),
+        awaiting_payment=Count('id', filter=Q(status=Status.PENDING_PAYMENT, hold_expires_at__gt=now)),
+    )
+    pay_rows = TicketPayment.objects.filter(event=event).values('ticket_type_id').annotate(
+        paid=Count('id', filter=Q(status=PaymentStatus.SUCCESSFUL)),
+        revenue=Sum('amount_kobo', filter=Q(status=PaymentStatus.SUCCESSFUL)),
+        fees=Sum('fees_kobo', filter=Q(status=PaymentStatus.SUCCESSFUL)),
+        refunded=Count('id', filter=Q(status=PaymentStatus.REFUNDED)),
+        refunded_amount=Sum('amount_kobo', filter=Q(status=PaymentStatus.REFUNDED)),
+        needs_attention=Count('id', filter=~Q(needs_attention='')),
+    )
+
+    zero = {'booked': 0, 'checked_in': 0, 'awaiting_payment': 0, 'paid': 0, 'revenue': 0,
+            'fees': 0, 'refunded': 0, 'refunded_amount': 0, 'needs_attention': 0}
+    buckets: dict = {}
+    for row in list(reg_rows) + list(pay_rows):
+        bucket = buckets.setdefault(row['ticket_type_id'], dict(zero))
+        for key, value in row.items():
+            if key != 'ticket_type_id':
+                bucket[key] += value or 0
+
+    def money(bucket):
+        # Kobo in, naira out, like every other amount the API returns.
+        out = dict(bucket)
+        for key in ('revenue', 'fees', 'refunded_amount'):
+            out[key] = out[key] / 100
+        out['net'] = (bucket['revenue'] - bucket['fees']) / 100
+        return out
+
+    def add(into, bucket):
+        for key in zero:
+            into[key] += bucket[key]
+
+    taken, by_type = seat_counts(event.pk)
+    totals = dict(zero)
+    ticket_types = []
+    for ticket_type in event.ticket_types.all():
+        bucket = buckets.pop(ticket_type.pk, dict(zero))
+        add(totals, bucket)
+        remaining = None if ticket_type.capacity is None else max(ticket_type.capacity - by_type.get(ticket_type.pk, 0), 0)
+        ticket_types.append({
+            'id': ticket_type.pk, 'name': ticket_type.name, 'price': float(ticket_type.price),
+            'capacity': ticket_type.capacity, 'remaining': remaining, **money(bucket),
+        })
+    # Free events without ticket types, or tickets whose type was since deleted.
+    leftover = dict(zero)
+    for bucket in buckets.values():
+        add(leftover, bucket)
+    if any(leftover.values()):
+        add(totals, leftover)
+        name = 'Other (type deleted)' if ticket_types else 'General admission'
+        ticket_types.append({'id': None, 'name': name, 'price': None, 'capacity': None, 'remaining': None, **money(leftover)})
+
+    totals = money(totals)
+    totals['capacity'] = event.capacity
+    totals['remaining'] = None if event.capacity is None else max(event.capacity - taken, 0)
+    return {'event': event.pk, 'totals': totals, 'ticket_types': ticket_types, 'generated_at': now}
+
+
+# How often the sales panel may trigger a re-check of unconfirmed payments with Paystack.
+SALES_SYNC_INTERVAL_SECONDS = 60
+
+
+def sync_unconfirmed_payments(event_id: int, limit: int = 15) -> int:
+    """
+    Asks Paystack about recent checkouts we still think are pending. Catches buyers who paid but closed
+    the tab before returning to the site, when the webhook is missing or late. Returns how many were checked.
+    """
+    now = timezone.now()
+    references = list(
+        TicketPayment.objects.filter(
+            event_id=event_id, status=PaymentStatus.PENDING, registration__isnull=False,
+            created_at__lte=now - timedelta(seconds=20), created_at__gte=now - timedelta(days=3),
+        ).exclude(checkout_url='').order_by('-created_at').values_list('reference', flat=True)[:limit]
+    )
+    for reference in references:
+        try:
+            settle_payment(reference)
+        except Exception as exc:  # One bad checkout mustn't stop the rest; Paystack errors are expected here.
+            logger.error("Background re-check of payment %s failed: %s", reference, exc)
+    return len(references)
+
+
+def start_payment_sync(event_id: int) -> bool:
+    """Runs sync_unconfirmed_payments in the background, at most once a minute per event (per worker)."""
+    if not settings.PAYSTACK_SECRET_KEY:
+        return False
+    if not cache.add(f'event-payment-sync:{event_id}', True, SALES_SYNC_INTERVAL_SECONDS):
+        return False
+
+    def run():
+        try:
+            sync_unconfirmed_payments(event_id)
+        finally:
+            connection.close()
+
+    threading.Thread(target=run, daemon=True, name=f'payment-sync-{event_id}').start()
+    return True
 
 
 def send_ticket_email(registration: EventRegistration) -> None:

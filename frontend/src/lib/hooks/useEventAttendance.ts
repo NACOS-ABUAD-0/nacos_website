@@ -43,6 +43,47 @@ export const useEventRegistrations = (eventId: string | number, search = '') =>
     refetchInterval: 5000,
   });
 
+// Counts are tickets; money is in naira. "booked" = confirmed tickets (free and paid).
+export interface SalesFigures {
+  booked: number;
+  checked_in: number;
+  // Started checkout, seat held, payment not confirmed yet.
+  awaiting_payment: number;
+  // Successful Paystack payments, including duplicates not yet refunded.
+  paid: number;
+  revenue: number;
+  fees: number;
+  net: number;
+  refunded: number;
+  refunded_amount: number;
+  needs_attention: number;
+  capacity: number | null;
+  remaining: number | null;
+}
+
+export interface TicketTypeSales extends SalesFigures {
+  // null for "General admission" (no ticket types) or tickets whose type was deleted.
+  id: number | null;
+  name: string;
+  price: number | null;
+}
+
+export interface EventSales {
+  event: number;
+  totals: SalesFigures;
+  ticket_types: TicketTypeSales[];
+  generated_at: string;
+}
+
+export const useEventSales = (eventId: string | number) =>
+  useQuery({
+    queryKey: ['event-sales', eventId],
+    queryFn: () => adminAttendanceAPI.getSales(eventId).then(r => r.data as EventSales),
+    enabled: !!eventId,
+    // Same polling as the roster: a new booking or payment shows up within a few seconds.
+    refetchInterval: 5000,
+  });
+
 export const useCheckIn = (eventId: string | number) => {
   const qc = useQueryClient();
 
@@ -51,6 +92,7 @@ export const useCheckIn = (eventId: string | number) => {
       adminAttendanceAPI.checkIn(registrationId).then(r => r.data as CheckInResult),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['event-registrations', eventId] });
+      qc.invalidateQueries({ queryKey: ['event-sales', eventId] });
     },
   });
 };
@@ -63,6 +105,7 @@ export const useCheckInByToken = (eventId: string | number) => {
       adminAttendanceAPI.checkInByToken(eventId, token).then(r => r.data as CheckInResult),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['event-registrations', eventId] });
+      qc.invalidateQueries({ queryKey: ['event-sales', eventId] });
     },
   });
 };

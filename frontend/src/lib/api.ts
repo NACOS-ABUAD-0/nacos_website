@@ -475,6 +475,7 @@ export const adminAttendanceAPI = {
     api.post(`/admin/event-registrations/${registrationId}/check-in/`),
   checkInByToken: (eventId: number | string, token: string) =>
     api.post("/admin/event-registrations/check-in-by-token/", { event: eventId, token }),
+  getSales: (eventId: number | string) => api.get(`/events/${eventId}/sales/`),
 };
 
 // ─── CLASS ATTENDANCE ──

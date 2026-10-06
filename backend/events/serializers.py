@@ -55,6 +55,8 @@ class EventSerializer(serializers.ModelSerializer):
     price_from = serializers.SerializerMethodField()
     tickets_remaining = serializers.SerializerMethodField()
     sold_out = serializers.SerializerMethodField()
+    # Confirmed tickets; only on admin/exco responses (the queryset annotates it for them).
+    booked_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -63,7 +65,7 @@ class EventSerializer(serializers.ModelSerializer):
             'location', 'is_remote', 'poster_url',
             'description', 'registration_url', 'contact_email',
             'capacity', 'audience', 'email_design', 'email_custom', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
-            'is_published', 'status', 'media',
+            'booked_count', 'is_published', 'status', 'media',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'status', 'created_at', 'updated_at']
@@ -104,6 +106,15 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_sold_out(self, obj):
         return self.get_tickets_remaining(obj) == 0
+
+    def get_booked_count(self, obj):
+        return getattr(obj, 'booked_count', None)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('booked_count') is None:
+            data.pop('booked_count', None)
+        return data
 
     # ── Validation ────────────────────────────────────────────────────────────
 

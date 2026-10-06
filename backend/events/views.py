@@ -4,6 +4,7 @@ import logging
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import filters, mixins, permissions, viewsets
 from django_filters.rest_framework import DjangoFilterBackend
@@ -25,7 +26,8 @@ from .serializers import (
 )
 from .emails import email_design_choices, render_preview
 from .ticketing import (
-    RegistrationError, handle_dispute, handle_refund, open_checkout, register, settle_payment, settle_pending_payments,
+    RegistrationError, event_sales, handle_dispute, handle_refund, open_checkout, register, settle_payment,
+    settle_pending_payments, start_payment_sync,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +88,7 @@ class EventViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         if self.action == "my_registration":
             return [permissions.IsAuthenticated()]
-        if self.action in ("email_designs", "email_preview"):
+        if self.action in ("email_designs", "email_preview", "sales"):
             return [permissions.IsAuthenticated(), IsEventManager()]
         return [IsEventManagerOrReadOnly()]
 
@@ -113,7 +115,23 @@ class EventViewSet(viewsets.ModelViewSet):
         elif status == "completed":
             qs = qs.filter(end_time__lt=now)
 
+        if can_manage_events(self.request.user):
+            # Shown on the admin event cards.
+            qs = qs.annotate(booked_count=Count(
+                "registrations", filter=Q(registrations__status=EventRegistration.Status.CONFIRMED),
+            ))
         return qs.prefetch_related("ticket_types")
+
+    @action(detail=True, methods=["get"], url_path="sales")
+    def sales(self, request, pk=None):
+        """
+        Live bookings, check-ins and money for one event, overall and per ticket type. The admin sales
+        panel polls this every few seconds. It also re-checks unconfirmed payments with Paystack in the
+        background (at most once a minute), so people who paid but never came back to the site still count.
+        """
+        event = self.get_object()
+        start_payment_sync(event.pk)
+        return Response(event_sales(event))
 
     @action(detail=False, methods=["get"], url_path="email-designs")
     def email_designs(self, request):
