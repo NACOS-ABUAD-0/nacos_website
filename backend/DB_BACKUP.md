@@ -33,8 +33,10 @@ report the same migrations and fails if they don't.
 6. Actions tab → *Database backup* → **Run workflow** to test it. The run summary
    shows migration and user counts for both databases.
 
-If Render's database is a newer major version than `PG_MAJOR` in the workflow,
-bump `PG_MAJOR`.
+The workflow asks Render which Postgres version it runs and installs matching
+tools, so there is no version to keep in sync. Its *Check database connections*
+step explains the common setup mistakes (Render's Internal URL instead of the
+External one, Neon's pooled host, a bad password).
 
 **Neon free tier notes:** storage is capped (0.5 GB at the time of writing), so
 check the project's storage usage occasionally as the database grows. The

@@ -9,7 +9,7 @@
 # 4. Check that the standby has the same migrations applied as production.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
-#   PRIMARY_DATABASE_URL    Render's *External* Database URL
+#   PRIMARY_DATABASE_URL    Render's *External* Database URL (host ends in .render.com)
 #   BACKUP_DATABASE_URL     Neon standby URL (direct, not -pooler); optional —
 #                           without it only the encrypted dump is produced
 #   BACKUP_PASSPHRASE       long random string used to encrypt the dump
@@ -26,10 +26,6 @@ on:
 concurrency:
   group: db-backup
   cancel-in-progress: false
-
-env:
-  # Must be >= the production server's major version (check Render's DB page).
-  PG_MAJOR: "17"
 
 jobs:
   backup:
@@ -54,8 +50,47 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update -qq
-          sudo apt-get install -y -qq "postgresql-client-${PG_MAJOR}"
-          echo "/usr/lib/postgresql/${PG_MAJOR}/bin" >> "$GITHUB_PATH"
+          # Newest psql, only used to ask each server its version below.
+          sudo apt-get install -y -qq postgresql-client-18
+
+      - name: Check database connections
+        env:
+          PRIMARY_DATABASE_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          PSQL=/usr/lib/postgresql/18/bin/psql
+          check() {  # $1 = label, $2 = url
+            host=$(echo "$2" | sed -E 's#^[a-z]+://[^@]*@([^:/?]+).*#\1#')
+            echo "$1 host: $host"
+            case "$1:$host" in
+              primary:*.render.com) ;;
+              primary:*)
+                echo "::error::PRIMARY_DATABASE_URL looks like Render's *Internal* URL (host '$host'), which only works inside Render. Use the External Database URL (host ends in .render.com)."
+                exit 1 ;;
+              standby:*-pooler*)
+                echo "::error::BACKUP_DATABASE_URL uses Neon's pooled host. Copy the connection string with 'Connection pooling' turned off."
+                exit 1 ;;
+            esac
+            if ! "$PSQL" "$2" -Atc "SELECT 1" > /dev/null; then
+              echo "::error::Could not connect to the $1 database. See the psql error above."
+              exit 1
+            fi
+            "$PSQL" "$2" -Atc "SHOW server_version_num" | cut -c1-2
+          }
+          PRIMARY_MAJOR=$(check primary "$PRIMARY_DATABASE_URL" | tee /dev/stderr | tail -1)
+          echo "primary Postgres major version: $PRIMARY_MAJOR"
+          if [ -n "$BACKUP_DATABASE_URL" ]; then
+            STANDBY_MAJOR=$(check standby "$BACKUP_DATABASE_URL" | tee /dev/stderr | tail -1)
+            echo "standby Postgres major version: $STANDBY_MAJOR"
+            if [ "$STANDBY_MAJOR" != "$PRIMARY_MAJOR" ]; then
+              echo "::warning::Neon is Postgres $STANDBY_MAJOR but Render is $PRIMARY_MAJOR. Recreate the Neon project on version $PRIMARY_MAJOR if the restore fails."
+            fi
+          fi
+          # Use client tools matching the production server.
+          if [ "$PRIMARY_MAJOR" != "18" ]; then
+            sudo apt-get install -y -qq "postgresql-client-${PRIMARY_MAJOR}"
+          fi
+          echo "/usr/lib/postgresql/${PRIMARY_MAJOR}/bin" >> "$GITHUB_PATH"
 
       - name: Dump production database
         env:
@@ -67,7 +102,9 @@ jobs:
             --file=nacos.dump
           ls -lh nacos.dump
           # Fail loudly on an empty/corrupt dump instead of overwriting the standby with it.
-          pg_restore --list nacos.dump | grep -q "TABLE DATA public django_migrations"
+          # (Not grep -q: it exits early, pg_restore gets SIGPIPE and pipefail fails the step.)
+          pg_restore --list nacos.dump > dump-contents.txt
+          grep "TABLE DATA public django_migrations" dump-contents.txt
 
       - name: Encrypt dump
         env:
