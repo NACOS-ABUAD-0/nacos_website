@@ -134,7 +134,7 @@ class EventViewSet(viewsets.ModelViewSet):
         if paid:
             return Response(
                 {"detail": f"{paid} people have paid for tickets to this event, so it can't be deleted. "
-                           f"Unpublish it instead, and refund them in Paystack if it's cancelled."},
+                           f"Unpublish it to hide it, or refund every payment in Paystack and then delete it."},
                 status=409,
             )
         with transaction.atomic():

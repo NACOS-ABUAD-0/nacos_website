@@ -1,0 +1,126 @@
+# Nightly off-site database backup.
+#
+# 1. pg_dump the production database (Render) in custom format.
+# 2. Encrypt the dump with a passphrase and keep it as a workflow artifact
+#    for 30 days. The repo is public, so the dump is NEVER stored unencrypted.
+# 3. Restore the same dump into a standby Postgres database on Neon,
+#    so a ready-to-use copy (data + schema + migration history)
+#    exists if Render's database goes down. Failover = point DATABASE_URL at it.
+# 4. Check that the standby has the same migrations applied as production.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   PRIMARY_DATABASE_URL    Render's *External* Database URL
+#   BACKUP_DATABASE_URL     Neon standby URL (direct, not -pooler); optional —
+#                           without it only the encrypted dump is produced
+#   BACKUP_PASSPHRASE       long random string used to encrypt the dump
+#
+# See backend/DB_BACKUP.md for setup, restore and failover steps.
+
+name: Database backup
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC (03:00 WAT) every day
+  workflow_dispatch:
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+env:
+  # Must be >= the production server's major version (check Render's DB page).
+  PG_MAJOR: "17"
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check secrets
+        env:
+          PRIMARY_DATABASE_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$PRIMARY_DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::PRIMARY_DATABASE_URL and BACKUP_PASSPHRASE secrets are required"
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "postgresql-client-${PG_MAJOR}"
+          echo "/usr/lib/postgresql/${PG_MAJOR}/bin" >> "$GITHUB_PATH"
+
+      - name: Dump production database
+        env:
+          PRIMARY_DATABASE_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+        run: |
+          pg_dump --version
+          pg_dump "$PRIMARY_DATABASE_URL" \
+            --format=custom --no-owner --no-privileges \
+            --file=nacos.dump
+          ls -lh nacos.dump
+          # Fail loudly on an empty/corrupt dump instead of overwriting the standby with it.
+          pg_restore --list nacos.dump | grep -q "TABLE DATA public django_migrations"
+
+      - name: Encrypt dump
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          STAMP=$(date -u +%Y-%m-%dT%H%MZ)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 \
+            --output "nacos-${STAMP}.dump.gpg" nacos.dump <<< "$BACKUP_PASSPHRASE"
+
+      - name: Upload encrypted dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: nacos-db-${{ env.STAMP }}
+          path: nacos-${{ env.STAMP }}.dump.gpg
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Restore into standby database
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          if [ -z "$BACKUP_DATABASE_URL" ]; then
+            echo "::warning::BACKUP_DATABASE_URL not set; skipping standby restore"
+            exit 0
+          fi
+          # --clean --if-exists drops and recreates every object from the dump,
+          # so the standby mirrors production exactly (including django_migrations).
+          pg_restore --dbname="$BACKUP_DATABASE_URL" \
+            --clean --if-exists --no-owner --no-privileges \
+            --single-transaction --exit-on-error \
+            nacos.dump
+
+      - name: Verify standby matches production
+        env:
+          PRIMARY_DATABASE_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          if [ -z "$BACKUP_DATABASE_URL" ]; then exit 0; fi
+          Q="SELECT count(*) || ' migrations, latest ' || max(app || '.' || name) FROM django_migrations"
+          U="SELECT count(*) || ' users' FROM accounts_user"
+          P=$(psql "$PRIMARY_DATABASE_URL" -Atc "$Q"; psql "$PRIMARY_DATABASE_URL" -Atc "$U")
+          S=$(psql "$BACKUP_DATABASE_URL" -Atc "$Q"; psql "$BACKUP_DATABASE_URL" -Atc "$U")
+          echo "primary: $P"
+          echo "standby: $S"
+          if [ "$P" != "$S" ]; then
+            # Writes between the dump and this check can cause a small drift in
+            # user count; migration drift means the restore genuinely failed.
+            [ "$(echo "$P" | head -1)" = "$(echo "$S" | head -1)" ] \
+              || { echo "::error::standby migrations differ from production"; exit 1; }
+            echo "::warning::user counts differ slightly (signups during backup?)"
+          fi
+          echo "### Backup ${STAMP}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- primary: $(echo $P)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- standby: $(echo $S)" >> "$GITHUB_STEP_SUMMARY"
