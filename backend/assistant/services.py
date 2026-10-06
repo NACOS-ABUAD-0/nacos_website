@@ -160,6 +160,15 @@ def retrieve_context(query: str) -> str:
     return "\n".join(lines)
 
 
+def gemini_error_message(response) -> str:
+    """Google's own reason for a failed call, e.g. "PERMISSION_DENIED: Your project has been denied access"."""
+    try:
+        error = response.json().get("error", {})
+        return f"{error.get('status', '')}: {error.get('message', '')}"[:300]
+    except ValueError:
+        return response.text[:300]
+
+
 def call_gemini(history: list[dict], user_message: str, context: str) -> str:
     """
     history: list of {"role": "user"|"assistant", "content": str}, oldest first.
@@ -192,13 +201,16 @@ def call_gemini(history: list[dict], user_message: str, context: str) -> str:
     }
 
     try:
+        # Key in a header, not ?key=: requests puts the full URL in its error messages, which get logged.
         response = requests.post(
             GEMINI_URL,
-            params={"key": api_key},
+            headers={"x-goog-api-key": api_key},
             json=payload,
             timeout=20,
         )
-        response.raise_for_status()
+        if not response.ok:
+            logger.warning("Gemini API call failed: HTTP %s %s", response.status_code, gemini_error_message(response))
+            return FALLBACK_REPLY
         data = response.json()
         _increment_daily_budget()
         return data["candidates"][0]["content"]["parts"][0]["text"]
@@ -206,7 +218,10 @@ def call_gemini(history: list[dict], user_message: str, context: str) -> str:
         logger.warning("Gemini API call timed out.")
         return FALLBACK_REPLY
     except requests.exceptions.RequestException as exc:
-        logger.warning("Gemini API call failed: %s", exc)
+        logger.warning("Gemini API call failed: %s", type(exc).__name__)
+        return FALLBACK_REPLY
+    except ValueError:
+        logger.warning("Gemini API returned a response that isn't JSON.")
         return FALLBACK_REPLY
     except (KeyError, IndexError) as exc:
         logger.warning("Gemini API returned an unexpected shape: %s", exc)

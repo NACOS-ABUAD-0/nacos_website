@@ -1,6 +1,8 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.conf import settings
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
@@ -8,7 +10,7 @@ from accounts.models import User
 from projects.models import Project, SkillTag
 from resources.models import Resource, ResourceTag
 from .models import Conversation, Message
-from .services import retrieve_context
+from .services import FALLBACK_REPLY, call_gemini, retrieve_context
 
 
 class AssistantChatAccessControlTest(APITestCase):
@@ -164,3 +166,38 @@ class RetrieveContextTest(APITestCase):
         resource.tags.add(tag)
         context = retrieve_context('do you have anything on algorithms')
         self.assertIn('CSC301 Notes', context)
+
+
+@override_settings(GEMINI_API_KEY='test-secret-key')
+class CallGeminiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def _response(self, status_code, body):
+        response = Mock(status_code=status_code, ok=status_code < 400, text=str(body))
+        response.json.return_value = body
+        return response
+
+    @patch('assistant.services.requests.post')
+    def test_returns_reply_and_sends_key_in_header_not_url(self, mock_post):
+        mock_post.return_value = self._response(200, {'candidates': [{'content': {'parts': [{'text': 'Hello!'}]}}]})
+        self.assertEqual(call_gemini([], 'hi', ''), 'Hello!')
+        _, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['headers'], {'x-goog-api-key': 'test-secret-key'})
+        self.assertNotIn('params', kwargs)
+        self.assertNotIn('test-secret-key', mock_post.call_args[0][0])
+
+    @patch('assistant.services.requests.post')
+    def test_google_refusal_logs_reason_without_key_and_falls_back(self, mock_post):
+        mock_post.return_value = self._response(403, {'error': {
+            'code': 403, 'status': 'PERMISSION_DENIED', 'message': 'Your project has been denied access.',
+        }})
+        with self.assertLogs('assistant.services', level='WARNING') as logs:
+            self.assertEqual(call_gemini([], 'hi', ''), FALLBACK_REPLY)
+        output = '\n'.join(logs.output)
+        self.assertIn('HTTP 403 PERMISSION_DENIED: Your project has been denied access.', output)
+        self.assertNotIn('test-secret-key', output)
+
+    @override_settings(GEMINI_API_KEY='')
+    def test_missing_key_says_not_set_up(self):
+        self.assertIn("isn't set up", call_gemini([], 'hi', ''))
