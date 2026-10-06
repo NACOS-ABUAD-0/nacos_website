@@ -7,9 +7,9 @@ from rest_framework.views import APIView
 
 from .models import Conversation, Message
 from .serializers import ChatRequestSerializer, MessageSerializer
-from .services import call_gemini, retrieve_context
+from .services import call_assistant, retrieve_context
 
-# Only the last N messages are sent to Gemini as context — keeps token cost
+# Only the last N messages are sent to the model as context — keeps token cost
 # and latency bounded regardless of how long a conversation grows. Full
 # history still lives in the DB for the user to scroll back through.
 HISTORY_WINDOW = 20
@@ -36,7 +36,7 @@ class ChatView(APIView):
         Message.objects.create(conversation=conversation, role=Message.Role.USER, content=user_message)
 
         context = retrieve_context(user_message)
-        reply_text = call_gemini(history, user_message, context)
+        reply_text = call_assistant(history, user_message, context)
 
         reply = Message.objects.create(
             conversation=conversation, role=Message.Role.ASSISTANT, content=reply_text,

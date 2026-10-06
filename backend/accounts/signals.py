@@ -22,7 +22,7 @@ def send_push_on_notification_created(sender, instance: Notification, created: b
     any future one will too, without needing to remember to wire it in.
 
     Best-effort only: push failures are logged and swallowed, never raised,
-    matching the defensive pattern already used for Gemini calls in
+    matching the defensive pattern already used for assistant API calls in
     assistant/services.py — a broken push service must never break the
     underlying action (e.g. accepting a collaboration request).
     """

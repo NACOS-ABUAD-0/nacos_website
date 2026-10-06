@@ -10,7 +10,7 @@ from accounts.models import User
 from projects.models import Project, SkillTag
 from resources.models import Resource, ResourceTag
 from .models import Conversation, Message
-from .services import FALLBACK_REPLY, call_gemini, retrieve_context
+from .services import BUSY_REPLY, FALLBACK_REPLY, call_assistant, retrieve_context
 
 
 class AssistantChatAccessControlTest(APITestCase):
@@ -24,7 +24,7 @@ class AssistantChatAccessControlTest(APITestCase):
         response = self.client.post('/api/assistant/chat/', {'message': 'hello'})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    @patch('assistant.views.call_gemini', return_value='Mocked reply.')
+    @patch('assistant.views.call_assistant', return_value='Mocked reply.')
     def test_authenticated_chat_stores_both_messages(self, mock_call):
         self.client.force_authenticate(user=self.user)
         response = self.client.post('/api/assistant/chat/', {'message': 'Hi there'})
@@ -40,7 +40,7 @@ class AssistantChatAccessControlTest(APITestCase):
         self.assertEqual(messages[1].role, 'assistant')
         self.assertEqual(messages[1].content, 'Mocked reply.')
 
-    @patch('assistant.views.call_gemini', return_value='Second reply.')
+    @patch('assistant.views.call_assistant', return_value='Second reply.')
     def test_conversation_context_grows_across_calls(self, mock_call):
         self.client.force_authenticate(user=self.user)
         self.client.post('/api/assistant/chat/', {'message': 'First message'})
@@ -54,7 +54,7 @@ class AssistantChatAccessControlTest(APITestCase):
         contents = [m['content'] for m in second_call_history]
         self.assertIn('First message', contents)
 
-    @patch('assistant.views.call_gemini', return_value='Reply.')
+    @patch('assistant.views.call_assistant', return_value='Reply.')
     def test_messages_endpoint_returns_history(self, mock_call):
         self.client.force_authenticate(user=self.user)
         self.client.post('/api/assistant/chat/', {'message': 'Hello'})
@@ -62,7 +62,7 @@ class AssistantChatAccessControlTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-    @patch('assistant.views.call_gemini', return_value='Reply.')
+    @patch('assistant.views.call_assistant', return_value='Reply.')
     def test_clear_conversation_empties_history(self, mock_call):
         self.client.force_authenticate(user=self.user)
         self.client.post('/api/assistant/chat/', {'message': 'Hello'})
@@ -168,8 +168,8 @@ class RetrieveContextTest(APITestCase):
         self.assertIn('CSC301 Notes', context)
 
 
-@override_settings(GEMINI_API_KEY='test-secret-key')
-class CallGeminiTests(TestCase):
+@override_settings(GROQ_API_KEY='test-secret-key', GROQ_MODEL='test-model')
+class CallAssistantTests(TestCase):
     def setUp(self):
         cache.clear()
 
@@ -179,25 +179,36 @@ class CallGeminiTests(TestCase):
         return response
 
     @patch('assistant.services.requests.post')
-    def test_returns_reply_and_sends_key_in_header_not_url(self, mock_post):
-        mock_post.return_value = self._response(200, {'candidates': [{'content': {'parts': [{'text': 'Hello!'}]}}]})
-        self.assertEqual(call_gemini([], 'hi', ''), 'Hello!')
-        _, kwargs = mock_post.call_args
-        self.assertEqual(kwargs['headers'], {'x-goog-api-key': 'test-secret-key'})
-        self.assertNotIn('params', kwargs)
-        self.assertNotIn('test-secret-key', mock_post.call_args[0][0])
+    def test_returns_reply_and_sends_history_in_openai_format(self, mock_post):
+        mock_post.return_value = self._response(200, {'choices': [{'message': {'role': 'assistant', 'content': 'Hello!'}}]})
+        history = [{'role': 'user', 'content': 'earlier'}, {'role': 'assistant', 'content': 'earlier reply'}]
+        self.assertEqual(call_assistant(history, 'hi', 'CONTEXT'), 'Hello!')
+        args, kwargs = mock_post.call_args
+        self.assertEqual(args[0], 'https://api.groq.com/openai/v1/chat/completions')
+        self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer test-secret-key'})
+        body = kwargs['json']
+        self.assertEqual(body['model'], 'test-model')
+        self.assertEqual([m['role'] for m in body['messages']], ['system', 'user', 'assistant', 'user'])
+        self.assertIn('CONTEXT', body['messages'][0]['content'])
+        self.assertEqual(body['messages'][-1]['content'], 'hi')
 
     @patch('assistant.services.requests.post')
-    def test_google_refusal_logs_reason_without_key_and_falls_back(self, mock_post):
-        mock_post.return_value = self._response(403, {'error': {
-            'code': 403, 'status': 'PERMISSION_DENIED', 'message': 'Your project has been denied access.',
+    def test_refusal_logs_reason_without_key_and_falls_back(self, mock_post):
+        mock_post.return_value = self._response(401, {'error': {
+            'message': 'Invalid API Key', 'type': 'invalid_request_error', 'code': 'invalid_api_key',
         }})
         with self.assertLogs('assistant.services', level='WARNING') as logs:
-            self.assertEqual(call_gemini([], 'hi', ''), FALLBACK_REPLY)
+            self.assertEqual(call_assistant([], 'hi', ''), FALLBACK_REPLY)
         output = '\n'.join(logs.output)
-        self.assertIn('HTTP 403 PERMISSION_DENIED: Your project has been denied access.', output)
+        self.assertIn('HTTP 401 invalid_api_key: Invalid API Key', output)
         self.assertNotIn('test-secret-key', output)
 
-    @override_settings(GEMINI_API_KEY='')
+    @patch('assistant.services.requests.post')
+    def test_rate_limit_gives_busy_reply(self, mock_post):
+        mock_post.return_value = self._response(429, {'error': {'message': 'Rate limit reached', 'code': 'rate_limit_exceeded'}})
+        with self.assertLogs('assistant.services', level='WARNING'):
+            self.assertEqual(call_assistant([], 'hi', ''), BUSY_REPLY)
+
+    @override_settings(GROQ_API_KEY='')
     def test_missing_key_says_not_set_up(self):
-        self.assertIn("isn't set up", call_gemini([], 'hi', ''))
+        self.assertIn("isn't set up", call_assistant([], 'hi', ''))

@@ -348,14 +348,16 @@ TICKET_EMAIL_PRESENTED_BY = os.getenv("TICKET_EMAIL_PRESENTED_BY", "NACOS ABUAD 
 # How long an unpaid ticket holds a seat while the buyer is on the Paystack checkout page.
 TICKET_PAYMENT_HOLD_MINUTES = int(os.getenv("TICKET_PAYMENT_HOLD_MINUTES", "30"))
 
-# AI Assistant (Google Gemini — free tier). Blank until a key is provided;
-# the assistant responds with a "not configured yet" message rather than
-# erroring when it's unset.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-# Soft daily cap on Gemini calls, shared across all users — Gemini's free
-# tier is a shared quota, not per-user. See backend/assistant/services.py.
-GEMINI_DAILY_CALL_BUDGET = int(os.getenv("GEMINI_DAILY_CALL_BUDGET", "400"))
+# AI Assistant (Groq, OpenAI-compatible API; keys at console.groq.com/keys). Blank until a key is
+# provided; the assistant replies "not set up yet" rather than erroring when it's unset.
+# Moved from Google Gemini in 2026-10 after Google blocked the project's access.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+# Any model your key can use: GET https://api.groq.com/openai/v1/models (the docs page lags behind;
+# llama-3.3-70b-versatile was listed there but unavailable to new accounts in 2026-10).
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+# Soft daily cap on assistant calls, shared across all users (Groq's free tier
+# limits are per account, not per user). See backend/assistant/services.py.
+ASSISTANT_DAILY_CALL_BUDGET = int(os.getenv("ASSISTANT_DAILY_CALL_BUDGET", "400"))
 
 # Custom flags
 REQUIRE_STUDENT_VERIFICATION = True

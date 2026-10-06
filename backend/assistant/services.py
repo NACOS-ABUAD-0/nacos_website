@@ -14,10 +14,7 @@ from resources.models import Resource, ResourceTag
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-)
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # Static, always-included (not retrieved) map of "how do I do X" -> route, so
 # the assistant can direct a lost student to the right page instead of only
@@ -73,16 +70,16 @@ def _extract_keywords(query: str) -> list[str]:
 FALLBACK_REPLY = "Sorry, I'm having trouble responding right now — please try again shortly."
 BUSY_REPLY = "The assistant is getting a lot of use right now — please try again in a little while."
 
-# Gemini's free tier is a shared quota across the whole app, not per-user.
+# Groq's free tier is a shared quota across the whole app, not per-user.
 # This is a soft daily budget so we fail gracefully with a friendly message
-# instead of the whole feature silently breaking once Google's ceiling is
+# instead of the whole feature silently breaking once Groq's ceiling is
 # hit. Not perfectly accurate across gunicorn's separate worker processes
 # (same caveat as the login rate limiter) — good enough for its purpose.
-DAILY_CALL_BUDGET = getattr(settings, "GEMINI_DAILY_CALL_BUDGET", 400)
+DAILY_CALL_BUDGET = getattr(settings, "ASSISTANT_DAILY_CALL_BUDGET", 400)
 
 
 def _daily_budget_key() -> str:
-    return f"gemini_calls_{datetime.date.today().isoformat()}"
+    return f"assistant_calls_{datetime.date.today().isoformat()}"
 
 
 def _daily_budget_exceeded() -> bool:
@@ -160,69 +157,67 @@ def retrieve_context(query: str) -> str:
     return "\n".join(lines)
 
 
-def gemini_error_message(response) -> str:
-    """Google's own reason for a failed call, e.g. "PERMISSION_DENIED: Your project has been denied access"."""
+def api_error_message(response) -> str:
+    """The provider's own reason for a failed call, e.g. "invalid_api_key: Invalid API Key"."""
     try:
         error = response.json().get("error", {})
-        return f"{error.get('status', '')}: {error.get('message', '')}"[:300]
-    except ValueError:
+        return f"{error.get('code') or error.get('type') or ''}: {error.get('message', '')}"[:300]
+    except (ValueError, AttributeError):
         return response.text[:300]
 
 
-def call_gemini(history: list[dict], user_message: str, context: str) -> str:
+def call_assistant(history: list[dict], user_message: str, context: str) -> str:
     """
     history: list of {"role": "user"|"assistant", "content": str}, oldest first.
     Returns the assistant's reply text, or a friendly fallback on any failure —
-    never raises, so a Gemini hiccup never surfaces as a 500 or spams the
+    never raises, so a provider hiccup never surfaces as a 500 or spams the
     admin-error-email alert.
     """
-    api_key = getattr(settings, "GEMINI_API_KEY", "")
+    api_key = getattr(settings, "GROQ_API_KEY", "")
     if not api_key:
-        logger.warning("GEMINI_API_KEY not configured — assistant is disabled.")
+        logger.warning("GROQ_API_KEY not configured — assistant is disabled.")
         return "The AI assistant isn't set up yet — please check back later."
 
     if _daily_budget_exceeded():
-        logger.warning("Gemini daily call budget exceeded.")
+        logger.warning("Assistant daily call budget exceeded.")
         return BUSY_REPLY
 
     system_text = SYSTEM_PROMPT
     if context:
         system_text += "\n\n" + context
 
-    contents = [
-        {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
+    messages = [{"role": "system", "content": system_text}]
+    messages += [
+        {"role": "user" if m["role"] == "user" else "assistant", "content": m["content"]}
         for m in history
     ]
-    contents.append({"role": "user", "parts": [{"text": user_message}]})
-
-    payload = {
-        "contents": contents,
-        "systemInstruction": {"parts": [{"text": system_text}]},
-    }
+    messages.append({"role": "user", "content": user_message})
 
     try:
-        # Key in a header, not ?key=: requests puts the full URL in its error messages, which get logged.
         response = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": api_key},
-            json=payload,
-            timeout=20,
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"model": settings.GROQ_MODEL, "messages": messages, "max_tokens": 1024},
+            timeout=30,
         )
+        if response.status_code == 429:
+            logger.warning("Assistant API rate limit hit: %s", api_error_message(response))
+            return BUSY_REPLY
         if not response.ok:
-            logger.warning("Gemini API call failed: HTTP %s %s", response.status_code, gemini_error_message(response))
+            logger.warning("Assistant API call failed: HTTP %s %s", response.status_code, api_error_message(response))
             return FALLBACK_REPLY
         data = response.json()
         _increment_daily_budget()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        return data["choices"][0]["message"]["content"]
     except requests.exceptions.Timeout:
-        logger.warning("Gemini API call timed out.")
+        logger.warning("Assistant API call timed out.")
         return FALLBACK_REPLY
     except requests.exceptions.RequestException as exc:
-        logger.warning("Gemini API call failed: %s", type(exc).__name__)
+        logger.warning("Assistant API call failed: %s", type(exc).__name__)
         return FALLBACK_REPLY
     except ValueError:
-        logger.warning("Gemini API returned a response that isn't JSON.")
+        logger.warning("Assistant API returned a response that isn't JSON.")
         return FALLBACK_REPLY
-    except (KeyError, IndexError) as exc:
-        logger.warning("Gemini API returned an unexpected shape: %s", exc)
+    except (KeyError, IndexError, TypeError) as exc:
+        logger.warning("Assistant API returned an unexpected shape: %s", exc)
         return FALLBACK_REPLY
