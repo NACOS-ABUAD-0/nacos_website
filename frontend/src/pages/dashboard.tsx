@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useProjects } from '../lib/hooks/useProjects';
-import { useEvents } from '../lib/hooks/useEvents';
+import { useUpcomingEventsSummary } from '../lib/hooks/useEvents';
 import { useQuery } from '@tanstack/react-query';
 import { usersAPI, resourcesAPI } from '../lib/api';
 import { useStudentProfile } from '../lib/hooks/useStudentProfile';
@@ -415,9 +415,9 @@ export const DashboardPage: React.FC = () => {
   const [projectsLoading, setProjectsLoading] = useState(true);
 
   // Fetch upcoming events
-  const { data: eventsData, isLoading: eventsLoading } = useEvents();
-  const upcomingEvents = eventsData?.results?.filter((e: any) => e.status === 'upcoming') || [];
-  const eventCount = upcomingEvents.length;
+  const { data: upcomingData, isLoading: eventsLoading } = useUpcomingEventsSummary();
+  const upcomingEvents = upcomingData?.events ?? [];
+  const eventCount = upcomingData?.count ?? 0;
 
   // Fetch active members count (total users)
   const { data: usersData, isLoading: usersLoading } = useQuery({

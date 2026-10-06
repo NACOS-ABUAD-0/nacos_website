@@ -120,6 +120,17 @@ export const useUpcomingEvents = (params: Record<string, unknown> = {}) =>
     placeholderData: keepPreviousData,
   });
 
+// Soonest upcoming events plus the true total (the list is only the first page).
+export const useUpcomingEventsSummary = () =>
+  useQuery({
+    queryKey: ['upcoming-events', 'summary'],
+    queryFn: async () => {
+      const response = await api.get('/events/', { params: { status: 'upcoming' } });
+      const data = response.data as PaginatedResponse<Event>;
+      return { count: data?.count ?? 0, events: data?.results ?? [] };
+    },
+  });
+
 /**
  * =========================
  * MUTATIONS
