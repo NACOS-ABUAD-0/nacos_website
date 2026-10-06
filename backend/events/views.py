@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from accounts.permissions import IsAdminOrExecutive
 
 from .filters import EventFilter
-from .models import Event, EventRegistration, TicketPayment
+from .models import Event, EventRegistration, TicketPayment, normalize_short_code
 from .paystack import PaystackError, is_valid_webhook_signature
 from .serializers import (
     AdminEventRegistrationSerializer,
@@ -213,7 +213,7 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
     pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["event"]
-    search_fields = ["name", "email", "user__full_name", "user__matric_number"]
+    search_fields = ["name", "email", "short_code", "user__full_name", "user__matric_number"]
 
     def _perform_check_in(self, registration_pk):
         with transaction.atomic():
@@ -256,15 +256,21 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
 
     @action(detail=False, methods=["post"], url_path="check-in-by-token")
     def check_in_by_token(self, request):
-        token = request.data.get("token")
+        """Body: { event, token } where token is the scanned QR value or the typed ticket code (e.g. K7QF-3M2P)."""
+        token = str(request.data.get("token") or request.data.get("code") or "").strip()
         event_id = request.data.get("event")
         if not token or not event_id:
             return Response({"detail": "token and event are required."}, status=400)
+        short_code = normalize_short_code(token)
+        lookup = {"short_code": short_code} if short_code else {"token": token}
         try:
-            registration = EventRegistration.objects.select_related("event").get(token=token)
+            registration = EventRegistration.objects.select_related("event").get(**lookup)
         except (EventRegistration.DoesNotExist, ValueError, DjangoValidationError):
             return Response(
-                {"status": "invalid", "detail": "This QR code isn't a valid NACOS ticket."},
+                {
+                    "status": "invalid",
+                    "detail": "No ticket has that code." if short_code else "This QR code isn't a valid NACOS ticket.",
+                },
                 status=404,
             )
         if str(registration.event_id) != str(event_id):

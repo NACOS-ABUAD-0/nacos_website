@@ -103,7 +103,10 @@ const RegistrationRow: React.FC<{
       )}
     </td>
     <td className="py-3 px-4 text-sm text-gray-500">{registration.user?.matric_number ?? '—'}</td>
-    <td className="py-3 px-4 text-sm text-gray-500">{registration.email}</td>
+    <td className="py-3 px-4 text-sm text-gray-500">
+      {registration.email}
+      <span className="block font-mono text-xs text-gray-400">{registration.short_code}</span>
+    </td>
     <td className="py-3 px-4">
       {registration.checked_in_at ? (
         <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
@@ -133,6 +136,7 @@ const EventCheckIn: React.FC = () => {
   const [search, setSearch] = useState('')
   const [scanMode, setScanMode] = useState<'idle' | 'scanning' | 'checking' | 'result'>('idle')
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null)
+  const [typedCode, setTypedCode] = useState('')
 
   const { data: event } = useEvent(id!)
   const { data: registrations = [], isLoading } = useEventRegistrations(id!, search)
@@ -209,6 +213,7 @@ const EventCheckIn: React.FC = () => {
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs px-4 sm:px-6 py-5 mb-6">
           {scanMode === 'idle' && (
+            <>
             <button
               onClick={() => setScanMode('scanning')}
               className="w-full flex items-center justify-center gap-3 bg-[#1a7a3f] text-white text-lg font-bold py-5 rounded-2xl shadow-md hover:bg-[#155f32] active:scale-[0.99] transition"
@@ -218,6 +223,32 @@ const EventCheckIn: React.FC = () => {
               </svg>
               Scan ticket
             </button>
+            <form
+              className="mt-4 flex gap-2"
+              onSubmit={e => {
+                e.preventDefault()
+                if (typedCode.trim()) { handleScan(typedCode); setTypedCode('') }
+              }}
+            >
+              <input
+                value={typedCode}
+                onChange={e => setTypedCode(e.target.value.toUpperCase())}
+                placeholder="QR won't scan? Type the ticket code, e.g. K7QF-3M2P"
+                aria-label="Ticket code"
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                className="flex-1 min-w-0 border border-gray-300 rounded-xl px-4 py-3 text-sm font-mono tracking-wider focus:outline-none focus:border-[#1a7a3f]"
+              />
+              <button
+                type="submit"
+                disabled={!typedCode.trim()}
+                className="px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold disabled:opacity-40"
+              >
+                Check in
+              </button>
+            </form>
+            </>
           )}
           {scanMode === 'scanning' && (
             <BackCameraScanner onScan={handleScan} onCancel={() => setScanMode('idle')} />
@@ -241,7 +272,7 @@ const EventCheckIn: React.FC = () => {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, matric number, or email…"
+            placeholder="Search by name, matric number, email or ticket code…"
             className="border p-2 rounded-lg text-sm w-full mb-4"
           />
 

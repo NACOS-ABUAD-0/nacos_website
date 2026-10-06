@@ -174,6 +174,8 @@ export interface EventRegistration {
   id: number;
   // null until a paid ticket is paid for — no QR before then.
   token: string | null;
+  // Typed at the gate if the QR won't scan, e.g. "K7QF-3M2P". null until paid.
+  short_code: string | null;
   status: 'pending_payment' | 'confirmed';
   // venue is the ticket type's own venue, or the event location.
   ticket_type: { id: number; name: string; price: number; venue: string } | null;

@@ -62,7 +62,13 @@ export default function TicketPage() {
                 {ticket.token && <QRCodeSVG value={ticket.token} size={220} />}
               </div>
 
-              <p className="text-lg font-semibold text-gray-900">{ticket.name}</p>
+              {ticket.short_code && (
+                <p className="text-sm text-gray-500">
+                  Ticket code{" "}
+                  <span className="font-mono text-base font-bold tracking-widest text-gray-900">{ticket.short_code}</span>
+                </p>
+              )}
+              <p className="text-lg font-semibold text-gray-900 mt-2">{ticket.name}</p>
               {ticket.checked_in_at ? (
                 <p className="mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
                   Checked in at {new Date(ticket.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

@@ -17,6 +17,7 @@ export interface AdminEventRegistration {
   name: string;
   email: string;
   token: string;
+  short_code: string;
   status: 'pending_payment' | 'confirmed';
   ticket_type: { id: number; name: string; price: number; venue: string } | null;
   amount_paid: number;

@@ -180,3 +180,41 @@ class TicketEmailTest(APITestCase):
         send_ticket_email(registration)
         self.assertIn('Venue: Main Hall', mail.outbox[0].body)
         self.assertNotIn('Where:', mail.outbox[0].body)
+
+
+@override_settings(FRONTEND_URL='https://front.test', EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class TicketCodeTest(APITestCase):
+    """The typed ticket code works at the gate like the QR code."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.staff = User.objects.create_user(email='staff@example.com', full_name='Staff', password='pass12345', role='admin')
+        self.event = Event.objects.create(title='Dinner', start_time=timezone.now() + timedelta(days=1), location='Hall')
+        self.ticket = EventRegistration.objects.create(event=self.event, name='Ada', email='ada@example.com')
+        self.client.force_authenticate(user=self.staff)
+
+    def test_every_ticket_gets_a_readable_code(self):
+        import re
+        self.assertRegex(self.ticket.short_code, r'^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$')
+        other = EventRegistration.objects.create(event=self.event, name='Bo', email='bo@example.com')
+        self.assertNotEqual(self.ticket.short_code, other.short_code)
+
+    def test_typed_code_checks_in_even_lowercase_without_dash(self):
+        typed = self.ticket.short_code.replace('-', '').lower()
+        response = self.client.post(reverse('admin-event-registration-check-in-by-token'), {'token': typed, 'event': self.event.pk})
+        self.assertEqual(response.data['status'], 'checked_in')
+        again = self.client.post(reverse('admin-event-registration-check-in-by-token'), {'token': self.ticket.short_code, 'event': self.event.pk})
+        self.assertEqual(again.data['status'], 'already_checked_in')
+
+    def test_unknown_code_is_invalid(self):
+        response = self.client.post(reverse('admin-event-registration-check-in-by-token'), {'token': 'ABCD-EFGH', 'event': self.event.pk})
+        self.assertEqual((response.status_code, response.data['status']), (404, 'invalid'))
+        self.assertEqual(response.data['detail'], 'No ticket has that code.')
+
+    def test_code_is_in_the_email_and_hidden_until_paid(self):
+        from .serializers import EventRegistrationSerializer
+        from .ticketing import send_ticket_email
+        send_ticket_email(self.ticket)
+        self.assertIn(self.ticket.short_code, mail.outbox[0].body)
+        self.ticket.status = EventRegistration.Status.PENDING_PAYMENT
+        self.assertIsNone(EventRegistrationSerializer(self.ticket).data['short_code'])

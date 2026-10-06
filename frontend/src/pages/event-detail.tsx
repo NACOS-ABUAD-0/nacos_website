@@ -362,6 +362,12 @@ export default function EventDetail() {
                   <p className="text-sm text-gray-600 mb-4">Show this QR code at the event for check-in.</p>
                 )}
                 <QRCodeSVG value={registration.token} size={180} />
+                {registration.short_code && (
+                  <p className="text-sm text-gray-500 mt-3 text-center">
+                    Ticket code{" "}
+                    <span className="font-mono font-bold tracking-widest text-gray-900">{registration.short_code}</span>
+                  </p>
+                )}
               </div>
               </div>
             ) : (

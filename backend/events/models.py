@@ -1,9 +1,27 @@
 # backend/events/models.py
+import secrets
 import uuid
 
 from django.db import models
 from django.db.models.functions import Lower
 from django.utils import timezone
+
+
+# No 0/O, 1/I/L: the code gets read off a phone and typed at a noisy gate.
+SHORT_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def generate_short_code() -> str:
+    chars = ''.join(secrets.choice(SHORT_CODE_ALPHABET) for _ in range(8))
+    return f"{chars[:4]}-{chars[4:]}"
+
+
+def normalize_short_code(value: str) -> str | None:
+    """'k7qf 3m2p' / 'K7QF3M2P' -> 'K7QF-3M2P'; None if it can't be a ticket code."""
+    compact = ''.join(ch for ch in str(value).upper() if ch.isalnum())
+    if len(compact) != 8 or any(ch not in SHORT_CODE_ALPHABET for ch in compact):
+        return None
+    return f"{compact[:4]}-{compact[4:]}"
 
 
 class Event(models.Model):
@@ -102,6 +120,8 @@ class EventRegistration(models.Model):
     email = models.EmailField(blank=True, default='')
     # Secret value in the QR code; also unlocks the ticket page for guests, so treat it like a password.
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
+    # Typed at the gate when the QR code won't scan; printed on the ticket and in the ticket email.
+    short_code = models.CharField(max_length=9, unique=True, default=generate_short_code, editable=False)
     ticket_type = models.ForeignKey(
         TicketType, on_delete=models.SET_NULL, null=True, blank=True, related_name='registrations',
     )

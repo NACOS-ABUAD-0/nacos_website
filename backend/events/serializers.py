@@ -220,7 +220,7 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventRegistration
-        fields = ['id', 'token', 'status', 'ticket_type', 'amount_paid', 'hold_expires_at', 'checked_in_at', 'created_at']
+        fields = ['id', 'token', 'short_code', 'status', 'ticket_type', 'amount_paid', 'hold_expires_at', 'checked_in_at', 'created_at']
         read_only_fields = fields
 
     def get_amount_paid(self, obj):
@@ -228,9 +228,10 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # No QR until the ticket is paid for.
+        # No QR or ticket code until the ticket is paid for.
         if not instance.is_confirmed:
             data['token'] = None
+            data['short_code'] = None
         return data
 
 
@@ -245,7 +246,7 @@ class AdminEventRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventRegistration
         # user is null for guests; name/email are always set.
-        fields = ['id', 'user', 'name', 'email', 'token', 'status', 'ticket_type', 'amount_paid', 'checked_in_at', 'checked_in_by', 'created_at']
+        fields = ['id', 'user', 'name', 'email', 'token', 'short_code', 'status', 'ticket_type', 'amount_paid', 'checked_in_at', 'checked_in_by', 'created_at']
         read_only_fields = fields
 
     def get_amount_paid(self, obj):

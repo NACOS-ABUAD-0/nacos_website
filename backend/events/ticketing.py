@@ -296,6 +296,7 @@ def send_ticket_email(registration: EventRegistration) -> None:
         f"Your {type_name} ticket for {event.title} is confirmed ({amount}).\n\n"
         f"When: {when}\nVenue: {where}\n\n"
         f"Your ticket and QR code: {event_url}\n"
+        f"Ticket code: {registration.short_code} (give this at the entrance if the QR code won't scan)\n"
         f"Show the QR code at the entrance. It can only be scanned once, so don't share the link.\n\nNACOS ABUAD"
     )
     html_message = f"""
@@ -304,7 +305,9 @@ def send_ticket_email(registration: EventRegistration) -> None:
   <p style="margin: 0 0 16px;">Hi {escape(holder)}, your <strong>{escape(type_name)}</strong> ticket for
   <strong>{escape(event.title)}</strong> is confirmed ({amount}).</p>
   <p style="margin: 4px 0;"><strong>When:</strong> {when}</p>
-  <p style="margin: 4px 0 20px;"><strong>Venue:</strong> {escape(where)}</p>
+  <p style="margin: 4px 0;"><strong>Venue:</strong> {escape(where)}</p>
+  <p style="margin: 4px 0 20px;"><strong>Ticket code:</strong> <span style="font-family: monospace; font-size: 16px; letter-spacing: 2px;">{registration.short_code}</span>
+  <br><span style="font-size: 12px; color: #777;">Give this code at the entrance if the QR code won't scan.</span></p>
   <a href="{escape(event_url)}" style="display: inline-block; background: #006E3A; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px;">Show my QR code</a>
   <p style="font-size: 12px; color: #777; margin-top: 20px;">Show the QR code at the entrance. It can only be scanned once, so don't share this link.</p>
 </div>"""
