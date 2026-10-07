@@ -281,7 +281,7 @@ export default function EventDetail() {
             ) : isGuest ? (
               <div className="flex flex-col gap-3 w-full lg:max-w-md">
                 <p className="text-sm text-gray-600">
-                  No account needed. Enter your details and we'll email your ticket. One ticket per email address.
+                  No account needed. Enter your details and we'll email your ticket. <strong className="font-bold text-gray-900">One ticket per email address.</strong>
                 </p>
                 <input
                   value={guestName}

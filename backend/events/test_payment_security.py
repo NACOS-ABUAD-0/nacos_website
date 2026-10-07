@@ -213,14 +213,17 @@ class PaymentSecurityTest(APITestCase):
         self.assertNotIn('token', roster.data[0])
         self.assertNotIn(str(EventRegistration.objects.get().token), json.dumps(roster.data, default=str))
 
-    def test_repeat_email_message_does_not_confirm_a_ticket_exists(self, _init):
+    def test_repeat_email_is_told_to_use_another_email(self, _init):
         free = Event.objects.create(title='Talk', start_time=timezone.now() + timedelta(days=1), location='Hall',
                                     audience=Event.Audience.PUBLIC)
         self.client.force_authenticate(user=None)
         url = reverse('events-register', kwargs={'pk': free.pk})
         self.client.post(url, {'name': 'Ada', 'email': 'ada@example.com'}, format='json')
         response = self.client.post(url, {'name': 'Ada', 'email': 'ada@example.com'}, format='json')
-        self.assertTrue(response.data['detail'].startswith('If this email already has a ticket'))
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Please use another email address', response.data['detail'])
+        # Still never shown on screen: the ticket only goes to the inbox that owns it.
+        self.assertNotIn('registration', response.data)
 
 
 @unittest.skipUnless(connection.vendor == 'postgresql', 'Row locks need PostgreSQL; SQLite serialises writes anyway.')

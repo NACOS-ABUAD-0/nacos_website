@@ -139,7 +139,8 @@ def _already_confirmed(registration: EventRegistration, user) -> EventRegistrati
     # Sent directly: on_commit would be dropped when the error below rolls the transaction back.
     send_ticket_email(registration)
     raise RegistrationError(
-        "If this email already has a ticket for this event, we've sent it to that inbox again.",
+        "This email address has already been used to buy a ticket for this event. Please use another "
+        "email address. If the ticket is yours, we've sent it to that inbox again.",
         409, "ticket_already_issued",
     )
 
