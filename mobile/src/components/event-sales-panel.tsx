@@ -133,7 +133,11 @@ export function EventSalesPanel({
             <View key={String(t.id)} className="flex-row border-b border-gray-100 py-2">
               <Text className="flex-1 text-sm font-medium text-gray-900" numberOfLines={1}>
                 {t.name}
-                {t.remaining != null ? <Text className="text-xs font-normal text-gray-400"> · {t.remaining} left</Text> : null}
+                {t.sales_closed ? (
+                  <Text className="text-xs font-semibold text-red-600"> · Sold out</Text>
+                ) : t.remaining != null ? (
+                  <Text className="text-xs font-normal text-gray-400"> · {t.remaining} left</Text>
+                ) : null}
               </Text>
               <Text className="w-16 text-right text-sm text-gray-800">{t.booked}</Text>
               <Text className="w-16 text-right text-sm text-gray-800">{t.checked_in}</Text>

@@ -61,6 +61,7 @@ interface TicketTypeRow {
   price: string
   capacity: string
   venue: string
+  sales_closed: boolean
 }
 
 interface EventFormData {
@@ -82,7 +83,7 @@ interface EventFormData {
 
 interface EventPayload extends Omit<EventFormData, 'capacity' | 'ticket_types'> {
   capacity: number | null
-  ticket_types: { id?: number; name: string; price: number; capacity: number | null; venue: string }[]
+  ticket_types: { id?: number; name: string; price: number; capacity: number | null; venue: string; sales_closed: boolean }[]
 }
 
 const MAX_POSTER_BYTES = 5 * 1024 * 1024
@@ -271,10 +272,10 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
     }
   }
 
-  const setTicketType = (index: number, field: keyof TicketTypeRow, value: string): void =>
+  const setTicketType = <K extends keyof TicketTypeRow>(index: number, field: K, value: TicketTypeRow[K]): void =>
     setForm(f => ({ ...f, ticket_types: f.ticket_types.map((t, i) => (i === index ? { ...t, [field]: value } : t)) }))
   const addTicketType = (): void =>
-    setForm(f => ({ ...f, ticket_types: [...f.ticket_types, { name: f.ticket_types.length ? '' : 'Regular', price: '', capacity: '', venue: '' }] }))
+    setForm(f => ({ ...f, ticket_types: [...f.ticket_types, { name: f.ticket_types.length ? '' : 'Regular', price: '', capacity: '', venue: '', sales_closed: false }] }))
   const removeTicketType = (index: number): void =>
     setForm(f => ({ ...f, ticket_types: f.ticket_types.filter((_, i) => i !== index) }))
 
@@ -289,6 +290,7 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
         price: Number(t.price),
         capacity: t.capacity.trim() ? Number(t.capacity) : null,
         venue: t.venue.trim(),
+        sales_closed: t.sales_closed,
       })),
   })
 
@@ -434,10 +436,20 @@ const EventModal: React.FC<EventModalProps> = ({ initial, onSave, onClose, isSav
                   <input value={t.venue} onChange={e => setTicketType(i, 'venue', e.target.value)}
                     placeholder={`Venue for ${t.name || 'this ticket'} (leave blank to use the event location)`}
                     className="border p-2 rounded-lg text-xs text-gray-700" />
+                  <button type="button" onClick={() => setTicketType(i, 'sales_closed', !t.sales_closed)}
+                    aria-pressed={t.sales_closed}
+                    className={`self-start text-xs font-semibold px-3 py-1.5 rounded-lg border ${
+                      t.sales_closed
+                        ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}>
+                    {t.sales_closed ? 'Sold out · tap to reopen sales' : 'Mark as sold out'}
+                  </button>
                 </div>
               ))}
               <p className="text-xs text-gray-500">
-                A type's price can't change once someone has a ticket of that type.
+                A type's price can't change once someone has a ticket of that type. To raise it, mark the
+                old type sold out and add a new one at the new price. Tickets already bought stay valid.
               </p>
             </div>
           )}
@@ -653,6 +665,7 @@ const Events: React.FC = () => {
           price: String(Number(t.price)),
           capacity: t.capacity != null ? String(t.capacity) : '',
           venue: t.venue ?? '',
+          sales_closed: t.sales_closed ?? false,
         })),
         is_published:      (modal as EventItem).is_published ?? true,
       }

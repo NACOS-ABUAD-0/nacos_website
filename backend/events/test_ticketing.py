@@ -203,6 +203,36 @@ class TicketTypeAndPaymentTest(APITestCase):
         self.assertTrue(vip['sold_out'])
         self.assertFalse(detail['sold_out'])
 
+    def test_admin_marks_type_sold_out_to_raise_its_price(self, _init):
+        self.assertEqual(self.register(self.student, self.regular).status_code, status.HTTP_201_CREATED)
+
+        # Price is locked once sold, so close the old release and open a dearer one.
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(reverse('events-detail', kwargs={'pk': self.event.pk}), {'ticket_types': [
+            {'id': self.regular.pk, 'name': 'Regular', 'price': 2000, 'capacity': 50, 'sales_closed': True},
+            {'id': self.vip.pk, 'name': 'VIP', 'price': 10000, 'capacity': 1},
+            {'name': 'Regular (Late)', 'price': 3000},
+        ]}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.regular.refresh_from_db()
+        self.assertTrue(self.regular.sales_closed)
+
+        blocked = self.register(self.other, self.regular)
+        self.assertEqual(blocked.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(blocked.data['code'], 'sold_out')
+        late = TicketType.objects.get(event=self.event, name='Regular (Late)')
+        self.assertEqual(self.register(self.other, late).status_code, status.HTTP_201_CREATED)
+        # The earlier buyer still holds their Regular ticket.
+        self.assertTrue(EventRegistration.objects.filter(user=self.student, ticket_type=self.regular).exists())
+
+        self.client.force_authenticate(user=None)
+        detail = self.client.get(reverse('events-detail', kwargs={'pk': self.event.pk})).data
+        regular = next(t for t in detail['ticket_types'] if t['name'] == 'Regular')
+        self.assertTrue(regular['sold_out'])
+        self.assertEqual(regular['tickets_remaining'], 0)
+        self.assertEqual(detail['price_from'], 3000)
+        self.assertFalse(detail['sold_out'])
+
     def test_event_capacity_counts_all_types(self, _init):
         self.event.capacity = 1
         self.event.save()

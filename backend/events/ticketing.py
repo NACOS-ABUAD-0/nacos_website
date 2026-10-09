@@ -182,6 +182,9 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
             if ticket_type is None:
                 raise RegistrationError("That ticket type is no longer available. Please choose again.", 409, "ticket_type_required")
 
+            if ticket_type.sales_closed:
+                raise RegistrationError(f"Sorry, {ticket_type.name} tickets are sold out.", 409, "sold_out")
+
         others = EventRegistration.objects.filter(event=event).filter(active_registration_q())
         if registration:
             others = others.exclude(pk=registration.pk)
@@ -388,7 +391,8 @@ def event_sales(event: Event) -> dict:
         remaining = None if ticket_type.capacity is None else max(ticket_type.capacity - by_type.get(ticket_type.pk, 0), 0)
         ticket_types.append({
             'id': ticket_type.pk, 'name': ticket_type.name, 'price': float(ticket_type.price),
-            'capacity': ticket_type.capacity, 'remaining': remaining, **money(bucket),
+            'capacity': ticket_type.capacity, 'remaining': remaining, 'sales_closed': ticket_type.sales_closed,
+            **money(bucket),
         })
     # Free events without ticket types, or tickets whose type was since deleted.
     leftover = dict(zero)
@@ -397,7 +401,8 @@ def event_sales(event: Event) -> dict:
     if any(leftover.values()):
         add(totals, leftover)
         name = 'Other (type deleted)' if ticket_types else 'General admission'
-        ticket_types.append({'id': None, 'name': name, 'price': None, 'capacity': None, 'remaining': None, **money(leftover)})
+        ticket_types.append({'id': None, 'name': name, 'price': None, 'capacity': None, 'remaining': None,
+                             'sales_closed': False, **money(leftover)})
 
     totals = money(totals)
     totals['capacity'] = event.capacity

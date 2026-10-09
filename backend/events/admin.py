@@ -7,7 +7,7 @@ from .models import Event, EventRegistration, TicketPayment, TicketType
 class TicketTypeInline(admin.TabularInline):
     model = TicketType
     extra = 0
-    fields = ('name', 'price', 'capacity', 'venue', 'sort_order')
+    fields = ('name', 'price', 'capacity', 'venue', 'sales_closed', 'sort_order')
 
 
 @admin.register(Event)

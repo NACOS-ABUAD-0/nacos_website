@@ -83,6 +83,8 @@ class TicketType(models.Model):
     capacity = models.PositiveIntegerField(null=True, blank=True)
     # Where holders of this ticket go, when it differs from the event's location (e.g. a VIP lounge).
     venue = models.CharField(max_length=500, blank=True, default="")
+    # Set by an admin to stop new sales and show the type as sold out, whatever seats are left.
+    sales_closed = models.BooleanField(default=False)
     sort_order = models.PositiveIntegerField(default=0)
 
     class Meta:

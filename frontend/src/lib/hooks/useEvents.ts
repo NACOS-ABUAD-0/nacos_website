@@ -17,6 +17,8 @@ export interface TicketType {
   capacity: number | null;
   // Blank means the event's own location.
   venue: string;
+  // Admin switched off sales; the type shows as sold out.
+  sales_closed: boolean;
   tickets_remaining: number | null;
   sold_out: boolean;
 }
@@ -28,6 +30,7 @@ export interface TicketTypeInput {
   price: number;
   capacity: number | null;
   venue: string;
+  sales_closed?: boolean;
 }
 
 // What backend RETURNS

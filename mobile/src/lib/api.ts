@@ -486,6 +486,7 @@ export interface SalesFigures {
   needs_attention: number;
   capacity: number | null;
   remaining: number | null;
+  sales_closed?: boolean;
 }
 
 export interface TicketTypeSales extends SalesFigures {

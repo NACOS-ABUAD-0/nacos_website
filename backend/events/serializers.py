@@ -23,14 +23,17 @@ class TicketTypeSerializer(serializers.ModelSerializer):
     capacity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     # Blank means the event's own location.
     venue = serializers.CharField(required=False, allow_blank=True, max_length=500, default='')
+    sales_closed = serializers.BooleanField(required=False, default=False)
     tickets_remaining = serializers.SerializerMethodField()
     sold_out = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketType
-        fields = ['id', 'name', 'price', 'capacity', 'venue', 'tickets_remaining', 'sold_out']
+        fields = ['id', 'name', 'price', 'capacity', 'venue', 'sales_closed', 'tickets_remaining', 'sold_out']
 
     def get_tickets_remaining(self, obj):
+        if obj.sales_closed:
+            return 0
         event = obj.event
         taken, by_type = self.context['seat_counts'](event.pk)
         event_remaining = None if event.capacity is None else max(event.capacity - taken, 0)
@@ -92,15 +95,19 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_price_from(self, obj):
         """Lowest ticket price, for "from ₦X" on listings; 0 when free."""
-        prices = [t.price for t in obj.ticket_types.all()]
+        types = list(obj.ticket_types.all())
+        # Closed releases (e.g. an early-bird price) shouldn't set the "from" price.
+        prices = [t.price for t in types if not t.sales_closed] or [t.price for t in types]
         return min(prices) if prices else 0
 
     def get_tickets_remaining(self, obj):
         taken, by_type = self.context['seat_counts'](obj.pk)
         event_remaining = None if obj.capacity is None else max(obj.capacity - taken, 0)
         types = list(obj.ticket_types.all())
-        if types and all(t.capacity is not None for t in types):
-            types_remaining = sum(max(t.capacity - by_type.get(t.pk, 0), 0) for t in types)
+        if types and all(t.sales_closed for t in types):
+            return 0
+        if types and all(t.capacity is not None or t.sales_closed for t in types):
+            types_remaining = sum(max(t.capacity - by_type.get(t.pk, 0), 0) for t in types if not t.sales_closed)
             return _min_known(event_remaining, types_remaining)
         return event_remaining
 
@@ -213,6 +220,7 @@ class EventSerializer(serializers.ModelSerializer):
             ticket_type.price = item['price']
             ticket_type.capacity = capacity
             ticket_type.venue = item.get('venue', ticket_type.venue).strip()
+            ticket_type.sales_closed = item.get('sales_closed', ticket_type.sales_closed)
             ticket_type.sort_order = order
             ticket_type.save()
 
@@ -222,7 +230,7 @@ class EventSerializer(serializers.ModelSerializer):
             if taken.get(type_id):
                 raise serializers.ValidationError({
                     'ticket_types': f"{ticket_type.name} tickets have already been taken, so that type can't be removed. "
-                                    f"Set its capacity to stop new sales instead.",
+                                    f"Mark it sold out to stop new sales instead.",
                 })
             ticket_type.delete()
 

@@ -128,7 +128,9 @@ const EventSalesPanel: React.FC<{
                   </td>
                   <td className="py-2 px-2 text-right tabular-nums">{t.booked}</td>
                   <td className="py-2 px-2 text-right tabular-nums">{t.checked_in}</td>
-                  <td className="py-2 px-2 text-right tabular-nums text-gray-500">{t.remaining ?? '—'}</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-gray-500">
+                    {t.sales_closed ? <span className="font-semibold text-red-600">Sold out</span> : (t.remaining ?? '—')}
+                  </td>
                   {hasMoney && <td className="py-2 pl-2 text-right tabular-nums">{naira(t.revenue)}</td>}
                 </tr>
               ))}
