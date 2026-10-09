@@ -96,8 +96,11 @@ export default function EventDetail() {
   const isClosed = event.status === "completed";
   const isSoldOut = event.sold_out || (ticketTypes.length > 0 && availableTypes.length === 0);
 
-  // VIP tickets are a one-off final release, so they get the gold "limited edition" treatment.
-  const isVip = (t: { name: string }) => /\bvip\b/i.test(t.name);
+  // The newest VIP ticket type is a one-off final release, so it gets the gold "limited edition"
+  // treatment; earlier VIP types (e.g. the original, sold-out batch) look like any other ticket.
+  const vipTypes = ticketTypes.filter((t) => /\bvip\b/i.test(t.name));
+  const finalVipId = vipTypes.length ? Math.max(...vipTypes.map((t) => t.id)) : null;
+  const isVip = (t: { id: number }) => t.id === finalVipId;
   const vipSelected = !!selectedType && isVip(selectedType) && !selectedType.sold_out;
 
   const isOpenEvent = event.audience === "public";
