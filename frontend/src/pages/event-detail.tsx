@@ -96,6 +96,10 @@ export default function EventDetail() {
   const isClosed = event.status === "completed";
   const isSoldOut = event.sold_out || (ticketTypes.length > 0 && availableTypes.length === 0);
 
+  // VIP tickets are a one-off final release, so they get the gold "limited edition" treatment.
+  const isVip = (t: { name: string }) => /\bvip\b/i.test(t.name);
+  const vipSelected = !!selectedType && isVip(selectedType) && !selectedType.sold_out;
+
   const isOpenEvent = event.audience === "public";
   const isGuest = !isAuthenticated && isOpenEvent;
 
@@ -135,9 +139,14 @@ export default function EventDetail() {
     if (isClosed) return "Registration closed";
     if (isSoldOut) return "Sold out";
     if (registerMutation.isPending) return "Please wait…";
+    if (vipSelected) return `👑 Claim my VIP seat · ${formatNaira(Number(selectedType!.price))}`;
     if (selectedType && Number(selectedType.price) > 0) return `Pay ${formatNaira(Number(selectedType.price))}`;
     return ticketTypes.length ? "Get free ticket" : "Join Event";
   };
+
+  const payButtonColors = vipSelected
+    ? "vip-shine bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-gray-900 shadow-amber-500/40"
+    : "bg-[#006E3A] text-white";
 
   const EmailIcon = () => (
     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,6 +242,57 @@ export default function EventDetail() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {ticketTypes.map((t) => {
                   const selected = selectedType?.id === t.id;
+                  if (isVip(t)) {
+                    const left = t.tickets_remaining;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        disabled={t.sold_out || isClosed}
+                        onClick={() => setSelectedTypeId(t.id)}
+                        aria-pressed={selected}
+                        className={`vip-shine text-left rounded-xl border-2 px-4 py-3 transition-all sm:col-span-2 disabled:cursor-not-allowed ${
+                          t.sold_out || isClosed
+                            ? "border-gray-300 bg-gray-100 opacity-70"
+                            : selected
+                            ? "border-amber-500 bg-gradient-to-br from-gray-900 via-gray-800 to-amber-900 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400 ring-offset-2"
+                            : "border-amber-400 bg-gradient-to-br from-gray-900 via-gray-800 to-amber-900 shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5"
+                        }`}
+                      >
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
+                            t.sold_out ? "bg-gray-300 text-gray-700" : "bg-amber-400 text-gray-900"
+                          }`}
+                        >
+                          {!t.sold_out && (
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-600 opacity-75" />
+                              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-600" />
+                            </span>
+                          )}
+                          {t.sold_out ? "Gone for good" : "Limited edition · Final release"}
+                        </span>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className={`text-lg font-extrabold ${t.sold_out ? "text-gray-700" : "text-amber-300"}`}>
+                            👑 {t.name}
+                          </span>
+                          <span className={`text-lg font-extrabold ${t.sold_out ? "text-gray-700" : "text-white"}`}>
+                            {formatNaira(Number(t.price))}
+                          </span>
+                        </div>
+                        {t.venue && (
+                          <p className={`text-xs mt-1 ${t.sold_out ? "text-gray-600" : "text-gray-300"}`}>📍 {t.venue}</p>
+                        )}
+                        <p className={`text-sm mt-2 font-semibold ${t.sold_out ? "text-gray-600" : "text-amber-200"}`}>
+                          {t.sold_out
+                            ? "All VIP seats are taken. This release won't be repeated."
+                            : left != null
+                            ? `🔥 Only ${left} ${left === 1 ? "seat" : "seats"} left. Once ${left === 1 ? "it's" : "they're"} gone, VIP is closed for good.`
+                            : "🔥 Last VIP seats. Once they're gone, VIP is closed for good."}
+                        </p>
+                      </button>
+                    );
+                  }
                   return (
                     <button
                       key={t.id}
@@ -303,7 +363,7 @@ export default function EventDetail() {
                 <button
                   onClick={handleGetTicket}
                   disabled={registerMutation.isPending || isClosed || isSoldOut}
-                  className="inline-flex items-center justify-center gap-2 w-full px-8 py-4 bg-[#006E3A] text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all uppercase tracking-wide disabled:opacity-50"
+                  className={`inline-flex items-center justify-center gap-2 w-full px-8 py-4 font-bold rounded-xl shadow-md hover:shadow-lg transition-all uppercase tracking-wide disabled:opacity-50 ${payButtonColors}`}
                 >
                   {buttonLabel()}
                 </button>
@@ -374,7 +434,7 @@ export default function EventDetail() {
               <button
                 onClick={handleGetTicket}
                 disabled={registerMutation.isPending || isClosed || isSoldOut}
-                className="inline-flex items-center justify-center gap-2 w-full lg:w-auto px-8 py-4 bg-[#006E3A] text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all uppercase tracking-wide disabled:opacity-50 disabled:hover:scale-100"
+                className={`inline-flex items-center justify-center gap-2 w-full lg:w-auto px-8 py-4 font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all uppercase tracking-wide disabled:opacity-50 disabled:hover:scale-100 ${payButtonColors}`}
               >
                 {buttonLabel()}
               </button>

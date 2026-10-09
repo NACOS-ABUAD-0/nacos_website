@@ -67,3 +67,33 @@ body {
     transform: translateX(2px);
   }
 }
+
+/* Final-release VIP ticket: a light sweeps across the card and the pay button. */
+@keyframes vip-shine {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  60%,
+  100% {
+    transform: translateX(260%) skewX(-20deg);
+  }
+}
+.vip-shine {
+  position: relative;
+  overflow: hidden;
+}
+.vip-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: vip-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vip-shine::after {
+    animation: none;
+    display: none;
+  }
+}
