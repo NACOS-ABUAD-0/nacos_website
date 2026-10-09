@@ -35,7 +35,12 @@ class EventRegistrationAdmin(admin.ModelAdmin):
     list_filter = ('event', 'status', 'checked_in_at')
     search_fields = ('name', 'email', 'user__full_name', 'user__matric_number', 'event__title')
     readonly_fields = ('token', 'created_at')
+    actions = ['reset_check_in']
 
+    @admin.action(description='Reset check-in (let these tickets be scanned again)')
+    def reset_check_in(self, request, queryset):
+        count = queryset.filter(checked_in_at__isnull=False).update(checked_in_at=None, checked_in_by=None)
+        self.message_user(request, f'Reset check-in for {count} ticket(s). They can now be scanned again.')
 
 
 @admin.register(TicketPayment)
