@@ -16,6 +16,7 @@ export interface User {
   is_email_verified: boolean;
   is_staff?: boolean;
   role: UserRole;
+  is_executive?: boolean;
 }
 
 interface AuthState {
@@ -34,13 +35,6 @@ interface AuthContextType extends AuthState {
   // Admins, lecturers and every exco: event sales and check-in (matches the backend's can_manage_events).
   canManageEvents: boolean;
 }
-
-// Lecturer plus the executive titles (backend User.EXECUTIVE_ROLES).
-const EVENT_MANAGER_ROLES = new Set([
-  'lecturer', 'president', 'vice_president', 'general_secretary', 'asst_general_secretary', 'financial_secretary',
-  'software_director', 'hardware_director', 'social_director', 'welfare_director', 'academic_director',
-  'public_relations_officer', 'sports_director', 'chief_of_staff',
-]);
 
 type AuthAction =
   | { type: 'SET_LOADING'; payload: boolean }
@@ -141,7 +135,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = state.user?.role === 'admin' || state.user?.role === 'super_admin' || state.user?.is_staff === true;
-  const canManageEvents = isAdmin || EVENT_MANAGER_ROLES.has(state.user?.role ?? '');
+  // Executive titles are managed in the backend (ExecutiveRole table), so the
+  // profile payload says whether this user holds one.
+  const canManageEvents = isAdmin || state.user?.role === 'lecturer' || state.user?.is_executive === true;
 
   return (
     <AuthContext.Provider

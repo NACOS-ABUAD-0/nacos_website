@@ -10,7 +10,8 @@ import { fetchUser, setUserMatricEdit } from '../../services/adminUserService'
 import { useAdminUsers } from '../../lib/hooks/useAdminUsers'
 import { useProjects } from '../../lib/hooks/useProjects'
 import { useAuth } from '../../context/AuthContext'
-import { ROLE_OPTION_GROUPS, ROLE_LABELS, canAssignRoles, roleBadgeClass, type UserRole } from '../../lib/roles'
+import { roleLabel, canAssignRoles, roleBadgeClass, type UserRole } from '../../lib/roles'
+import { useRoleOptionGroups } from '../../lib/hooks/useRoles'
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex items-start gap-4 mb-4">
@@ -33,6 +34,7 @@ export default function StudentProfile(): React.ReactElement {
 
   const { data: projects = [], isLoading: projectsLoading } = useProjects({ owner: id })
 
+  const roleOptionGroups = useRoleOptionGroups()
   const [selectedRole, setSelectedRole] = useState<UserRole | ''>('')
   useEffect(() => {
     setSelectedRole(student?.role ?? '')
@@ -71,10 +73,11 @@ export default function StudentProfile(): React.ReactElement {
     if (!student || !selectedRole || selectedRole === student.role) return
     const updated = await handleAssignRole(student.id, selectedRole)
     if (updated) {
+      const newLabel = roleLabel(updated.role, updated.role_label)
       toast.success(
         isPendingStaff
-          ? `${student.full_name} approved as ${ROLE_LABELS[selectedRole]}.`
-          : `${student.full_name}'s role updated to ${ROLE_LABELS[selectedRole]}.`
+          ? `${student.full_name} approved as ${newLabel}.`
+          : `${student.full_name}'s role updated to ${newLabel}.`
       )
       refetch()
     } else {
@@ -161,7 +164,7 @@ export default function StudentProfile(): React.ReactElement {
                 <div className="flex items-start gap-4 mb-4">
                   <span className="text-[13px] text-gray-400 w-28 shrink-0">Role</span>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${roleBadgeClass(student.role)}`}>
-                    {ROLE_LABELS[student.role] ?? student.role}
+                    {roleLabel(student.role, student.role_label)}
                   </span>
                 </div>
               </div>
@@ -237,10 +240,10 @@ export default function StudentProfile(): React.ReactElement {
                 onChange={(e) => setSelectedRole(e.target.value as UserRole)}
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:border-[#1a7a3f]"
               >
-                {ROLE_OPTION_GROUPS.map((group) => (
+                {roleOptionGroups.map((group) => (
                   <optgroup key={group.label} label={group.label}>
                     {group.roles.map((role) => (
-                      <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                      <option key={role.value} value={role.value}>{role.label}</option>
                     ))}
                   </optgroup>
                 ))}

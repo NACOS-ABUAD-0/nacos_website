@@ -3,94 +3,46 @@
 // Single source of truth for the account role system. Mirrors
 // backend/accounts/models.py's User.Role — keep the two in sync.
 
-export type UserRole =
+// System roles are fixed. Executive titles (President, Software Director,
+// Editor-in-Chief, ...) live in the backend's ExecutiveRole table — the Super
+// Admin adds/removes them — so a role is any string. Fetch the current list
+// with useRoles() (lib/hooks/useRoles.ts).
+
+export type SystemRole =
   | 'user' // legacy default, never shown as an assignable option
   | 'student'
   | 'technician'
   | 'lecturer'
   | 'admin'
   | 'super_admin'
-  | 'president'
-  | 'vice_president'
-  | 'general_secretary'
-  | 'asst_general_secretary'
-  | 'financial_secretary'
-  | 'software_director'
-  | 'hardware_director'
-  | 'social_director'
-  | 'welfare_director'
-  | 'academic_director'
-  | 'public_relations_officer'
-  | 'sports_director'
-  | 'chief_of_staff'
+
+export type UserRole = SystemRole | (string & {})
 
 export type AccountType = 'student' | 'staff'
 
-// ─── Executive tier ─────────────────────────────────────────────────────────
-// Admin-like but restricted: can access/approve committee applications, but
-// cannot promote anyone, create attendance, or edit user management.
-
-export const EXECUTIVE_ROLE_VALUES: UserRole[] = [
-  'president',
-  'vice_president',
-  'general_secretary',
-  'asst_general_secretary',
-  'financial_secretary',
-  'software_director',
-  'hardware_director',
-  'social_director',
-  'welfare_director',
-  'academic_director',
-  'public_relations_officer',
-  'sports_director',
-  'chief_of_staff',
-]
-
 // ─── Labels ─────────────────────────────────────────────────────────────────
 
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const SYSTEM_ROLE_LABELS: Record<SystemRole, string> = {
   user: 'User',
   student: 'Student',
   technician: 'Technician',
   lecturer: 'Lecturer',
   admin: 'Admin',
   super_admin: 'Super Admin',
-  president: 'President',
-  vice_president: 'Vice President',
-  general_secretary: 'General Secretary',
-  asst_general_secretary: 'Assistant General Secretary',
-  financial_secretary: 'Financial Secretary',
-  software_director: 'Software Director',
-  hardware_director: 'Hardware Director',
-  social_director: 'Social Director',
-  welfare_director: 'Welfare Director',
-  academic_director: 'Academic Director',
-  public_relations_officer: 'Public Relations Officer',
-  sports_director: 'Sports Director',
-  chief_of_staff: 'Chief of Staff',
 }
 
-export const roleLabel = (role?: string | null): string =>
-  (role && ROLE_LABELS[role as UserRole]) || role || 'User'
+const isSystemRole = (role: string): role is SystemRole => role in SYSTEM_ROLE_LABELS
 
-// ─── Assignable roles (grouped for the assign-role <select>) ────────────────
-// Excludes 'super_admin' (manual/DB-only, never assigned from the UI) and
-// the legacy 'user' role (not a meaningful UI target).
-
-export const ROLE_OPTION_GROUPS: { label: string; roles: UserRole[] }[] = [
-  {
-    label: 'Executive Roles',
-    roles: EXECUTIVE_ROLE_VALUES,
-  },
-  {
-    label: 'Staff',
-    roles: ['admin', 'lecturer', 'technician'],
-  },
-  {
-    label: 'Basic',
-    roles: ['student'],
-  },
-]
+/**
+ * Display name for a role. Pass the backend's `role_label` when you have it
+ * (user payloads include it); otherwise executive slugs are title-cased.
+ */
+export const roleLabel = (role?: string | null, label?: string | null): string => {
+  if (label) return label
+  if (!role) return 'User'
+  if (isSystemRole(role)) return SYSTEM_ROLE_LABELS[role]
+  return role.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 // ─── Capability helpers ──────────────────────────────────────────────────────
 
@@ -98,9 +50,13 @@ export const ROLE_OPTION_GROUPS: { label: string; roles: UserRole[] }[] = [
 export const isFullAdminTier = (role?: string | null): boolean =>
   role === 'admin' || role === 'super_admin' || role === 'lecturer'
 
-/** One of the 13 fixed executive titles — committee-applications-only access. */
+/**
+ * An executive title — committee-applications-only access. Every role that
+ * isn't a system role is an executive title (the backend refuses to delete
+ * an executive role while anyone still holds it).
+ */
 export const isExecutiveTier = (role?: string | null): boolean =>
-  EXECUTIVE_ROLE_VALUES.includes(role as UserRole)
+  !!role && !isSystemRole(role)
 
 /** Can this role open the admin dashboard at all? */
 export const isStaffAreaRole = (role?: string | null): boolean =>

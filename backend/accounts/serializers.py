@@ -9,7 +9,9 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 
-from .models import User, StudentProfile, Notification, DeviceToken
+from django.utils.text import slugify
+
+from .models import User, StudentProfile, Notification, DeviceToken, ExecutiveRole
 from .admin_whitelist import normalize_matric, MAX_ADMINS
 
 # ─── Shared Constants ──────────────────────────────────────────────────────────
@@ -319,6 +321,9 @@ class ProfileSerializer(serializers.ModelSerializer):
     # Lets the profile page show an editable matric field while the Super
     # Admin has matric editing open for this user or their level.
     can_edit_matric = serializers.BooleanField(read_only=True)
+    # Executive titles are DB-managed, so the frontend can't know them all.
+    role_label = serializers.CharField(read_only=True)
+    is_executive = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = User
@@ -332,6 +337,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             "is_email_verified",
             "is_staff",
             "role",
+            "role_label",
+            "is_executive",
         )
         read_only_fields = (
             "id",
@@ -359,11 +366,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 # Super Admin and the legacy 'user' role are excluded from the assignable
 # set — Super Admin stays a manual/DB-only assignment, and 'user' is not a
-# meaningful UI target (Student/Technician/etc. replace it).
-_ROLE_ASSIGNMENT_EXCLUDED = {User.Role.SUPER_ADMIN, User.Role.USER}
-_ASSIGNABLE_ROLE_CHOICES = [
-    (value, label) for value, label in User.Role.choices
-    if value not in _ROLE_ASSIGNMENT_EXCLUDED
+# meaningful UI target (Student/Technician/etc. replace it). Executive titles
+# come from the ExecutiveRole table.
+ASSIGNABLE_SYSTEM_ROLES = [
+    User.Role.ADMIN, User.Role.LECTURER, User.Role.TECHNICIAN, User.Role.STUDENT,
 ]
 
 
@@ -373,7 +379,49 @@ class AssignUserRoleSerializer(serializers.Serializer):
     profile in User Management.
     """
 
-    role = serializers.ChoiceField(choices=_ASSIGNABLE_ROLE_CHOICES)
+    role = serializers.CharField(max_length=30)
+
+    def validate_role(self, value: str) -> str:
+        if value in ASSIGNABLE_SYSTEM_ROLES:
+            return value
+        if ExecutiveRole.objects.filter(value=value).exists():
+            return value
+        raise serializers.ValidationError(f'"{value}" is not a valid role.')
+
+
+class ExecutiveRoleSerializer(serializers.ModelSerializer):
+    """
+    Executive titles the Super Admin manages. Only `label` is supplied on
+    create; `value` (what's stored on User.role) is derived from it.
+    """
+    user_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = ExecutiveRole
+        fields = ("value", "label", "display_order", "user_count")
+        read_only_fields = ("value", "display_order", "user_count")
+
+    def validate_label(self, value: str) -> str:
+        label = " ".join(value.split())
+        if not label:
+            raise serializers.ValidationError("Enter a role name.")
+        if ExecutiveRole.objects.filter(label__iexact=label).exists():
+            raise serializers.ValidationError("A role with this name already exists.")
+        return label
+
+    def validate(self, attrs: dict) -> dict:
+        role_value = slugify(attrs["label"]).replace("-", "_")[:30].strip("_")
+        if not role_value:
+            raise serializers.ValidationError({"label": "Role name must contain letters or numbers."})
+        if role_value in User.Role.values or ExecutiveRole.objects.filter(value=role_value).exists():
+            raise serializers.ValidationError({"label": "This name clashes with an existing role."})
+        attrs["value"] = role_value
+        return attrs
+
+    def create(self, validated_data: dict) -> ExecutiveRole:
+        last = ExecutiveRole.objects.order_by("-display_order").first()
+        validated_data["display_order"] = (last.display_order + 1) if last else 0
+        return super().create(validated_data)
 
 
 class UpdateMatricSerializer(serializers.Serializer):
@@ -577,6 +625,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     level = serializers.CharField(source="student_profile.level", read_only=True, default="")
     department = serializers.CharField(source="student_profile.department", read_only=True, default="")
     date_joined = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+    role_label = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
@@ -588,6 +637,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "level",
             "department",
             "role",
+            "role_label",
             "account_type",
             "is_approved",
             "is_staff",

@@ -13,7 +13,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from .models import User, StudentProfile, MatricEditLevel
+from .models import User, StudentProfile, MatricEditLevel, ExecutiveRole
 from .admin_whitelist import MAX_ADMINS
 
 
@@ -938,3 +938,80 @@ class MatricEditingTest(APITestCase):
         url = reverse('admin-user-delete', kwargs={'pk': self.fresher.pk})
         response = self.client.delete(url, {'matric_number': '', 'full_name': 'Fresh Student'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+class ExecutiveRoleTest(APITestCase):
+    def setUp(self):
+        self.super_admin = User.objects.create_user(
+            email='super@example.com', full_name='Super Admin', password='pass12345',
+            role='super_admin',
+        )
+        self.admin = User.objects.create_user(
+            email='admin@example.com', full_name='Regular Admin', password='pass12345',
+            role='admin',
+        )
+        self.student = User.objects.create_user(
+            email='student@example.com', full_name='Student One', password='pass12345',
+            matric_number='23/SCI01/077',
+        )
+        self.list_url = reverse('admin-role-list')
+
+    def test_new_titles_are_seeded_and_executive(self):
+        for value in ('director_of_skills_hub', 'editor_in_chief', 'director_of_mentorship'):
+            self.assertTrue(ExecutiveRole.objects.filter(value=value).exists())
+        user = User.objects.create_user(
+            email='eic@example.com', full_name='Editor', password='pass12345', role='editor_in_chief',
+        )
+        self.assertTrue(user.is_executive)
+        self.assertEqual(user.role_label, 'Editor-in-Chief')
+        self.assertFalse(self.student.is_executive)
+
+    def test_list_includes_system_and_executive_roles(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('admin', [r['value'] for r in response.data['system']])
+        self.assertNotIn('super_admin', [r['value'] for r in response.data['system']])
+        self.assertIn('president', [r['value'] for r in response.data['executive']])
+
+    def test_super_admin_adds_role_and_it_is_assignable(self):
+        self.client.force_authenticate(user=self.super_admin)
+        response = self.client.post(self.list_url, {'label': '  Director of   Innovation '})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['value'], 'director_of_innovation')
+        self.assertEqual(response.data['label'], 'Director of Innovation')
+
+        url = reverse('admin-user-assign-role', kwargs={'pk': self.student.pk})
+        response = self.client.patch(url, {'role': 'director_of_innovation'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.student.refresh_from_db()
+        self.assertTrue(self.student.is_executive)
+
+    def test_duplicate_or_system_name_rejected(self):
+        self.client.force_authenticate(user=self.super_admin)
+        self.assertEqual(self.client.post(self.list_url, {'label': 'president'}).status_code, 400)
+        self.assertEqual(self.client.post(self.list_url, {'label': 'Super Admin'}).status_code, 400)
+
+    def test_regular_admin_cannot_add_or_remove(self):
+        self.client.force_authenticate(user=self.admin)
+        self.assertEqual(self.client.post(self.list_url, {'label': 'New Role'}).status_code, 403)
+        url = reverse('admin-role-detail', kwargs={'value': 'editor_in_chief'})
+        self.assertEqual(self.client.delete(url).status_code, 403)
+
+    def test_remove_blocked_while_role_is_held(self):
+        self.student.role = 'director_of_mentorship'
+        self.student.save()
+        self.client.force_authenticate(user=self.super_admin)
+        url = reverse('admin-role-detail', kwargs={'value': 'director_of_mentorship'})
+        self.assertEqual(self.client.delete(url).status_code, 400)
+
+        self.student.role = 'student'
+        self.student.save()
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertFalse(ExecutiveRole.objects.filter(value='director_of_mentorship').exists())
+
+    def test_unknown_role_cannot_be_assigned(self):
+        self.client.force_authenticate(user=self.super_admin)
+        url = reverse('admin-user-assign-role', kwargs={'pk': self.student.pk})
+        self.assertEqual(self.client.patch(url, {'role': 'not_a_role'}).status_code, 400)
+        self.assertEqual(self.client.patch(url, {'role': 'super_admin'}).status_code, 400)

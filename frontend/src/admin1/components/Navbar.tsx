@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/nacos_logo.png'
 import profileImg from '../../assets/profile.png'
 import { useAuth } from '../../context/AuthContext'
-import { ROLE_LABELS, isExecutiveTier } from '../../lib/roles'
+import { roleLabel, isExecutiveTier } from '../../lib/roles'
 
 // Split into "primary" (always visible on desktop) and "more" (tucked into
 // an overflow dropdown) — keeps the bar a single line at any width instead
@@ -200,7 +200,7 @@ const Navbar: React.FC = () => {
                     </span>
                   </div>
                   <p className="mt-3 font-semibold text-gray-900 text-[15px]">{user?.full_name ?? 'Admin'}</p>
-                  <p className="text-xs text-gray-400">{ROLE_LABELS[user?.role ?? 'admin'] ?? user?.role ?? 'Admin'}</p>
+                  <p className="text-xs text-gray-400">{roleLabel(user?.role ?? 'admin', user?.role_label)}</p>
                   <span className="mt-2 flex items-center gap-1.5 bg-green-100 text-green-600 text-xs font-medium px-3 py-1 rounded-full">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     Online

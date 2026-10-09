@@ -20,7 +20,9 @@ import UserTableSkeleton from '../components/UserTableSkeleton'
 import Toast from '../components/Toast'
 import { fetchMatricEditLevels, setLevelMatricEdit, type UserRecord } from '../../services/adminUserService'
 import { useAuth } from '../../context/AuthContext'
-import { ROLE_LABELS, ROLE_OPTION_GROUPS, roleBadgeClass, isFullAdminTier } from '../../lib/roles'
+import { roleLabel, roleBadgeClass, isFullAdminTier } from '../../lib/roles'
+import { useRoleOptionGroups } from '../../lib/hooks/useRoles'
+import RoleManagementPanel from '../components/RoleManagementPanel'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -28,9 +30,9 @@ type StatusBadgeVariant = 'active' | 'inactive' | 'verified' | 'unverified'
 
 // ─── Sub-Components ────────────────────────────────────────────────────────
 
-const RoleBadge: React.FC<{ role: string }> = ({ role }) => (
+const RoleBadge: React.FC<{ role: string; label?: string }> = ({ role, label }) => (
   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${roleBadgeClass(role)}`}>
-    {ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role}
+    {roleLabel(role, label)}
   </span>
 )
 
@@ -211,6 +213,7 @@ const LevelMatricEditPanel: React.FC<{ onToast: (t: { message: string; type: 'su
 const UserManagement: React.FC = () => {
   const navigate = useNavigate()
   const { user: viewer } = useAuth()
+  const roleOptionGroups = useRoleOptionGroups()
   const {
     users,
     loading,
@@ -300,6 +303,7 @@ const UserManagement: React.FC = () => {
         </div>
 
         {viewer?.role === 'super_admin' && <LevelMatricEditPanel onToast={setToast} />}
+        {viewer?.role === 'super_admin' && <RoleManagementPanel onToast={setToast} />}
 
         {/* Pending Staff quick filter */}
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-5 w-fit">
@@ -366,10 +370,10 @@ const UserManagement: React.FC = () => {
               >
                 <option value="">All Roles</option>
                 <option value="super_admin">Super Admin</option>
-                {ROLE_OPTION_GROUPS.map((group) => (
+                {roleOptionGroups.map((group) => (
                   <optgroup key={group.label} label={group.label}>
                     {group.roles.map((role) => (
-                      <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                      <option key={role.value} value={role.value}>{role.label}</option>
                     ))}
                   </optgroup>
                 ))}
@@ -453,7 +457,7 @@ const UserManagement: React.FC = () => {
                           <p className="text-[13px] text-gray-600">{user.level || '—'}</p>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <RoleBadge role={user.role} />
+                          <RoleBadge role={user.role} label={user.role_label} />
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <StatusBadge isActive={user.is_active} isVerified={user.is_email_verified} />

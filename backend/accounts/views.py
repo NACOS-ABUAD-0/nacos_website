@@ -3,7 +3,8 @@
 import logging
 import threading
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
 from rest_framework import status, permissions, generics, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import APIView
@@ -22,7 +23,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from . import models
-from .models import User, StudentProfile, Notification, DeviceToken, MatricEditLevel
+from .models import User, StudentProfile, Notification, DeviceToken, MatricEditLevel, ExecutiveRole
 from .permissions import IsAdmin, IsSuperAdmin, CanAssignRoles
 from .serializers import (
     RegisterSerializer,
@@ -43,6 +44,8 @@ from .serializers import (
     UpdateMatricSerializer,
     MatricEditToggleSerializer,
     MatricEditLevelToggleSerializer,
+    ExecutiveRoleSerializer,
+    ASSIGNABLE_SYSTEM_ROLES,
 )
 from .utils import email_is_configured, send_verification_email, verify_email_token
 from .admin_whitelist import is_whitelisted_admin, MAX_ADMINS
@@ -684,7 +687,7 @@ class AdminUserListView(APIView):
             queryset = queryset.filter(student_profile__level__iexact=level_filter)
 
         role_filter = request.query_params.get("role", "").strip().lower()
-        if role_filter in User.Role.values:
+        if role_filter in User.Role.values or ExecutiveRole.objects.filter(value=role_filter).exists():
             queryset = queryset.filter(role=role_filter)
 
         is_active_filter = request.query_params.get("is_active", "").strip().lower()
@@ -942,3 +945,74 @@ class AdminMatricEditLevelsView(APIView):
             request.user.email, "opened" if serializer.validated_data["open"] else "closed", level,
         )
         return Response(self._payload())
+
+
+def _executive_roles_with_counts():
+    holders = (
+        User.objects.filter(role=OuterRef("value"))
+        .order_by()
+        .values("role")
+        .annotate(n=Count("id"))
+        .values("n")
+    )
+    return ExecutiveRole.objects.annotate(user_count=Coalesce(Subquery(holders), 0))
+
+
+class RoleListView(APIView):
+    """
+    GET  /api/admin/roles/   → assignable system roles + executive titles
+    POST /api/admin/roles/   {"label": "Director of Skills Hub"}  (Super Admin)
+
+    Executive titles share one permission tier (committee applications, event
+    sales); adding one here only adds a new title to that tier.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated(), IsSuperAdmin()]
+        return super().get_permissions()
+
+    def get(self, request):
+        return Response({
+            "system": [
+                {"value": role, "label": User.Role(role).label}
+                for role in ASSIGNABLE_SYSTEM_ROLES
+            ],
+            "executive": ExecutiveRoleSerializer(_executive_roles_with_counts(), many=True).data,
+        })
+
+    def post(self, request):
+        serializer = ExecutiveRoleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role = serializer.save()
+        logger.info("Super admin '%s' added executive role '%s'.", request.user.email, role.value)
+        return Response(ExecutiveRoleSerializer(role).data, status=status.HTTP_201_CREATED)
+
+
+class RoleDetailView(APIView):
+    """
+    DELETE /api/admin/roles/<value>/   (Super Admin)
+
+    Refused while any user still holds the role — reassign them first, so
+    nobody is left with a title that no longer exists.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def delete(self, request, value=None):
+        role = get_object_or_404(ExecutiveRole, value=value)
+        holders = User.objects.filter(role=role.value).count()
+        if holders:
+            return Response(
+                {
+                    "error": (
+                        f"{holders} user{'s' if holders != 1 else ''} still "
+                        f"{'have' if holders != 1 else 'has'} the {role.label} role. "
+                        "Reassign them before removing it."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        role.delete()
+        logger.info("Super admin '%s' removed executive role '%s'.", request.user.email, value)
+        return Response(status=status.HTTP_204_NO_CONTENT)

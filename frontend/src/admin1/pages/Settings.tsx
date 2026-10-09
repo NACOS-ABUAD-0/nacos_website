@@ -6,12 +6,7 @@ import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
 import { useAuth } from '../../context/AuthContext'
 import { authAPI } from '../../lib/api'
-
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super Admin',
-  admin: 'Admin',
-  user: 'User',
-}
+import { roleLabel } from '../../lib/roles'
 
 // ── Types ──────────────────────────────────────────────────────
 interface FieldProps {
@@ -141,7 +136,7 @@ const MyDetails: React.FC = () => {
       </Field>
 
       <Field label="Role">
-        <Input value={ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? ''} disabled />
+        <Input value={user?.role ? roleLabel(user.role, user.role_label) : ''} disabled />
       </Field>
     </div>
   )

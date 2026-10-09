@@ -19,6 +19,8 @@ interface User {
   profile_complete?: boolean;
   is_staff?: boolean;
   role: UserRole;
+  role_label?: string;
+  is_executive?: boolean;
   account_type?: AccountType;
   is_approved?: boolean;
 }

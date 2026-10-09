@@ -30,6 +30,8 @@ from .views import (
     AdminUserUnbanView,
     AdminUserMatricEditView,
     AdminMatricEditLevelsView,
+    RoleListView,
+    RoleDetailView,
     # Student Profile & Notifications
     StudentProfileView,
     NotificationViewSet,
@@ -78,6 +80,8 @@ urlpatterns = [
     path("admin/users/<int:pk>/role/", AssignUserRoleView.as_view(), name="admin-user-assign-role"),
     path("admin/users/<int:pk>/matric-edit/", AdminUserMatricEditView.as_view(), name="admin-user-matric-edit"),
     path("admin/matric-edit-levels/", AdminMatricEditLevelsView.as_view(), name="admin-matric-edit-levels"),
+    path("admin/roles/", RoleListView.as_view(), name="admin-role-list"),
+    path("admin/roles/<slug:value>/", RoleDetailView.as_view(), name="admin-role-detail"),
 
     # Push notifications (mobile)
     path("notifications/register-device/", RegisterDeviceView.as_view(), name="register-device"),

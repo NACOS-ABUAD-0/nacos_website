@@ -24,6 +24,7 @@ export interface UserRecord {
   level: string
   department: string
   role: UserRole
+  role_label: string
   account_type: AccountType
   is_approved: boolean
   is_staff: boolean
@@ -122,4 +123,38 @@ export async function fetchMatricEditLevels(): Promise<string[]> {
 export async function setLevelMatricEdit(level: string, open: boolean): Promise<string[]> {
   const response = await api.patch<{ open_levels: string[] }>('/admin/matric-edit-levels/', { level, open })
   return response.data.open_levels
+}
+
+// ─── Roles ─────────────────────────────────────────────────────────────────────
+
+export interface RoleOption {
+  value: string
+  label: string
+}
+
+export interface ExecutiveRoleOption extends RoleOption {
+  display_order: number
+  user_count: number
+}
+
+export interface RoleCatalog {
+  system: RoleOption[]
+  executive: ExecutiveRoleOption[]
+}
+
+/** Assignable system roles plus the current executive titles. */
+export async function fetchRoles(): Promise<RoleCatalog> {
+  const response = await api.get<RoleCatalog>('/admin/roles/')
+  return response.data
+}
+
+/** Adds a new executive title. Super Admin only. */
+export async function addExecutiveRole(label: string): Promise<ExecutiveRoleOption> {
+  const response = await api.post<ExecutiveRoleOption>('/admin/roles/', { label })
+  return response.data
+}
+
+/** Removes an executive title. Refused while any user still holds it. Super Admin only. */
+export async function removeExecutiveRole(value: string): Promise<void> {
+  await api.delete(`/admin/roles/${value}/`)
 }

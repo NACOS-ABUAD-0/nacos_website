@@ -44,6 +44,28 @@ MATRIC_REGEX = RegexValidator(
 )
 
 
+# ─── Executive Roles ───────────────────────────────────────────────────────────
+
+class ExecutiveRole(models.Model):
+    """
+    An executive title a user can be assigned (President, Software Director,
+    ...). All executive titles share one permission tier (User.is_executive).
+    The Super Admin adds and removes these from User Management; the original
+    titles are seeded by migration 0010.
+    """
+    # Stored on User.role, so it must fit that field's max_length (30).
+    value = models.SlugField(max_length=30, unique=True)
+    label = models.CharField(max_length=100, unique=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["display_order", "label"]
+
+    def __str__(self) -> str:
+        return self.label
+
+
 # ─── Custom User Model ─────────────────────────────────────────────────────────
 
 class User(AbstractUser):
@@ -58,37 +80,14 @@ class User(AbstractUser):
         ADMIN = "admin", "Admin"
         SUPER_ADMIN = "super_admin", "Super Admin"
 
-        # ── Executive tier — fixed named titles, all share one permission
-        # class (see EXECUTIVE_ROLES / is_executive below). Extend this list
-        # in code if a future session introduces a new title.
-        PRESIDENT = "president", "President"
-        VICE_PRESIDENT = "vice_president", "Vice President"
-        GENERAL_SECRETARY = "general_secretary", "General Secretary"
-        ASST_GENERAL_SECRETARY = "asst_general_secretary", "Assistant General Secretary"
-        FINANCIAL_SECRETARY = "financial_secretary", "Financial Secretary"
-        SOFTWARE_DIRECTOR = "software_director", "Software Director"
-        HARDWARE_DIRECTOR = "hardware_director", "Hardware Director"
-        SOCIAL_DIRECTOR = "social_director", "Social Director"
-        WELFARE_DIRECTOR = "welfare_director", "Welfare Director"
-        ACADEMIC_DIRECTOR = "academic_director", "Academic Director"
-        PUBLIC_RELATIONS_OFFICER = "public_relations_officer", "Public Relations Officer"
-        SPORTS_DIRECTOR = "sports_director", "Sports Director"
-        CHIEF_OF_STAFF = "chief_of_staff", "Chief of Staff"
+        # Executive titles (President, Software Director, ...) are not listed
+        # here: they live in the ExecutiveRole table so the Super Admin can add
+        # and remove them. See is_executive below.
 
     # Roles that carry full Admin-tier operational permissions (ban/delete
     # users, create attendance, edit user management, approve committees).
     # Role assignment itself is NOT included — that stays Admin/Super-Admin-only.
     ADMIN_TIER_ROLES = frozenset({Role.ADMIN, Role.LECTURER})
-
-    # The 13 fixed executive titles — restricted admin-like tier (committee
-    # applications only; see is_executive).
-    EXECUTIVE_ROLES = frozenset({
-        Role.PRESIDENT, Role.VICE_PRESIDENT, Role.GENERAL_SECRETARY,
-        Role.ASST_GENERAL_SECRETARY, Role.FINANCIAL_SECRETARY,
-        Role.SOFTWARE_DIRECTOR, Role.HARDWARE_DIRECTOR, Role.SOCIAL_DIRECTOR,
-        Role.WELFARE_DIRECTOR, Role.ACADEMIC_DIRECTOR,
-        Role.PUBLIC_RELATIONS_OFFICER, Role.SPORTS_DIRECTOR, Role.CHIEF_OF_STAFF,
-    })
 
     class AccountType(models.TextChoices):
         STUDENT = "student", "Student"
@@ -129,9 +128,10 @@ class User(AbstractUser):
         ),
     )
 
+    # No `choices`: besides the fixed Role values above, a user may hold any
+    # ExecutiveRole.value. Assignment is validated in AssignUserRoleSerializer.
     role = models.CharField(
         max_length=30,
-        choices=Role.choices,
         default=Role.USER,
         db_index=True,
     )
@@ -164,7 +164,17 @@ class User(AbstractUser):
 
     @property
     def is_executive(self) -> bool:
-        return self.role in self.EXECUTIVE_ROLES
+        # Restricted admin-like tier (committee applications, event sales).
+        if self.role in self.Role.values:
+            return False
+        return ExecutiveRole.objects.filter(value=self.role).exists()
+
+    @property
+    def role_label(self) -> str:
+        if self.role in self.Role.values:
+            return self.Role(self.role).label
+        executive = ExecutiveRole.objects.filter(value=self.role).only("label").first()
+        return executive.label if executive else self.role
 
     @property
     def can_edit_matric(self) -> bool:
