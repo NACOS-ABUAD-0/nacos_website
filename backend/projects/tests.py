@@ -14,7 +14,7 @@ class ProjectModelTest(TestCase):
             full_name='Test User',
             password='testpass123'
         )
-        self.skill = SkillTag.objects.create(name='Python')
+        self.skill, _ = SkillTag.objects.get_or_create(name='Python')
 
     def test_create_project(self):
         project = Project.objects.create(
@@ -40,9 +40,10 @@ class ProjectAPITest(APITestCase):
             email='admin@example.com',
             full_name='Admin User',
             password='adminpass123',
-            is_staff=True
+            # is_staff is derived from the role on save, so set the role.
+            role='admin',
         )
-        self.skill = SkillTag.objects.create(name='Python')
+        self.skill, _ = SkillTag.objects.get_or_create(name='Python')
         self.project = Project.objects.create(
             owner=self.user,
             title='Test Project',
@@ -57,8 +58,9 @@ class ProjectAPITest(APITestCase):
         url = reverse('skilltag-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Python')
+        # Migration 0002 seeds the skill list, so it's more than our one tag.
+        self.assertEqual(len(response.data), SkillTag.objects.count())
+        self.assertIn('Python', [tag['name'] for tag in response.data])
 
     def test_get_projects(self):
         url = reverse('project-list')
@@ -72,6 +74,7 @@ class ProjectAPITest(APITestCase):
         data = {
             'title': 'New Project',
             'description': 'New Description',
+            'live_url': 'https://example.com/demo',
             'tag_ids': [self.skill.id],
             'links': {'github': 'https://github.com/test/project'},
             'images': ['https://example.com/image.jpg']

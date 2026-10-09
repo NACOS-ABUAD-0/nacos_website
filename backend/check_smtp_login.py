@@ -1,3 +1,7 @@
+# Manual check that the Gmail SMTP credentials in .env work:
+#   python check_smtp_login.py
+# Not named test_*.py so the Django test runner does not import it (it
+# connects to Gmail at import time).
 import os
 from dotenv import load_dotenv
 from pathlib import Path
