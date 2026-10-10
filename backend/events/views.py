@@ -334,6 +334,19 @@ class AdminEventRegistrationViewSet(mixins.ListModelMixin, viewsets.GenericViewS
             )
         return self._perform_check_in(registration.pk)
 
+    @action(detail=False, methods=["post"], url_path="reset-check-ins")
+    def reset_check_ins(self, request):
+        """Body: { event }. Clears every check-in for the event so its tickets can be scanned again,
+        e.g. after a power cut forces everyone out and back in."""
+        event_id = request.data.get("event")
+        if not event_id:
+            return Response({"detail": "event is required."}, status=400)
+        count = EventRegistration.objects.filter(event_id=event_id, checked_in_at__isnull=False).update(
+            checked_in_at=None, checked_in_by=None,
+        )
+        logger.info("%s reset %d check-ins for event %s", request.user, count, event_id)
+        return Response({"reset": count})
+
 
 class PaystackVerifyView(APIView):
     """

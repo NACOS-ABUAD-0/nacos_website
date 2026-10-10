@@ -110,3 +110,16 @@ export const useCheckInByToken = (eventId: string | number) => {
     },
   });
 };
+
+export const useResetCheckIns = (eventId: string | number) => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      adminAttendanceAPI.resetCheckIns(eventId).then(r => r.data as { reset: number }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['event-registrations', eventId] });
+      qc.invalidateQueries({ queryKey: ['event-sales', eventId] });
+    },
+  });
+};

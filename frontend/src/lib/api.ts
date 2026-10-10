@@ -475,6 +475,8 @@ export const adminAttendanceAPI = {
     api.post(`/admin/event-registrations/${registrationId}/check-in/`),
   checkInByToken: (eventId: number | string, token: string) =>
     api.post("/admin/event-registrations/check-in-by-token/", { event: eventId, token }),
+  resetCheckIns: (eventId: number | string) =>
+    api.post("/admin/event-registrations/reset-check-ins/", { event: eventId }),
   getSales: (eventId: number | string) => api.get(`/events/${eventId}/sales/`),
 };
 

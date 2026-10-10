@@ -10,6 +10,7 @@ import {
   useCheckIn,
   useCheckInByToken,
   useEventSales,
+  useResetCheckIns,
   type AdminEventRegistration,
 } from '../../lib/hooks/useEventAttendance'
 import BackCameraScanner from '../../components/BackCameraScanner'
@@ -149,6 +150,7 @@ const EventCheckIn: React.FC = () => {
   const { data: sales, isError: salesError } = useEventSales(id!)
   const checkInMutation = useCheckIn(id!)
   const checkInByTokenMutation = useCheckInByToken(id!)
+  const resetMutation = useResetCheckIns(id!)
 
   // null matches "General admission" / tickets whose type was deleted.
   const registrations = typeFilter === 'all'
@@ -179,6 +181,17 @@ const EventCheckIn: React.FC = () => {
         const name = notPaidName(error)
         toast.error(name ? `${name}'s ticket hasn't been paid for.` : 'Check-in failed. Please try again.')
       },
+    })
+  }
+
+  // For when everyone has to leave and come back in (e.g. a power cut): makes every ticket scannable again.
+  const handleResetCheckIns = () => {
+    const count = sales?.totals.checked_in
+    const who = count ? `all ${count} checked-in people` : 'everyone who has been checked in'
+    if (!window.confirm(`Reset check-in for ${who}? Their tickets can then be scanned again. This can't be undone.`)) return
+    resetMutation.mutate(undefined, {
+      onSuccess: ({ reset }) => toast.success(`Reset ${reset} check-in${reset === 1 ? '' : 's'}. Tickets can be scanned again.`),
+      onError: () => toast.error("Couldn't reset check-ins. Please try again."),
     })
   }
 
@@ -218,6 +231,15 @@ const EventCheckIn: React.FC = () => {
             </p>
           )}
           <EventSalesPanel sales={sales} isError={salesError} filter={typeFilter} onFilterChange={setTypeFilter} />
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleResetCheckIns}
+              disabled={resetMutation.isPending}
+              className="px-4 py-2 rounded-lg border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {resetMutation.isPending ? 'Resetting…' : 'Reset all check-ins'}
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs px-4 sm:px-6 py-5 mb-6">

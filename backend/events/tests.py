@@ -186,6 +186,21 @@ class AdminEventRegistrationTest(APITestCase):
             second.data['registration']['checked_in_at'],
         )
 
+    def test_reset_check_ins_lets_tickets_be_scanned_again(self):
+        self.client.force_authenticate(user=self.staff)
+        self.client.post(reverse('admin-event-registration-check-in', kwargs={'pk': self.registration.pk}))
+        response = self.client.post(reverse('admin-event-registration-reset-check-ins'), {'event': self.event.pk})
+        self.assertEqual(response.data['reset'], 1)
+        self.registration.refresh_from_db()
+        self.assertIsNone(self.registration.checked_in_at)
+        again = self.client.post(reverse('admin-event-registration-check-in', kwargs={'pk': self.registration.pk}))
+        self.assertEqual(again.data['status'], 'checked_in')
+
+    def test_student_cannot_reset_check_ins(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(reverse('admin-event-registration-reset-check-ins'), {'event': self.event.pk})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_check_in_by_token_success(self):
         self.client.force_authenticate(user=self.staff)
         response = self.client.post(reverse('admin-event-registration-check-in-by-token'), {
