@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
 import { Footer } from '../../components/Footer'
-import { api } from '../../lib/api'
+import { api, cloudinaryAPI } from '../../lib/api'
+import { optimizeImage } from '../../lib/cloudinary'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) =>
     >
       {image.resolved_url ? (
         <img
-          src={image.resolved_url}
+          src={optimizeImage(image.resolved_url, 600)}
           alt={image.alt_text || image.caption}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
@@ -144,40 +145,20 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ image, onEdit, onDelete }) =>
   )
 }
 
-// ─── Image URL input with preview ─────────────────────────────────────────────
-interface ImageUrlInputProps {
-  previewUrl: string | null
-  onUrlChange: (url: string) => void
-  urlValue: string
-}
+// ─── Upload from device ───────────────────────────────────────────────────────
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+// HEIC is what iPhones save; Cloudinary converts it for browsers via f_auto.
+const ACCEPTED_IMAGES = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif'
 
-const ImageUrlInput: React.FC<ImageUrlInputProps> = ({ previewUrl, onUrlChange, urlValue }) => (
-  <div className="space-y-2">
-    <label className="text-xs font-semibold text-gray-500 uppercase">Image URL</label>
-    {previewUrl && (
-      <div className="w-full h-40 rounded-lg overflow-hidden border border-gray-200">
-        <img
-          src={previewUrl}
-          alt="Preview"
-          className="w-full h-full object-cover"
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-        />
-      </div>
-    )}
-    <input
-      value={urlValue}
-      onChange={e => onUrlChange(e.target.value)}
-      placeholder="https://example.com/image.jpg"
-      className="border p-2 rounded-lg text-sm w-full"
-    />
-    <p className="text-[11px] text-gray-400">Paste a publicly accessible image URL.</p>
-  </div>
-)
+const isAcceptedImage = (file: File): boolean =>
+  ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(file.type) ||
+  /\.(heic|heif)$/i.test(file.name)
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 interface GalleryModalProps {
   initial: GalleryImage | null
-  onSave: (payload: GalleryPayload) => void
+  // One payload per image: adding can upload several photos at once.
+  onSave: (payloads: GalleryPayload[]) => void
   onClose: () => void
   isSaving: boolean
 }
@@ -195,32 +176,72 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
         }
       : EMPTY_FORM
   )
-
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    initial?.image_url ?? initial?.resolved_url ?? null
-  )
+  // Adding: every uploaded or pasted image becomes its own gallery entry. Editing: exactly one.
+  const [urls, setUrls] = useState<string[]>(form.image_url ? [form.image_url] : [])
+  const [pasted, setPasted] = useState<string>('')
+  const [uploading, setUploading] = useState<number>(0)
+  const isEdit = initial !== null
 
   const set = <K extends keyof GalleryFormData>(field: K, value: GalleryFormData[K]): void =>
     setForm(f => ({ ...f, [field]: value }))
 
-  const handleUrlChange = (url: string): void => {
-    set('image_url', url)
-    setPreviewUrl(url.trim() || null)
+  const addUrl = (url: string): void => setUrls(current => (isEdit ? [url] : [...current, url]))
+
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    const valid = files.filter(file => {
+      if (!isAcceptedImage(file)) {
+        toast.error(`${file.name}: use a JPG, PNG, WebP or HEIC image.`)
+        return false
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        toast.error(`${file.name} is over 10 MB.`)
+        return false
+      }
+      return true
+    })
+    if (!valid.length) return
+    setUploading(n => n + valid.length)
+    await Promise.all(valid.map(async file => {
+      try {
+        const { secure_url } = await cloudinaryAPI.upload(file)
+        addUrl(secure_url)
+      } catch (error) {
+        toast.error(`${file.name}: ${error instanceof Error ? error.message : 'upload failed.'}`)
+      } finally {
+        setUploading(n => n - 1)
+      }
+    }))
+  }
+
+  const handleAddPasted = (): void => {
+    const url = pasted.trim()
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      toast.error('Enter a full image link starting with http.')
+      return
+    }
+    addUrl(url)
+    setPasted('')
   }
 
   const handleSubmit = (): void => {
-    if (!form.image_url.trim()) {
-      toast.error('Please provide an image URL.')
+    if (uploading) {
+      toast.error('Wait for the uploads to finish.')
       return
     }
-    onSave({
-      image_url:     form.image_url.trim(),
+    if (!urls.length) {
+      toast.error(isEdit ? 'Choose an image.' : 'Upload at least one image.')
+      return
+    }
+    onSave(urls.map(image_url => ({
+      image_url,
       caption:       form.caption,
       alt_text:      form.alt_text,
       category:      form.category,
       display_order: form.display_order,
       is_published:  form.is_published,
-    })
+    })))
   }
 
   return (
@@ -229,14 +250,62 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
         className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="font-bold text-lg mb-5">{initial ? 'Edit Image' : 'Add Image'}</h2>
+        <h2 className="font-bold text-lg mb-5">{isEdit ? 'Edit Image' : 'Add Images'}</h2>
 
         <div className="flex flex-col gap-4">
-          <ImageUrlInput
-            previewUrl={previewUrl}
-            onUrlChange={handleUrlChange}
-            urlValue={form.image_url}
-          />
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase">{isEdit ? 'Image' : 'Images'}</label>
+
+            {urls.length > 0 && (
+              <div className={isEdit ? '' : 'grid grid-cols-3 gap-2'}>
+                {urls.map(url => (
+                  <div key={url} className={`relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 ${isEdit ? 'h-48' : 'aspect-square'}`}>
+                    <img src={optimizeImage(url, 600)} alt="" className="w-full h-full object-cover" />
+                    {!isEdit && (
+                      <button type="button" onClick={() => setUrls(current => current.filter(u => u !== url))}
+                        aria-label="Remove image"
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-red-500 text-sm font-bold shadow hover:bg-white">
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label className={`flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-lg py-6 px-3 text-sm text-center text-gray-500 ${uploading ? 'opacity-60' : 'cursor-pointer hover:border-[#1a7a3f] hover:text-[#1a7a3f]'}`}>
+              {uploading
+                ? `Uploading ${uploading} image${uploading !== 1 ? 's' : ''}…`
+                : isEdit
+                ? (urls.length ? 'Replace with a photo from your device' : 'Upload from your device')
+                : (urls.length ? 'Add more photos from your device' : 'Upload photos from your device')}
+              <span className="text-xs text-gray-400">
+                JPG, PNG, WebP or HEIC, up to 10 MB{isEdit ? '' : ' each. You can pick several at once.'}
+              </span>
+              <input type="file" accept={ACCEPTED_IMAGES} multiple={!isEdit} className="hidden"
+                disabled={uploading > 0} onChange={handleFiles} />
+            </label>
+
+            <div className="flex gap-2">
+              <input
+                value={pasted}
+                onChange={e => setPasted(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddPasted() } }}
+                placeholder="…or paste an image link"
+                className="border p-2 rounded-lg text-sm flex-1 min-w-0"
+              />
+              <button type="button" onClick={handleAddPasted}
+                className="border px-3 rounded-lg text-sm font-semibold text-[#1a7a3f] hover:bg-[#eef6f3]">
+                {isEdit ? 'Use' : 'Add'}
+              </button>
+            </div>
+          </div>
+
+          {!isEdit && urls.length > 1 && (
+            <p className="text-[11px] text-gray-500 -mt-2">
+              The caption, category and settings below apply to all {urls.length} images.
+            </p>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase">Caption</label>
@@ -297,10 +366,10 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ initial, onSave, onClose, i
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={isSaving || uploading > 0}
             className="flex-1 bg-[#1a7a3f] text-white p-2 rounded-lg text-sm hover:bg-[#155f32] disabled:opacity-50"
           >
-            {isSaving ? 'Saving…' : 'Save'}
+            {isSaving ? 'Saving…' : !isEdit && urls.length > 1 ? `Save ${urls.length} images` : 'Save'}
           </button>
         </div>
       </div>
@@ -320,15 +389,19 @@ const Gallery: React.FC = () => {
   })
 
   const createMutation = useMutation({
-    mutationFn: (payload: GalleryPayload) =>
-      api.post('/gallery/', payload).then(r => r.data),
-    onSuccess: () => {
+    // One at a time, so if one fails the images before it stay saved.
+    mutationFn: async (payloads: GalleryPayload[]) => {
+      for (const payload of payloads) await api.post('/gallery/', payload)
+      return payloads.length
+    },
+    onSuccess: (count) => {
       qc.invalidateQueries({ queryKey: ['admin-gallery'] })
       qc.invalidateQueries({ queryKey: ['gallery'] })
       setModal(null)
-      toast.success('Image added!')
+      toast.success(count > 1 ? `${count} images added!` : 'Image added!')
     },
     onError: (err: any) => {
+      qc.invalidateQueries({ queryKey: ['admin-gallery'] })
       const data = err?.response?.data
       toast.error(
         data?.image_url?.[0] ?? data?.non_field_errors?.[0] ?? data?.detail ?? 'Failed to add image.'
@@ -363,11 +436,11 @@ const Gallery: React.FC = () => {
     onError: () => toast.error('Failed to delete image.'),
   })
 
-  const handleSave = (payload: GalleryPayload): void => {
+  const handleSave = (payloads: GalleryPayload[]): void => {
     if (modal === 'add') {
-      createMutation.mutate(payload)
+      createMutation.mutate(payloads)
     } else if (modal && typeof modal === 'object') {
-      updateMutation.mutate({ id: (modal as GalleryImage).id, payload })
+      updateMutation.mutate({ id: (modal as GalleryImage).id, payload: payloads[0] })
     }
   }
 
@@ -400,7 +473,7 @@ const Gallery: React.FC = () => {
             className="flex items-center gap-2 bg-[#1a7a3f] text-white px-4 py-2 rounded-lg text-sm shrink-0 hover:bg-[#155f32]"
           >
             <span className="text-base leading-none">+</span>
-            Add Image
+            Add Images
           </button>
         </div>
 
