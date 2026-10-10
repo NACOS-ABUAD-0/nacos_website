@@ -58,6 +58,8 @@ export interface Event {
   tickets_remaining: number | null;
   sold_out: boolean;
   is_published: boolean;
+  // Closed by an admin: no tickets of any kind can be bought.
+  is_closed?: boolean;
   media: { poster: string | null };
   created_at: string;
   updated_at: string;

@@ -52,6 +52,8 @@ class Event(models.Model):
     # Used when email_design is "custom": {mode: light|dark, accent, highlight, greeting, note}.
     email_custom = models.JSONField(default=dict, blank=True)
     is_published = models.BooleanField(default=True)
+    # Set by an admin to shut the event: no new tickets of any type, and the event shows as closed.
+    is_closed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

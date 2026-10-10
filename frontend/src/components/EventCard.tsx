@@ -18,6 +18,7 @@ export interface Event {
   is_paid?: boolean;
   price_from?: number;
   sold_out?: boolean;
+  is_closed?: boolean;
   audience?: "nacos_only" | "public";
   is_published: boolean;
   created_at: string;
@@ -28,11 +29,26 @@ export interface Event {
       };
 }
 
+// Red badge laid over a greyed-out poster when an admin has closed the event.
+export const ClosedStamp: React.FC<{ size?: "sm" | "lg" }> = ({ size = "sm" }) => (
+  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/30 pointer-events-none">
+    <span
+      className={`bg-red-600 text-white font-extrabold uppercase rounded-xl shadow-lg ring-4 ring-white/80 -rotate-6 ${
+        size === "lg" ? "px-10 py-4 text-4xl tracking-[0.3em]" : "px-6 py-2.5 text-xl tracking-[0.25em]"
+      }`}
+    >
+      Closed
+    </span>
+  </div>
+);
+
 interface EventCardProps {
   event: Event;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
+  const closed = !!event.is_closed;
+
   const CalendarIcon = () => (
     <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -66,9 +82,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           <img
             src={optimizeImage(event.poster_url, 800)}
             alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className={`w-full h-full object-cover transition-transform duration-500 ${
+              closed ? "grayscale opacity-60" : "group-hover:scale-105"
+            }`}
             loading="lazy"
           />
+
+          {closed && <ClosedStamp />}
 
           {/* Status Badge */}
           <div className="absolute top-4 right-4">
@@ -86,7 +106,8 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
         </div>
       ) : (
-        <div className="aspect-square flex items-center justify-center bg-gray-50">
+        <div className="relative aspect-square flex items-center justify-center bg-gray-50">
+          {closed && <ClosedStamp />}
           <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
@@ -133,7 +154,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
         {/* Price */}
         <p className="text-sm font-semibold text-[#006E3A] mb-4">
-          {event.sold_out
+          {closed ? (
+            <span className="text-red-600">Closed</span>
+          ) : event.sold_out
             ? "Sold out"
             : event.is_paid
             ? `From ₦${Number(event.price_from ?? 0).toLocaleString("en-NG")}`
@@ -153,7 +176,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
             <ArrowRightIcon />
           </Link>
 
-          {event.status === "upcoming" && (
+          {closed ? (
+            <span className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg tracking-wide whitespace-nowrap cursor-not-allowed">
+              Closed
+            </span>
+          ) : event.status === "upcoming" && (
             <Link
               to={`/events/${event.id}`}
               className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white text-xs font-bold rounded-lg hover:shadow-md hover:scale-105 transition-all tracking-wide whitespace-nowrap"

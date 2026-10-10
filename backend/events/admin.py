@@ -20,10 +20,11 @@ class EventAdmin(admin.ModelAdmin):
         'audience',
         'email_design',
         'is_published',
+        'is_closed',
         'contact_email',
         'created_at',
     )
-    list_filter = ('is_published', 'audience')
+    list_filter = ('is_published', 'is_closed', 'audience')
     search_fields = ('title', 'location', 'description')
     ordering = ('start_time',)
     inlines = [TicketTypeInline]

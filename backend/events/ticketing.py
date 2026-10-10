@@ -162,6 +162,8 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
         settle_pending_payments(existing)
     if existing and existing.is_confirmed:
         return _already_confirmed(existing, user), None, False
+    if event.is_closed:
+        raise RegistrationError("Sorry, this event is closed. Tickets are no longer available.", 409, "event_closed")
 
     if existing and ticket_type and not ticket_type.is_free:
         payment = open_checkout(existing, ticket_type)
@@ -170,11 +172,14 @@ def register(event: Event, *, user, name: str, email: str, ticket_type: TicketTy
 
     with transaction.atomic():
         # Lock the event row so two buyers can't both take the last seat.
-        Event.objects.select_for_update().get(pk=event.pk)
+        locked_event = Event.objects.select_for_update().get(pk=event.pk)
         registration = _find_registration(event, user, email, lock=True)
         _guard_unverified_account(registration, user)
         if registration and registration.is_confirmed:
             return _already_confirmed(registration, user), None, False
+        # Re-checked under the lock in case an admin closed the event a moment ago.
+        if locked_event.is_closed:
+            raise RegistrationError("Sorry, this event is closed. Tickets are no longer available.", 409, "event_closed")
 
         if ticket_type is not None:
             # Re-read inside the lock in case the type was edited or removed a moment ago.

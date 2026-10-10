@@ -15,6 +15,7 @@ import Navbar from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { optimizeImage } from "../lib/cloudinary";
 import { EventDetailSkeleton } from "../components/home/Skeletons";
+import { ClosedStamp } from "../components/EventCard";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -93,7 +94,9 @@ export default function EventDetail() {
   const selectedType =
     ticketTypes.find((t) => t.id === selectedTypeId) ?? (availableTypes.length === 1 ? availableTypes[0] : null);
   const needsChoice = ticketTypes.length > 1 && !selectedType;
-  const isClosed = event.status === "completed";
+  // Closed by an admin: nothing can be bought, whatever the date.
+  const isEventClosed = !!event.is_closed;
+  const isClosed = event.status === "completed" || isEventClosed;
   const isSoldOut = event.sold_out || (ticketTypes.length > 0 && availableTypes.length === 0);
 
   // The newest VIP ticket type is a one-off final release, so it gets the gold "limited edition"
@@ -139,6 +142,7 @@ export default function EventDetail() {
   };
 
   const buttonLabel = () => {
+    if (isEventClosed) return "Event closed";
     if (isClosed) return "Registration closed";
     if (isSoldOut) return "Sold out";
     if (registerMutation.isPending) return "Please wait…";
@@ -239,7 +243,7 @@ export default function EventDetail() {
           </div>
 
           {/* Ticket types and prices */}
-          {ticketTypes.length > 0 && !(registration && registration.status === "confirmed") && (
+          {ticketTypes.length > 0 && !isEventClosed && !(registration && registration.status === "confirmed") && (
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tickets</h2>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -332,6 +336,16 @@ export default function EventDetail() {
               <div className="flex items-center gap-3 text-gray-600">
                 <div className="w-8 h-8 border-2 border-gray-300 border-t-[#006E3A] rounded-full animate-spin" />
                 <span>Confirming your payment…</span>
+              </div>
+            ) : isEventClosed && registration?.status !== "confirmed" ? (
+              <div className="w-full lg:max-w-md">
+                <button
+                  disabled
+                  className="w-full px-8 py-4 bg-red-600 text-white font-extrabold rounded-xl shadow-md uppercase tracking-[0.2em] cursor-not-allowed"
+                >
+                  Closed
+                </button>
+                <p className="text-sm text-gray-600 mt-3">This event is closed. Tickets are no longer available.</p>
               </div>
             ) : !isAuthenticated && !isOpenEvent ? (
               <p className="text-gray-600">
@@ -446,11 +460,12 @@ export default function EventDetail() {
         </section>
 
         {/* RIGHT: poster */}
-        <section className="w-full lg:w-1/2 min-h-[400px] lg:h-auto overflow-hidden bg-gray-100">
+        <section className="relative w-full lg:w-1/2 min-h-[400px] lg:h-auto overflow-hidden bg-gray-100">
+          {isEventClosed && <ClosedStamp size="lg" />}
           {event.media?.poster ? (
             <img
               src={optimizeImage(event.media.poster, 1200)}
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover ${isEventClosed ? "grayscale opacity-60" : ""}`}
               alt={event.title}
             />
           ) : (

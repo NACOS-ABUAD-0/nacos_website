@@ -233,6 +233,24 @@ class TicketTypeAndPaymentTest(APITestCase):
         self.assertEqual(detail['price_from'], 3000)
         self.assertFalse(detail['sold_out'])
 
+    def test_closed_event_sells_nothing(self, _init):
+        self.register(self.student, self.regular)  # pending payment from before the close
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(reverse('events-detail', kwargs={'pk': self.event.pk}), {'is_closed': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertTrue(response.data['is_closed'])
+
+        for user, ticket_type in ((self.other, self.vip), (self.other, self.regular), (self.student, self.regular)):
+            blocked = self.register(user, ticket_type)
+            self.assertEqual(blocked.status_code, status.HTTP_409_CONFLICT)
+            self.assertEqual(blocked.data['code'], 'event_closed')
+
+        self.client.force_authenticate(user=None)
+        detail = self.client.get(reverse('events-detail', kwargs={'pk': self.event.pk})).data
+        self.assertTrue(detail['is_closed'])
+        self.assertTrue(detail['sold_out'])
+        self.assertTrue(all(t['sold_out'] for t in detail['ticket_types']))
+
     def test_event_capacity_counts_all_types(self, _init):
         self.event.capacity = 1
         self.event.save()

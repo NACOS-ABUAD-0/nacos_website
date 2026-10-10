@@ -32,7 +32,7 @@ class TicketTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'price', 'capacity', 'venue', 'sales_closed', 'tickets_remaining', 'sold_out']
 
     def get_tickets_remaining(self, obj):
-        if obj.sales_closed:
+        if obj.sales_closed or obj.event.is_closed:
             return 0
         event = obj.event
         taken, by_type = self.context['seat_counts'](event.pk)
@@ -68,7 +68,7 @@ class EventSerializer(serializers.ModelSerializer):
             'location', 'is_remote', 'poster_url',
             'description', 'registration_url', 'contact_email',
             'capacity', 'audience', 'email_design', 'email_custom', 'ticket_types', 'is_paid', 'price_from', 'tickets_remaining', 'sold_out',
-            'booked_count', 'is_published', 'status', 'media',
+            'booked_count', 'is_published', 'is_closed', 'status', 'media',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'status', 'created_at', 'updated_at']
@@ -103,6 +103,8 @@ class EventSerializer(serializers.ModelSerializer):
     def get_tickets_remaining(self, obj):
         taken, by_type = self.context['seat_counts'](obj.pk)
         event_remaining = None if obj.capacity is None else max(obj.capacity - taken, 0)
+        if obj.is_closed:
+            return 0
         types = list(obj.ticket_types.all())
         if types and all(t.sales_closed for t in types):
             return 0

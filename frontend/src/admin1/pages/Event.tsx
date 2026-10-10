@@ -37,6 +37,8 @@ interface EventItem {
   // Confirmed tickets; only sent to admins and excos.
   booked_count?: number
   is_published: boolean
+  // Closed events sell no tickets at all and show greyed out with a red "Closed" badge.
+  is_closed?: boolean
   status?: EventStatus
   media?: EventMedia
 }
@@ -146,14 +148,17 @@ interface EventCardProps {
   onEdit: (event: EventItem) => void
   onDelete: (event: EventItem) => void
   onCheckIn: (event: EventItem) => void
+  onToggleClosed: (event: EventItem) => void
+  isToggling: boolean
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckIn }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckIn, onToggleClosed, isToggling }) => {
   return (
     <div className="relative bg-[#eef6f3] rounded-lg flex flex-col max-w-[300px] w-full min-h-[420px] mb-8 mx-auto hover:shadow-md transition">
       <div className="relative overflow-hidden rounded-t-lg">
         {event.media?.poster ? (
-          <img src={event.media.poster} alt={event.title} className="w-full h-48 object-cover" />
+          <img src={event.media.poster} alt={event.title}
+            className={`w-full h-48 object-cover ${event.is_closed ? 'grayscale opacity-60' : ''}`} />
         ) : (
           <div className="w-full h-48 bg-[#dcebe5] flex items-center justify-center text-gray-400">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,6 +166,12 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
+        )}
+
+        {event.is_closed && (
+          <span className="absolute inset-0 m-auto h-fit w-fit bg-red-600 text-white text-sm font-extrabold uppercase tracking-[0.25em] px-4 py-1.5 rounded-lg shadow -rotate-6">
+            Closed
+          </span>
         )}
 
         <div className="absolute top-3 left-3 flex gap-1">
@@ -218,6 +229,14 @@ const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, onCheckI
             Delete
           </button>
         </div>
+        <button onClick={() => onToggleClosed(event)} disabled={isToggling}
+          className={`mt-2 text-xs font-bold py-2 rounded-lg disabled:opacity-50 ${
+            event.is_closed
+              ? 'bg-white text-[#1a7a3f] border border-[#1a7a3f] hover:bg-[#eef6f3]'
+              : 'bg-red-600 text-white hover:bg-red-700'
+          }`}>
+          {event.is_closed ? 'Reopen event' : 'Close event'}
+        </button>
       </div>
     </div>
   )
@@ -629,6 +648,21 @@ const Events: React.FC = () => {
     onError: (error) => toast.error(apiErrorMessage(error, 'Failed to delete event.'), { duration: 6000 }),
   })
 
+  const closeMutation = useMutation({
+    mutationFn: ({ id, is_closed }: { id: number; is_closed: boolean }) =>
+      api.patch(`/events/${id}/`, { is_closed }).then(r => r.data),
+    onSuccess: (_, { is_closed }) => {
+      qc.invalidateQueries({ queryKey: ['admin-events'] })
+      toast.success(is_closed ? 'Event closed. No more tickets can be bought.' : 'Event reopened.')
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Failed to update event.')),
+  })
+
+  const handleToggleClosed = (event: EventItem): void => {
+    if (!event.is_closed && !window.confirm(`Close "${event.title}"? Nobody will be able to get tickets until you reopen it.`)) return
+    closeMutation.mutate({ id: event.id, is_closed: !event.is_closed })
+  }
+
   const handleSave = (formData: EventPayload): void => {
     if (modal === 'add') {
       createMutation.mutate(formData)
@@ -729,6 +763,8 @@ const Events: React.FC = () => {
                   onEdit={setModal}
                   onDelete={setDeleteTarget}
                   onCheckIn={(e) => navigate(`/admin/events/${e.id}/checkin`)}
+                  onToggleClosed={handleToggleClosed}
+                  isToggling={closeMutation.isPending && closeMutation.variables?.id === event.id}
                 />
               ))}
             </div>
