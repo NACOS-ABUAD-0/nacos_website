@@ -65,6 +65,19 @@ def verify_payment(reference: str) -> dict:
     return _request("GET", f"/transaction/verify/{requests.utils.quote(reference, safe='')}")
 
 
+def list_successful_transactions(since: str, per_page: int = 100) -> list[dict]:
+    """Every successful transaction from `since` (ISO 8601) until now, oldest pages last."""
+    transactions = []
+    page = 1
+    while True:
+        query = requests.compat.urlencode({"status": "success", "from": since, "perPage": per_page, "page": page})
+        batch = _request("GET", f"/transaction?{query}")
+        transactions.extend(batch)
+        if len(batch) < per_page:
+            return transactions
+        page += 1
+
+
 def is_valid_webhook_signature(raw_body: bytes, signature: str | None) -> bool:
     """Paystack signs webhooks with HMAC-SHA512 of the raw body using the secret key, in x-paystack-signature."""
     if not raw_body or not signature or not settings.PAYSTACK_SECRET_KEY:
