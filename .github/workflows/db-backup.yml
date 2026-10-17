@@ -19,8 +19,11 @@
 name: Database backup
 
 on:
-  schedule:
-    - cron: "0 2 * * *" # 02:00 UTC (03:00 WAT) every day
+  # Nightly schedule turned off 2026-10-17: production failed over to Neon after
+  # Render's database went down. Running this now would restore the old Render
+  # data over the live Neon database. Manual runs only until it's repointed.
+  # schedule:
+  #   - cron: "0 2 * * *" # 02:00 UTC (03:00 WAT) every day
   workflow_dispatch:
 
 concurrency:
